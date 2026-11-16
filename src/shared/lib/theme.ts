@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 export type Theme = "system" | "light" | "dark";
-const KEY = "proxima.theme";
 export const THEMES: Theme[] = ["system", "light", "dark"];
+const KEY = "proxima.theme";
+
+const query = () => window.matchMedia("(prefers-color-scheme: dark)");
 
 function stored(): Theme {
   try {
@@ -13,28 +15,44 @@ function stored(): Theme {
   }
 }
 
-/** "system" leaves data-theme off so the operating system decides; light and dark force it. */
+let choice: Theme = "system";
+let resolved: "light" | "dark" = "light";
+const listeners = new Set<() => void>();
+
+/** "system" follows the operating system and keeps following it while the app is open. */
 function apply(theme: Theme) {
-  const root = document.documentElement;
-  if (theme === "system") root.removeAttribute("data-theme");
-  else root.setAttribute("data-theme", theme);
+  choice = theme;
+  resolved = theme === "system" ? (query().matches ? "dark" : "light") : theme;
+  document.documentElement.setAttribute("data-theme", resolved);
+  listeners.forEach((listener) => listener());
 }
 
 /** Called once before the first render so the sign-in page also follows the saved choice. */
 export function applyStoredTheme() {
   apply(stored());
+  query().addEventListener("change", () => {
+    if (choice === "system") apply("system");
+  });
+}
+
+export function setTheme(theme: Theme) {
+  apply(theme);
+  try {
+    if (theme === "system") window.localStorage.removeItem(KEY);
+    else window.localStorage.setItem(KEY, theme);
+  } catch {
+    // The choice still applies for this visit.
+  }
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
 }
 
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(stored);
-  useEffect(() => {
-    apply(theme);
-    try {
-      window.localStorage.setItem(KEY, theme);
-    } catch {
-      // The choice still applies for this visit.
-    }
-  }, [theme]);
-  const next = () => setTheme((current) => THEMES[(THEMES.indexOf(current) + 1) % THEMES.length]!);
-  return { theme, next };
+  const theme = useSyncExternalStore(subscribe, () => choice);
+  const actual = useSyncExternalStore(subscribe, () => resolved);
+  const next = () => setTheme(THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]!);
+  return { theme, resolved: actual, next };
 }

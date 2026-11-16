@@ -1,17 +1,8 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
-/* `dark:` follows the app's theme choice (light, dark or the system setting), not only the system setting. */
-@custom-variant dark {
-  @media (prefers-color-scheme: dark) {
-    &:where(:root:not([data-theme="light"]) *) {
-      @slot;
-    }
-  }
-  &:where(:root[data-theme="dark"] *) {
-    @slot;
-  }
-}
+/* `dark:` follows the theme switch. */
+@custom-variant dark (&:where(:root[data-theme="dark"] *));
 
 /* Tailwind colours map to brand tokens only. */
 @theme inline {
@@ -28,11 +19,24 @@
   --color-surface-muted: var(--surface-muted);
   --color-on-ink: var(--on-ink);
   --color-blue: var(--blue);
+  --color-blue-hover: var(--blue-hover);
   --color-blue-strong: var(--blue-strong);
-  --color-orange: var(--orange);
-  --color-orange-tint: var(--orange-tint);
-  --color-orange-border: var(--orange-border);
-  --color-violet: var(--violet);
+  --color-blue-tab: var(--blue-tab);
+  --color-blue-tint: var(--blue-tint);
+  --color-blue-tint-strong: var(--blue-tint-strong);
+  --color-blue-border: var(--blue-border);
+  --color-nav-active: var(--nav-active);
+  --color-faint: var(--text-faint);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-border-control: var(--border-control);
+  --color-success-border: var(--success-border);
+  --color-success-soft: var(--success-soft);
+  --color-danger-border: var(--danger-border);
+  --color-danger-soft: var(--danger-soft);
+  --color-warning-border: var(--warning-border);
+  --color-disabled-bg: var(--disabled-bg);
+  --color-disabled-border: var(--disabled-border);
+  --color-chart-axis: var(--chart-axis);
   --color-danger: var(--danger);
   --color-danger-bg: var(--danger-bg);
   --color-danger-text: var(--danger-text);
@@ -52,12 +56,13 @@
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
   /* Names used by this app's components, aliased onto the reference palette. */
   --color-canvas: var(--surface-alt);
-  --color-border-strong: color-mix(in srgb, var(--ink) 28%, var(--border));
+  --color-border-strong: var(--border-control);
   --color-primary-ink: var(--on-ink);
-  --color-primary-hover: var(--ink-2);
-  --color-primary-soft: var(--surface-muted);
+  --color-primary-hover: var(--blue-hover);
+  --color-primary-soft: var(--blue-tint);
   --color-success: var(--success-text);
   --color-warning: var(--warning-text);
   --color-info: var(--info-text);
@@ -84,22 +89,26 @@
   --color-destructive: var(--destructive);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-md: var(--radius);
-  --radius-btn: var(--radius-button);
+  --radius-sm: var(--radius);
+  --radius-md: var(--radius-control);
+  --radius-lg: var(--radius-field);
+  --radius-xl: 12px;
   --radius-pill: var(--radius-pill);
-  --font-sans: "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --shadow-row: var(--shadow-row);
+  --font-sans: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
   --text-xs: 0.6875rem;
   --text-xs--line-height: 1rem;
-  --text-sm: 0.75rem;
+  --text-sm: 0.8125rem;
   --text-sm--line-height: 1.125rem;
-  --text-base: 0.8125rem;
-  --text-base--line-height: 1.25rem;
-  --text-lg: 0.9375rem;
-  --text-lg--line-height: 1.375rem;
-  --text-xl: 1.0625rem;
-  --text-xl--line-height: 1.5rem;
-  --text-2xl: 1.25rem;
-  --text-2xl--line-height: 1.75rem;
+  --text-base: 0.9375rem;
+  --text-base--line-height: 1.375rem;
+  --text-lg: 1.0625rem;
+  --text-lg--line-height: 1.5rem;
+  --text-xl: 1.1875rem;
+  --text-xl--line-height: 1.625rem;
+  --text-2xl: 1.375rem;
+  --text-2xl--line-height: 1.875rem;
+  --font-heading: "Sora", "Figtree", system-ui, sans-serif;
 }
 
 @layer base {
@@ -114,8 +123,8 @@
     background: var(--surface-alt);
     color: var(--text-body);
     font-family: var(--font-sans);
-    font-size: 12.5px;
-    line-height: 1.5;
+    font-size: 13px;
+    line-height: 1.45;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -126,6 +135,16 @@
     font-weight: 600;
     letter-spacing: -0.02em;
     margin: 0;
+  }
+
+  /* Page titles: Sora, 24/36 bold, tight tracking. */
+  h1 {
+    font-family: var(--font-heading);
+    font-size: 1.375rem;
+    line-height: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.06em;
+    color: var(--ink-2);
   }
 
   /* Focus ring on every interactive element: 2px blue at 40% plus a 2px offset. */

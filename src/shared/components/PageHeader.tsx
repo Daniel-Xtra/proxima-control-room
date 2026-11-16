@@ -28,7 +28,10 @@ export function PageHeader({ title, description, actions, crumbs, logo, meta }: 
               {crumbs.map((crumb, index) => (
                 <li key={`${index}-${crumb.label}`} className="flex items-center gap-1">
                   {crumb.to ? (
-                    <Link to={crumb.to} className="text-blue-strong hover:underline">
+                    <Link
+                      to={crumb.to}
+                      className="inline-block py-1.5 text-blue-strong hover:underline sm:py-0"
+                    >
                       {crumb.label}
                     </Link>
                   ) : (

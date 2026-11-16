@@ -95,7 +95,7 @@ export function SimpleTable<T>({
                       type="button"
                       onClick={() => toggle(col)}
                       className={cn(
-                        "inline-flex cursor-pointer items-center gap-1 uppercase tracking-wide hover:text-ink",
+                        "inline-flex cursor-pointer items-center gap-1 hover:text-ink",
                         direction && "text-ink",
                       )}
                     >
@@ -131,7 +131,7 @@ export function SimpleTable<T>({
               )}
               onDoubleClick={onRowOpen ? () => onRowOpen(row) : undefined}
             >
-              {visible.map((col, index) => (
+              {visible.map((col) => (
                 <TableCell
                   key={col.key}
                   className={cn(
@@ -140,20 +140,7 @@ export function SimpleTable<T>({
                     col.className,
                   )}
                 >
-                  {onRowOpen && index === 0 ? (
-                    <button
-                      type="button"
-                      className="cursor-pointer text-left font-medium text-blue-strong hover:underline"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onRowOpen(row);
-                      }}
-                    >
-                      {col.cell(row)}
-                    </button>
-                  ) : (
-                    col.cell(row)
-                  )}
+                  {col.cell(row)}
                 </TableCell>
               ))}
               {onRowOpen ? (

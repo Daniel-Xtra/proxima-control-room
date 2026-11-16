@@ -58,7 +58,7 @@ export function TrendChart({ values, labels, format, averageLabel, summary }: Tr
               x={PAD.left - 8}
               y={y(tick) + 3}
               textAnchor="end"
-              className="fill-muted-text text-[9px]"
+              className="fill-chart-axis text-[9px]"
             >
               {format(tick)}
             </text>
@@ -85,7 +85,7 @@ export function TrendChart({ values, labels, format, averageLabel, summary }: Tr
           x={WIDTH - PAD.right}
           y={y(average) - 4}
           textAnchor="end"
-          className="fill-muted-text text-[9px]"
+          className="fill-chart-axis text-[9px]"
         >
           {averageLabel}
         </text>
@@ -96,7 +96,7 @@ export function TrendChart({ values, labels, format, averageLabel, summary }: Tr
               x={x(i)}
               y={HEIGHT - 6}
               textAnchor="middle"
-              className="fill-muted-text text-[9px]"
+              className="fill-chart-axis text-[9px]"
             >
               {label}
             </text>

@@ -31,7 +31,7 @@ export function StatCard({
   accent,
 }: StatCardProps) {
   return (
-    <div className={cn("card p-4", accent && "border-orange-border bg-orange-tint")}>
+    <div className={cn("card p-4 sm:p-6 sm:pb-3", accent && "border-blue-border bg-blue-tint")}>
       <div className="flex items-start justify-between gap-3">
         <p className="m-0 text-xs font-medium text-muted-text">{label}</p>
         {icon ? (

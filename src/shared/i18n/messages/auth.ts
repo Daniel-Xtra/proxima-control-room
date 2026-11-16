@@ -30,9 +30,10 @@ export const auth = {
   "auth.enrol.submit": "Confirm and continue",
 
   "auth.idle.title": "Still there?",
-  "auth.idle.description": "You will be signed out in {seconds} seconds because of inactivity.",
+  "auth.idle.countdownLabel": "{seconds} seconds left",
   "auth.idle.stay": "Stay signed in",
-  "auth.idle.body": "Anything you have typed is kept if you stay signed in.",
+  "auth.idle.message":
+    "You have been inactive, so we will sign you out to keep your account safe. Anything you have typed is kept if you stay.",
 
   "security.title": "Security settings",
   "security.description": "Your sign-in, authenticator and active sessions.",

@@ -50,17 +50,12 @@ export function ReviewDrawer({ request, onClose }: Props) {
             <>
               <Button
                 variant="outline"
-                size="xs"
                 disabled={Boolean(blockedReason)}
                 onClick={() => setDecision("rejected")}
               >
                 {t("requests.review.reject")}
               </Button>
-              <Button
-                size="xs"
-                disabled={Boolean(blockedReason)}
-                onClick={() => setDecision("approved")}
-              >
+              <Button disabled={Boolean(blockedReason)} onClick={() => setDecision("approved")}>
                 {t("requests.review.approve")}
               </Button>
             </>

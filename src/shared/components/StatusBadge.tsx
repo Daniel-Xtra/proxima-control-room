@@ -12,7 +12,7 @@ export function StatusBadge({ tone, label, className }: StatusBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex h-6 w-fit items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-xs font-medium",
+        "inline-flex h-6 w-fit items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs font-medium",
         toneClasses[tone],
         className,
       )}

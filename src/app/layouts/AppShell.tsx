@@ -30,10 +30,9 @@ export function AppShell() {
   const location = useLocation();
   const [navOpen, setNavOpen] = useState(false);
   const { theme, next: nextTheme } = useTheme();
+  const ThemeGlyph = theme === "dark" ? Moon : theme === "light" ? Sun : Monitor;
 
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-
-  const ThemeGlyph = theme === "dark" ? Moon : theme === "light" ? Sun : Monitor;
 
   return (
     <>
@@ -47,8 +46,8 @@ export function AppShell() {
         <Sidebar open={navOpen} onClose={() => setNavOpen(false)} />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-4 py-2.5">
-            <div className="flex items-center gap-2">
+          <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-border bg-surface px-3 py-2 sm:gap-3 sm:px-4 sm:py-2.5">
+            <div className="flex min-w-0 items-center gap-2">
               <button
                 type="button"
                 className="inline-flex size-11 cursor-pointer items-center justify-center rounded-md text-ink hover:bg-surface-muted md:hidden"
@@ -57,20 +56,21 @@ export function AppShell() {
               >
                 <List size={18} aria-hidden="true" />
               </button>
-              <span className="inline-flex items-center gap-1.5 rounded-pill border border-orange-border bg-orange-tint px-3 py-1 text-xs font-medium text-ink">
+              <span className="hidden items-center gap-1.5 rounded-pill border border-blue-border bg-blue-tint px-3 py-1 text-xs font-medium text-ink sm:inline-flex">
                 <Buildings size={12} aria-hidden="true" />
                 {t("shell.environment")}
               </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex shrink-0 items-center gap-1 sm:gap-3">
               <button
                 type="button"
-                className="inline-flex size-11 cursor-pointer items-center justify-center rounded-md text-ink hover:bg-surface-muted"
                 aria-label={`${t("shell.theme")}: ${t(`shell.theme.${theme}`)}`}
+                title={`${t("shell.theme")}: ${t(`shell.theme.${theme}`)}`}
+                className="inline-flex size-10 cursor-pointer items-center justify-center rounded-md text-ink hover:bg-surface-muted"
                 onClick={nextTheme}
               >
-                <ThemeGlyph size={16} aria-hidden="true" />
+                <ThemeGlyph size={18} aria-hidden="true" />
               </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
