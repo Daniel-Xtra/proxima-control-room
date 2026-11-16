@@ -1,12 +1,11 @@
+import { Timer } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/shared/components/ui/Button";
 import {
   Dialog,
-  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from "@/shared/components/ui/Dialog";
 import { t } from "@/shared/i18n/t";
@@ -52,17 +51,39 @@ export function IdleGuard() {
     if (warning && seconds <= 0) signOut();
   }, [warning, seconds, signOut]);
 
+  const clock = `${Math.floor(Math.max(seconds, 0) / 60)}:${String(Math.max(seconds, 0) % 60).padStart(2, "0")}`;
+
   return (
     <Dialog open={warning} onOpenChange={(open) => !open && setWarning(false)}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{t("auth.idle.title")}</DialogTitle>
-          <DialogDescription>{t("auth.idle.description", { seconds })}</DialogDescription>
-        </DialogHeader>
-        <DialogBody>
-          <p className="m-0 text-sm text-body">{t("auth.idle.body")}</p>
-        </DialogBody>
-        <DialogFooter>
+      <DialogContent showCloseButton={false} className="sm:max-w-sm">
+        <div className="flex flex-col items-center px-6 pt-8 pb-6 text-center">
+          <span
+            aria-hidden="true"
+            className="flex size-14 items-center justify-center rounded-full bg-warning-bg text-warning-text"
+          >
+            <Timer size={28} weight="duotone" />
+          </span>
+          <DialogTitle className="mt-4 text-lg">{t("auth.idle.title")}</DialogTitle>
+          <output
+            className="tabular mt-3 block text-4xl font-semibold text-ink"
+            aria-label={t("auth.idle.countdownLabel", { seconds })}
+          >
+            {clock}
+          </output>
+          <div
+            aria-hidden="true"
+            className="mt-3 h-1 w-full overflow-hidden rounded-full bg-surface-muted"
+          >
+            <div
+              className="h-full rounded-full bg-warning-solid transition-[width] duration-1000 ease-linear"
+              style={{ width: `${(Math.max(seconds, 0) / GRACE_SECONDS) * 100}%` }}
+            />
+          </div>
+          <DialogDescription className="mt-4 text-sm text-body">
+            {t("auth.idle.message")}
+          </DialogDescription>
+        </div>
+        <DialogFooter className="gap-2 p-4 sm:gap-3 sm:p-4 [&_button]:h-11 [&_button]:p-0">
           <Button variant="outline" onClick={signOut}>
             {t("shell.signOut")}
           </Button>
