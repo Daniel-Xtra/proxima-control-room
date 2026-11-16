@@ -1,0 +1,211 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* `dark:` follows the app's theme choice (light, dark or the system setting), not only the system setting. */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+  &:where(:root[data-theme="dark"] *) {
+    @slot;
+  }
+}
+
+/* Tailwind colours map to brand tokens only. */
+@theme inline {
+  --color-*: initial;
+  --color-ink: var(--ink);
+  --color-overlay: var(--overlay);
+  --color-ink-2: var(--ink-2);
+  --color-body: var(--text-body);
+  --color-muted-text: var(--text-muted);
+  --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-surface-muted: var(--surface-muted);
+  --color-on-ink: var(--on-ink);
+  --color-blue: var(--blue);
+  --color-blue-strong: var(--blue-strong);
+  --color-orange: var(--orange);
+  --color-orange-tint: var(--orange-tint);
+  --color-orange-border: var(--orange-border);
+  --color-violet: var(--violet);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-text: var(--danger-text);
+  --color-success-bg: var(--success-bg);
+  --color-success-text: var(--success-text);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-text: var(--warning-text);
+  --color-info-bg: var(--info-bg);
+  --color-info-text: var(--info-text);
+  --color-neutral-bg: var(--neutral-bg);
+  --color-neutral-text: var(--neutral-text);
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-success-solid: var(--success-solid);
+  --color-warning-solid: var(--warning-solid);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  /* Names used by this app's components, aliased onto the reference palette. */
+  --color-canvas: var(--surface-alt);
+  --color-border-strong: color-mix(in srgb, var(--ink) 28%, var(--border));
+  --color-primary-ink: var(--on-ink);
+  --color-primary-hover: var(--ink-2);
+  --color-primary-soft: var(--surface-muted);
+  --color-success: var(--success-text);
+  --color-warning: var(--warning-text);
+  --color-info: var(--info-text);
+  --color-locked: var(--danger-text);
+  --color-locked-bg: color-mix(in srgb, var(--danger-bg) 45%, var(--neutral-bg));
+  --shadow-sm: var(--shadow-card);
+  --shadow-md: var(--shadow-overlay);
+  --shadow-lg: var(--shadow-overlay);
+  /* shadcn semantic names used by the copied expentra ui components; all alias tokens in tokens.css */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-md: var(--radius);
+  --radius-btn: var(--radius-button);
+  --radius-pill: var(--radius-pill);
+  --font-sans: "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --text-xs: 0.6875rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.75rem;
+  --text-sm--line-height: 1.125rem;
+  --text-base: 0.8125rem;
+  --text-base--line-height: 1.25rem;
+  --text-lg: 0.9375rem;
+  --text-lg--line-height: 1.375rem;
+  --text-xl: 1.0625rem;
+  --text-xl--line-height: 1.5rem;
+  --text-2xl: 1.25rem;
+  --text-2xl--line-height: 1.75rem;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--surface-alt);
+    color: var(--text-body);
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    color: var(--ink);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  /* Focus ring on every interactive element: 2px blue at 40% plus a 2px offset. */
+  :where(
+    a,
+    button,
+    input,
+    select,
+    textarea,
+    summary,
+    [role="button"],
+    [role="menuitem"],
+    [role="tab"],
+    [role="row"],
+    [tabindex]
+  ):focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--focus-offset),
+      0 0 0 4px var(--blue-ring);
+  }
+}
+
+@layer components {
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Scrollbars, as in expentra-web: thin, 10px, rounded thumb on a soft track. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--muted-foreground) 35%, transparent)
+    color-mix(in oklch, var(--muted) 80%, transparent);
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: color-mix(in oklch, var(--muted) 80%, transparent);
+}
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
+  border: 2px solid color-mix(in oklch, var(--muted) 80%, transparent);
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
+}
+
+/* Signed-out screens: flat surface with a faint dot pattern. Colours come from tokens only. */
+@layer components {
+  .auth-backdrop {
+    background-color: color-mix(in srgb, var(--blue) 12%, var(--surface-alt));
+    background-image: radial-gradient(
+      color-mix(in srgb, var(--ink) 14%, transparent) 1px,
+      transparent 1px
+    );
+    background-size: 22px 22px;
+  }
+  /* Flat tint laid over the icons so they show through softly. */
+  .auth-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: color-mix(in srgb, var(--blue) 12%, var(--surface-alt));
+    opacity: 0.78;
+    pointer-events: none;
+  }
+  .auth-card {
+    box-shadow: var(--shadow-overlay);
+  }
+}

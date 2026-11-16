@@ -1,0 +1,197 @@
+import { useState } from "react";
+import { useCan } from "@/features/auth";
+import { AsyncBody } from "@/shared/components/AsyncBody";
+import { DateText } from "@/shared/components/DateText";
+import { defineStatusBadge } from "@/shared/components/defineStatusBadge";
+import { MoneyText } from "@/shared/components/MoneyText";
+import { SimpleTable } from "@/shared/components/SimpleTable";
+import { Button } from "@/shared/components/ui/Button";
+import { t } from "@/shared/i18n/t";
+import { useFixedDeposits, useTargetSavings } from "../api/queries";
+import type {
+  FixedDeposit,
+  FixedDepositStatus,
+  TargetSaving,
+  TargetSavingStatus,
+} from "../model/types";
+import { LiquidateDialog, type LiquidationTarget } from "./LiquidateDialog";
+
+const FixedBadge = defineStatusBadge<FixedDepositStatus>({
+  active: { tone: "info", label: t("savings.status.active") },
+  matured: { tone: "warning", label: t("savings.status.matured") },
+  liquidated: { tone: "neutral", label: t("savings.status.liquidated") },
+  paid: { tone: "success", label: t("savings.status.paid") },
+});
+
+const TargetBadge = defineStatusBadge<TargetSavingStatus>({
+  active: { tone: "info", label: t("savings.status.active") },
+  cancelled: { tone: "neutral", label: t("savings.status.cancelled") },
+  matured: { tone: "warning", label: t("savings.status.matured") },
+  paid: { tone: "success", label: t("savings.status.paid") },
+});
+
+export function FixedDepositsTable({ customerId }: { customerId?: string }) {
+  const can = useCan();
+  const result = useFixedDeposits(customerId);
+  const [target, setTarget] = useState<LiquidationTarget | null>(null);
+
+  return (
+    <>
+      <AsyncBody
+        query={result}
+        isEmpty={(rows) => rows.length === 0}
+        emptyTitle={t("savings.empty")}
+      >
+        {(rows) => (
+          <SimpleTable<FixedDeposit>
+            caption={t("savings.tab.fixed")}
+            rows={rows}
+            getRowId={(r) => r.id}
+            columns={[
+              ...(customerId
+                ? []
+                : [
+                    {
+                      key: "customer",
+                      header: t("savings.col.customer"),
+                      sortValue: (r: { customerName: string }) => r.customerName,
+                      cell: (r: FixedDeposit) => r.customerName,
+                    },
+                  ]),
+              {
+                key: "principal",
+                header: t("savings.col.principal"),
+                sortValue: (r: { principalKobo: number }) => r.principalKobo,
+                align: "right",
+                cell: (r) => <MoneyText kobo={r.principalKobo} />,
+              },
+              {
+                key: "rate",
+                header: t("savings.col.rate"),
+                sortValue: (r: { interestRatePercent: number }) => r.interestRatePercent,
+                cell: (r) => `${r.interestRatePercent}%`,
+              },
+              {
+                key: "duration",
+                header: t("savings.col.duration"),
+                sortValue: (r: { durationDays: number }) => r.durationDays,
+                cell: (r) => t("savings.days", { count: r.durationDays }),
+              },
+              {
+                key: "matures",
+                header: t("savings.col.maturity"),
+                sortValue: (r: { maturesAt: string }) => r.maturesAt,
+                cell: (r) => <DateText iso={r.maturesAt} dateOnly />,
+              },
+              {
+                key: "status",
+                header: t("savings.col.status"),
+                sortValue: (r: { status: string }) => r.status,
+                cell: (r) => <FixedBadge status={r.status} />,
+              },
+              {
+                key: "actions",
+                header: "",
+                align: "right",
+                cell: (r) =>
+                  r.status === "active" && can("savings:liquidate") ? (
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() =>
+                        setTarget({ id: r.id, kind: "fixed", customerName: r.customerName })
+                      }
+                    >
+                      {t("savings.liquidate.action")}
+                    </Button>
+                  ) : null,
+              },
+            ]}
+          />
+        )}
+      </AsyncBody>
+      <LiquidateDialog target={target} onClose={() => setTarget(null)} />
+    </>
+  );
+}
+
+export function TargetSavingsTable({ customerId }: { customerId?: string }) {
+  const can = useCan();
+  const result = useTargetSavings(customerId);
+  const [target, setTarget] = useState<LiquidationTarget | null>(null);
+
+  return (
+    <>
+      <AsyncBody
+        query={result}
+        isEmpty={(rows) => rows.length === 0}
+        emptyTitle={t("savings.empty")}
+      >
+        {(rows) => (
+          <SimpleTable<TargetSaving>
+            caption={t("savings.tab.target")}
+            rows={rows}
+            getRowId={(r) => r.id}
+            columns={[
+              ...(customerId
+                ? []
+                : [
+                    {
+                      key: "customer",
+                      header: t("savings.col.customer"),
+                      sortValue: (r: { customerName: string }) => r.customerName,
+                      cell: (r: TargetSaving) => r.customerName,
+                    },
+                  ]),
+              { key: "name", header: t("savings.col.plan"), cell: (r) => r.name },
+              {
+                key: "target",
+                header: t("savings.col.target"),
+                sortValue: (r: { targetKobo: number }) => r.targetKobo,
+                align: "right",
+                cell: (r) => <MoneyText kobo={r.targetKobo} />,
+              },
+              {
+                key: "saved",
+                header: t("savings.col.saved"),
+                sortValue: (r: { savedKobo: number }) => r.savedKobo,
+                align: "right",
+                cell: (r) => <MoneyText kobo={r.savedKobo} />,
+              },
+              {
+                key: "freq",
+                header: t("savings.col.frequency"),
+                sortValue: (r: { frequency: string }) => r.frequency,
+                cell: (r) => t(`savings.frequency.${r.frequency}`),
+              },
+              {
+                key: "status",
+                header: t("savings.col.status"),
+                sortValue: (r: { status: string }) => r.status,
+                cell: (r) => <TargetBadge status={r.status} />,
+              },
+              {
+                key: "actions",
+                header: "",
+                align: "right",
+                cell: (r) =>
+                  r.status === "active" && can("savings:liquidate") ? (
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() =>
+                        setTarget({ id: r.id, kind: "target", customerName: r.customerName })
+                      }
+                    >
+                      {t("savings.liquidate.action")}
+                    </Button>
+                  ) : null,
+              },
+            ]}
+          />
+        )}
+      </AsyncBody>
+      <LiquidateDialog target={target} onClose={() => setTarget(null)} />
+    </>
+  );
+}

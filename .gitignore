@@ -1,0 +1,11 @@
+node_modules
+dist
+.claude
+.env
+.env.*
+!.env.example
+*.log
+*.tmp
+*.tmp.*
+.DS_Store
+*.tsbuildinfo

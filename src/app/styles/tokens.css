@@ -1,0 +1,145 @@
+/* Single source of colour. Components use these tokens only (see scripts/check-colors.mjs). */
+:root {
+  /* Neutrals */
+  --ink: #0a0a0a;
+  --ink-2: #232323;
+  --text-body: #4b5563;
+  --text-muted: #6f6f6f;
+  --border: #e5e5e5;
+  --border-soft: #eaecef;
+  --surface: #ffffff;
+  --surface-alt: #f7f8fa;
+  --surface-muted: #f5f5f5;
+  --on-ink: #ffffff;
+
+  /* Brand */
+  --blue: #4f7df7;
+  --blue-strong: #2563eb;
+  --blue-ring: rgb(79 125 247 / 0.4);
+  --orange: #fc660c;
+  --orange-soft: #ffa76c;
+  --orange-tint: #fff6f0;
+  --orange-tint-2: #fdeadc;
+  --orange-border: #ffefe1;
+  --violet: #8776ff;
+
+  /* Semantic status: one map for tickets, payments, approvals, schools */
+  --success-text: #00630b;
+  --success-bg: #b9efc4;
+  --success-solid: #0ba81d;
+  --danger: #ef4444;
+  --danger-bg: #fee2e2;
+  --danger-text: #991b1b;
+  --warning-text: #7a5a00;
+  --warning-bg: #fbf1d3;
+  --warning-solid: #e9c46a;
+  --info-text: var(--blue-strong);
+  --info-bg: #eaf0fe;
+  --neutral-text: #4b5563;
+  --neutral-bg: #f5f5f5;
+
+  /* Chart palette, in order */
+  --chart-1: #e76f51;
+  --chart-2: #2a9d8f;
+  --chart-3: #264653;
+  --chart-4: #e9c46a;
+  --chart-5: #f4a261;
+  --chart-6: var(--blue);
+  --chart-7: var(--violet);
+
+  /* Shape */
+  --radius: 8px;
+  --radius-button: 16px;
+  --radius-pill: 999px;
+
+  /* Elevation: borders first, shadow second */
+  --shadow-card: 0 1px 2px rgb(10 10 10 / 0.04);
+  --shadow-overlay: 0 12px 32px rgb(10 10 10 / 0.12);
+  --overlay: rgb(10 10 10 / 0.45);
+  --focus-offset: var(--surface);
+
+  /* shadcn aliases onto the brand tokens */
+  --background: var(--surface-alt);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--on-ink);
+  --secondary: var(--surface);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface-muted);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--surface-muted);
+  --accent-foreground: var(--ink);
+  --destructive: var(--danger);
+  --input: var(--border);
+  --ring: var(--blue-ring);
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #f5f5f5;
+    --ink-2: #e5e5e5;
+    --text-body: #d4d4d4;
+    --text-muted: #a3a3a3;
+    --border: #262626;
+    --border-soft: #1f1f1f;
+    --surface: #141414;
+    --surface-alt: #0a0a0a;
+    --surface-muted: #1c1c1c;
+    --on-ink: #0a0a0a;
+    --blue-strong: #7ba0ff;
+    --orange-tint: #2a1a10;
+    --orange-tint-2: #3a2314;
+    --orange-border: #4a2c18;
+    --success-text: #86efac;
+    --success-bg: #12351b;
+    --danger-bg: #3b1515;
+    --danger-text: #fca5a5;
+    --warning-text: #f2d27a;
+    --warning-bg: #3a2f10;
+    --info-bg: #14233f;
+    --neutral-text: #d4d4d4;
+    --neutral-bg: #262626;
+    --chart-3: #6aa7bd;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-overlay: 0 12px 32px rgb(0 0 0 / 0.6);
+    --overlay: rgb(0 0 0 / 0.7);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ink: #f5f5f5;
+  --ink-2: #e5e5e5;
+  --text-body: #d4d4d4;
+  --text-muted: #a3a3a3;
+  --border: #262626;
+  --border-soft: #1f1f1f;
+  --surface: #141414;
+  --surface-alt: #0a0a0a;
+  --surface-muted: #1c1c1c;
+  --on-ink: #0a0a0a;
+  --blue-strong: #7ba0ff;
+  --orange-tint: #2a1a10;
+  --orange-tint-2: #3a2314;
+  --orange-border: #4a2c18;
+  --success-text: #86efac;
+  --success-bg: #12351b;
+  --danger-bg: #3b1515;
+  --danger-text: #fca5a5;
+  --warning-text: #f2d27a;
+  --warning-bg: #3a2f10;
+  --info-bg: #14233f;
+  --neutral-text: #d4d4d4;
+  --neutral-bg: #262626;
+  --chart-3: #6aa7bd;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-overlay: 0 12px 32px rgb(0 0 0 / 0.6);
+  --overlay: rgb(0 0 0 / 0.7);
+  color-scheme: dark;
+}
