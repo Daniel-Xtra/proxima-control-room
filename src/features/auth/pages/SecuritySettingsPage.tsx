@@ -63,7 +63,6 @@ export function SecuritySettingsPage() {
               { label: t("security.name"), value: user.name },
               { label: t("auth.email"), value: user.email },
               { label: t("security.roles"), value: user.roleNames.join(", ") },
-              { label: t("security.lastLogin"), value: <DateText iso={user.lastLoginAt} /> },
             ]}
           />
         </SectionCard>

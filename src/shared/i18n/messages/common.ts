@@ -17,6 +17,8 @@ export const common = {
 
   "state.empty.title": "Nothing to show",
   "state.error.title": "Something went wrong",
+  "api.unreachable": "Cannot reach the server. Check your connection and try again.",
+  "api.sessionExpired": "Your session has ended. Sign in again.",
   "state.forbidden.title": "You don't have access to this",
   "state.forbidden.description":
     "Your roles do not include the permission this needs. Ask a staff manager if you think that is a mistake.",

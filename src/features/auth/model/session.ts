@@ -6,7 +6,7 @@ export interface SessionUser {
   email: string;
   roleNames: string[];
   permissions: Permission[];
+  /** The admin API sends no approval ceiling yet, so the UI does not block on it; the backend enforces limits. */
   approvalCeilingKobo: number;
   twoFactorEnrolled: boolean;
-  lastLoginAt: string;
 }

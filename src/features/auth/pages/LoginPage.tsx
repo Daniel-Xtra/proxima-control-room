@@ -1,4 +1,3 @@
-import { QrCode } from "@phosphor-icons/react";
 import { BrandMark } from "@/shared/components/BrandMark";
 import { useState, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
@@ -8,38 +7,37 @@ import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
 import { Label } from "@/shared/components/ui/Label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/components/ui/Select";
 import { t } from "@/shared/i18n/t";
 import {
   MAX_CODE_ATTEMPTS,
-  SETUP_KEY,
-  buildSessionUser,
-  setNewPassword,
-  submitCredentials,
-  verifyTotp,
+  activateMfa,
+  beginEnrolment,
+  fetchSessionUser,
+  login,
+  verifyMfa,
 } from "../api/authApi";
 import { AuthBackdrop } from "../components/AuthBackdrop";
 import { useSession } from "../hooks/useSession";
-import { ROLE_TEMPLATES } from "../model/roleTemplates";
 
-type Step = "credentials" | "totp" | "new-password" | "enrol";
+type Step = "credentials" | "totp" | "enrol";
+
+/** Groups the secret in fours so it is easy to type into an authenticator app. */
+function groupKey(secret: string) {
+  return secret
+    .replace(/\s+/g, "")
+    .replace(/(.{4})/g, "$1 ")
+    .trim();
+}
 
 export function LoginPage() {
   const { user, signIn } = useSession();
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>("credentials");
-  const [email, setEmail] = useState("amaka.eze@proxima.example");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [roleId, setRoleId] = useState(ROLE_TEMPLATES[0]!.id);
-  const [firstLogin, setFirstLogin] = useState(false);
+  const [mfaToken, setMfaToken] = useState("");
+  const [setupKey, setSetupKey] = useState("");
   const [code, setCode] = useState("");
-  const [newPassword, setNewPasswordValue] = useState("");
   const [error, setError] = useState<string>();
   const [failures, setFailures] = useState(0);
   const [pending, setPending] = useState(false);
@@ -60,30 +58,40 @@ export function LoginPage() {
     }
   }
 
-  function finish() {
-    signIn(buildSessionUser(email, roleId, firstLogin));
+  /** Tokens are stored by now: load the profile and permissions, then enter the app. */
+  async function finish() {
+    signIn(await fetchSessionUser());
     navigate("/", { replace: true });
   }
 
-  async function checkCode(value: string, next: () => void) {
+  async function checkCode(value: string, confirm: (value: string) => Promise<void>) {
     await run(async () => {
       try {
-        await verifyTotp(value);
-        next();
+        await confirm(value);
       } catch (caught) {
         setFailures((n) => n + 1);
         setCode("");
         throw caught;
       }
+      await finish();
     });
   }
 
   function onCredentials(event: FormEvent) {
     event.preventDefault();
     void run(async () => {
-      const result = await submitCredentials(email, password);
-      setFirstLogin(result.firstLogin);
-      setStep(result.firstLogin ? "new-password" : "totp");
+      const result = await login(email, password);
+      if (result.kind === "session") return finish();
+      setMfaToken(result.mfaToken);
+      setCode("");
+      setFailures(0);
+      if (result.enrolled) {
+        setStep("totp");
+        return;
+      }
+      const enrolment = await beginEnrolment(result.mfaToken);
+      setSetupKey(enrolment.secret);
+      setStep("enrol");
     });
   }
 
@@ -99,7 +107,6 @@ export function LoginPage() {
           <h1 className="text-2xl font-semibold text-ink">
             {step === "credentials" && t("auth.signIn.title")}
             {step === "totp" && t("auth.totp.title")}
-            {step === "new-password" && t("auth.password.title")}
             {step === "enrol" && t("auth.enrol.title")}
           </h1>
         </div>
@@ -126,28 +133,12 @@ export function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <div className="flex flex-col gap-1.5 rounded-md border border-dashed border-border-strong p-3">
-              <Label htmlFor="demo-role">{t("auth.demoRole")}</Label>
-              <Select value={roleId} onValueChange={setRoleId}>
-                <SelectTrigger id="demo-role" className="h-11">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROLE_TEMPLATES.map((role) => (
-                    <SelectItem key={role.id} value={role.id}>
-                      {role.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-text">{t("auth.demoHint")}</p>
-            </div>
             {error ? (
               <p role="alert" className="text-sm text-danger-text">
                 {error}
               </p>
             ) : null}
-            <Button type="submit" size="lg" disabled={pending}>
+            <Button type="submit" size="lg" disabled={pending || !email || !password}>
               {pending ? t("common.working") : t("auth.signIn.submit")}
             </Button>
           </form>
@@ -170,12 +161,12 @@ export function LoginPage() {
                       ? `${error} ${t("auth.totp.remaining", { count: MAX_CODE_ATTEMPTS - failures })}`
                       : undefined
                   }
-                  onComplete={(value) => void checkCode(value, finish)}
+                  onComplete={(value) => void checkCode(value, (v) => verifyMfa(mfaToken, v))}
                 />
                 <Button
                   size="lg"
                   disabled={pending || code.length !== 6}
-                  onClick={() => void checkCode(code, finish)}
+                  onClick={() => void checkCode(code, (v) => verifyMfa(mfaToken, v))}
                 >
                   {pending ? t("common.working") : t("auth.totp.verify")}
                 </Button>
@@ -184,56 +175,17 @@ export function LoginPage() {
           </div>
         ) : null}
 
-        {step === "new-password" ? (
-          <form
-            className="flex flex-col gap-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void run(async () => {
-                await setNewPassword(newPassword);
-                setStep("enrol");
-              });
-            }}
-          >
-            <p className="text-sm text-muted-text">{t("auth.password.description")}</p>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="new-password">{t("auth.password.new")}</Label>
-              <Input
-                id="new-password"
-                type="password"
-                autoComplete="new-password"
-                value={newPassword}
-                onChange={(e) => setNewPasswordValue(e.target.value)}
-              />
-              {error ? (
-                <p role="alert" className="text-sm text-danger-text">
-                  {error}
-                </p>
-              ) : null}
-            </div>
-            <Button type="submit" size="lg" disabled={pending}>
-              {t("common.continue")}
-            </Button>
-          </form>
-        ) : null}
-
         {step === "enrol" ? (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-text">{t("auth.enrol.description")}</p>
-            <div className="flex items-center gap-4 rounded-md border border-border p-3">
-              <div className="flex size-24 shrink-0 items-center justify-center rounded-md bg-surface-muted text-muted-text">
-                <QrCode aria-hidden="true" className="size-12" />
-                <span className="sr-only">{t("auth.enrol.qrLabel")}</span>
-              </div>
-              <dl className="min-w-0 text-sm">
-                <dt className="text-xs text-muted-text">{t("auth.enrol.issuer")}</dt>
-                <dd className="text-ink">{t("app.name")}</dd>
-                <dt className="mt-2 text-xs text-muted-text">{t("auth.enrol.account")}</dt>
-                <dd className="truncate text-ink">{email}</dd>
-                <dt className="mt-2 text-xs text-muted-text">{t("auth.enrol.setupKey")}</dt>
-                <dd className="tabular font-medium text-ink">{SETUP_KEY}</dd>
-              </dl>
-            </div>
+            <dl className="rounded-md border border-border p-3 text-sm">
+              <dt className="text-xs text-muted-text">{t("auth.enrol.issuer")}</dt>
+              <dd className="text-ink">{t("app.name")}</dd>
+              <dt className="mt-2 text-xs text-muted-text">{t("auth.enrol.account")}</dt>
+              <dd className="truncate text-ink">{email}</dd>
+              <dt className="mt-2 text-xs text-muted-text">{t("auth.enrol.setupKey")}</dt>
+              <dd className="tabular font-medium break-all text-ink">{groupKey(setupKey)}</dd>
+            </dl>
             <TotpInput
               value={code}
               onChange={setCode}
@@ -243,7 +195,7 @@ export function LoginPage() {
             <Button
               size="lg"
               disabled={pending || code.length !== 6}
-              onClick={() => void checkCode(code, finish)}
+              onClick={() => void checkCode(code, (v) => activateMfa(mfaToken, v))}
             >
               {t("auth.enrol.submit")}
             </Button>
