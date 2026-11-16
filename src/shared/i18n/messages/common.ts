@@ -77,6 +77,7 @@ export const common = {
   "shell.environment": "Staging data · mock services",
   "shell.navigation": "Main navigation",
   "shell.openMenu": "Open menu",
+  "shell.darkMode": "Dark mode",
   "shell.pendingCount": "{count} pending",
   "shell.security": "Security settings",
   "nav.collapse": "Collapse sidebar",

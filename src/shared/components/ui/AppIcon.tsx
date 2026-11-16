@@ -17,6 +17,9 @@ export type AppIconName =
   | "upload-retry"
   | "close";
 
+// Single-colour dark glyphs that would disappear on the dark theme.
+const MONOCHROME: AppIconName[] = ["cloud-upload", "settings", "logout", "close"];
+
 export function AppIcon({ icon, className }: { icon: AppIconName; className?: string }) {
   return (
     <img
@@ -24,7 +27,11 @@ export function AppIcon({ icon, className }: { icon: AppIconName; className?: st
       alt=""
       aria-hidden="true"
       draggable={false}
-      className={cn("block shrink-0 select-none", className)}
+      className={cn(
+        "block shrink-0 select-none",
+        MONOCHROME.includes(icon) && "dark:invert",
+        className,
+      )}
     />
   );
 }

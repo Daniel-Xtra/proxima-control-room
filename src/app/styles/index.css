@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
+/* `dark:` follows the theme switch. */
+@custom-variant dark (&:where(:root[data-theme="dark"] *));
+
 /* Tailwind colours map to brand tokens only. */
 @theme inline {
   --color-*: initial;

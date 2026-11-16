@@ -1,4 +1,4 @@
-import { CaretDown, List, ShieldCheck, SignOut, Buildings } from "@phosphor-icons/react";
+import { CaretDown, List, Moon, ShieldCheck, SignOut, Sun, Buildings } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { IdleGuard, useSession } from "@/features/auth";
@@ -12,6 +12,7 @@ import {
 } from "@/shared/components/ui/DropdownMenu";
 import { t } from "@/shared/i18n/t";
 import { initials } from "@/shared/lib/format";
+import { useTheme } from "@/shared/lib/theme";
 import { Sidebar } from "./Sidebar";
 
 export function AppShell() {
@@ -19,6 +20,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const [navOpen, setNavOpen] = useState(false);
+  const { theme, toggle: toggleTheme } = useTheme();
 
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
 
@@ -51,6 +53,21 @@ export function AppShell() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={theme === "dark"}
+                aria-label={t("shell.darkMode")}
+                title={t("shell.darkMode")}
+                className="inline-flex size-10 cursor-pointer items-center justify-center rounded-md border border-border-control text-body hover:bg-surface-muted"
+                onClick={toggleTheme}
+              >
+                {theme === "dark" ? (
+                  <Moon size={18} aria-hidden="true" />
+                ) : (
+                  <Sun size={18} aria-hidden="true" />
+                )}
+              </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button

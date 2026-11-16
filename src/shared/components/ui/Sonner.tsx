@@ -1,11 +1,13 @@
 import { CheckCircleIcon, InfoIcon, WarningCircleIcon, XIcon } from "@phosphor-icons/react";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 import { cn } from "@/shared/lib/cn";
+import { useTheme } from "@/shared/lib/theme";
 
 function Toaster({ className, toastOptions, icons, ...props }: ToasterProps) {
+  const { theme } = useTheme();
   return (
     <Sonner
-      theme="light"
+      theme={theme}
       className={cn("toaster group", className)}
       position="bottom-right"
       closeButton
