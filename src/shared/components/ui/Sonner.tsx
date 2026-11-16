@@ -5,7 +5,7 @@ import { cn } from "@/shared/lib/cn";
 function Toaster({ className, toastOptions, icons, ...props }: ToasterProps) {
   return (
     <Sonner
-      theme="system"
+      theme="light"
       className={cn("toaster group", className)}
       position="bottom-right"
       closeButton

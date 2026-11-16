@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useCan } from "@/features/auth";
+import { permissionLabelKey, useCan, type Permission } from "@/features/auth";
 import { recordAudit } from "@/shared/api/auditStore";
 import { simulate } from "@/shared/api/client";
 import { ActionDialog } from "@/shared/components/ActionDialog";
@@ -16,7 +16,7 @@ interface Rule {
   label: MessageKey;
   needsApproval: boolean;
   approvers: number;
-  approverPermission: string;
+  approverPermission: Permission;
   thresholdNaira: string;
 }
 
@@ -144,7 +144,7 @@ export function ApprovalRulesPage() {
             {
               key: "perm",
               header: t("approvalRules.col.permission"),
-              cell: (r) => <code className="text-xs">{r.approverPermission}</code>,
+              cell: (r) => t(permissionLabelKey(r.approverPermission)),
             },
             {
               key: "threshold",

@@ -1,4 +1,5 @@
 import { SectionCard } from "@/shared/components/SectionCard";
+import { BrandMark } from "@/shared/components/BrandMark";
 import { t } from "@/shared/i18n/t";
 import { SAMPLE_NAME, fillSample, smsSegments } from "../model/message";
 import type { Channel } from "../model/types";
@@ -22,12 +23,7 @@ export function MessagePreview({ channel, subject, body }: Props) {
       <div className="rounded-lg bg-surface-muted p-3">
         {channel === "push" ? (
           <div className="flex gap-2.5 rounded-xl border border-border bg-surface p-3 shadow-sm">
-            <span
-              aria-hidden="true"
-              className="flex size-9 shrink-0 items-center justify-center rounded-md bg-orange text-sm font-bold text-on-ink"
-            >
-              P
-            </span>
+            <BrandMark className="h-9" />
             <div className="min-w-0">
               <p className="m-0 text-xs text-muted-text">{t("broadcasts.preview.appName")}</p>
               <p className="m-0 break-words text-sm font-semibold text-ink">{title}</p>

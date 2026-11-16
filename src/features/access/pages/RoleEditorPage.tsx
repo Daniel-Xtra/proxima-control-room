@@ -187,7 +187,6 @@ function RoleEditor({
                       />
                       <Label htmlFor={`perm-${permission}`} className="font-normal">
                         {t(permissionLabelKey(permission))}
-                        <span className="ml-1.5 text-xs text-muted-text">{permission}</span>
                       </Label>
                     </li>
                   ))}

@@ -1,13 +1,4 @@
-import {
-  CaretDown,
-  List,
-  Monitor,
-  Moon,
-  ShieldCheck,
-  SignOut,
-  Sun,
-  Buildings,
-} from "@phosphor-icons/react";
+import { CaretDown, List, ShieldCheck, SignOut, Buildings } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { IdleGuard, useSession } from "@/features/auth";
@@ -21,7 +12,6 @@ import {
 } from "@/shared/components/ui/DropdownMenu";
 import { t } from "@/shared/i18n/t";
 import { initials } from "@/shared/lib/format";
-import { useTheme } from "@/shared/lib/theme";
 import { Sidebar } from "./Sidebar";
 
 export function AppShell() {
@@ -29,11 +19,8 @@ export function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const [navOpen, setNavOpen] = useState(false);
-  const { theme, next: nextTheme } = useTheme();
 
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-
-  const ThemeGlyph = theme === "dark" ? Moon : theme === "light" ? Sun : Monitor;
 
   return (
     <>
@@ -57,21 +44,13 @@ export function AppShell() {
               >
                 <List size={18} aria-hidden="true" />
               </button>
-              <span className="inline-flex items-center gap-1.5 rounded-pill border border-orange-border bg-orange-tint px-3 py-1 text-xs font-medium text-ink">
+              <span className="inline-flex items-center gap-1.5 rounded-pill border border-blue-border bg-blue-tint px-3 py-1 text-xs font-medium text-ink">
                 <Buildings size={12} aria-hidden="true" />
                 {t("shell.environment")}
               </span>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                className="inline-flex size-11 cursor-pointer items-center justify-center rounded-md text-ink hover:bg-surface-muted"
-                aria-label={`${t("shell.theme")}: ${t(`shell.theme.${theme}`)}`}
-                onClick={nextTheme}
-              >
-                <ThemeGlyph size={16} aria-hidden="true" />
-              </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button

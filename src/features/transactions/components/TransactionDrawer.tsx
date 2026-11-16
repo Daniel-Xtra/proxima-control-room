@@ -42,14 +42,14 @@ export function TransactionDrawer({ transaction, onClose }: Props) {
             <>
               {transaction.status === "pending" ? (
                 <Can permission="transaction:requery">
-                  <Button variant="outline" size="xs" onClick={() => setAction("requery")}>
+                  <Button variant="outline" onClick={() => setAction("requery")}>
                     {t("transactions.action.requery")}
                   </Button>
                 </Can>
               ) : null}
               {transaction.status === "success" ? (
                 <Can permission="transaction:reverse">
-                  <Button variant="destructive" size="xs" onClick={() => setAction("reverse")}>
+                  <Button variant="destructive" onClick={() => setAction("reverse")}>
                     {t("transactions.action.reverse")}
                   </Button>
                 </Can>
@@ -65,7 +65,6 @@ export function TransactionDrawer({ transaction, onClose }: Props) {
               <DirectionChip direction={transaction.direction} />
               <Button
                 variant="ghost"
-                size="xs"
                 onClick={() =>
                   void navigator.clipboard
                     .writeText(transaction.reference)

@@ -69,7 +69,7 @@ function SidebarContent({
               )}
             >
               {group.label && !collapsed ? (
-                <p className="m-0 px-3 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-text">
+                <p className="m-0 px-3 pb-1 text-sm font-medium uppercase text-muted-text">
                   {t(group.label)}
                 </p>
               ) : null}
@@ -86,16 +86,18 @@ function SidebarContent({
                         aria-label={collapsed ? t(item.label) : undefined}
                         className={({ isActive }) =>
                           cn(
-                            "relative flex items-center rounded-md text-sm text-body hover:bg-surface-muted",
-                            collapsed ? "mx-auto size-9 justify-center" : "gap-2.5 px-3 py-2",
-                            isActive && "bg-info-bg font-medium text-blue-strong",
+                            "relative flex items-center rounded-sm text-sm font-medium text-body hover:bg-surface-muted",
+                            collapsed
+                              ? "mx-auto size-[51px] justify-center"
+                              : "h-[51px] gap-3 px-3",
+                            isActive && "bg-nav-active text-ink",
                           )
                         }
                       >
                         {({ isActive }) => (
                           <>
                             <item.icon
-                              size={collapsed ? 20 : 16}
+                              size={20}
                               weight={isActive ? "duotone" : "regular"}
                               className="shrink-0"
                               aria-hidden="true"
