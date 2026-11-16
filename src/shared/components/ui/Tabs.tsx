@@ -16,7 +16,10 @@ function TabsList({ className, ...props }: React.ComponentProps<typeof TabsPrimi
   return (
     <TabsPrimitive.List
       data-slot="tabs-list"
-      className={cn("flex w-full flex-wrap items-center gap-3 bg-transparent p-0", className)}
+      className={cn(
+        "flex w-full items-end gap-4 overflow-x-auto overflow-y-hidden border-b border-border bg-transparent p-0 [scrollbar-width:none] sm:gap-6 [&::-webkit-scrollbar]:hidden",
+        className,
+      )}
       {...props}
     />
   );
@@ -27,7 +30,7 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "inline-flex h-[46px] min-w-[140px] shrink-0 cursor-pointer items-center justify-center gap-2 rounded-sm border border-border-control bg-card px-4 text-sm font-medium whitespace-nowrap text-muted-text transition-colors duration-200 hover:text-blue-tab disabled:cursor-not-allowed disabled:opacity-50 data-[state=active]:border-[1.5px] data-[state=active]:border-blue-tab data-[state=active]:text-blue-tab data-[state=active]:shadow-none",
+        "relative -mb-px inline-flex shrink-0 cursor-pointer items-center justify-center border-b-2 border-transparent px-1 pb-3 text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:shadow-none",
         className,
       )}
       {...props}

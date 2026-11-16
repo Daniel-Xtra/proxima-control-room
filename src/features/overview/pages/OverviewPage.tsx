@@ -113,7 +113,7 @@ function OverviewBody({ data }: { data: Overview }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard
           label={t("overview.kpi.transactions")}
           value={formatCount(data.kpis.transactions.total)}
@@ -150,7 +150,10 @@ function OverviewBody({ data }: { data: Overview }) {
         <SectionCard
           title={t("overview.recent.title")}
           actions={
-            <Link to="/transactions" className="text-xs text-blue-strong hover:underline">
+            <Link
+              to="/transactions"
+              className="inline-block py-1.5 text-xs text-blue-strong hover:underline sm:py-0"
+            >
               {t("overview.recent.open")}
             </Link>
           }

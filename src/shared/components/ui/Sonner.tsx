@@ -4,10 +4,10 @@ import { cn } from "@/shared/lib/cn";
 import { useTheme } from "@/shared/lib/theme";
 
 function Toaster({ className, toastOptions, icons, ...props }: ToasterProps) {
-  const { theme } = useTheme();
+  const { resolved } = useTheme();
   return (
     <Sonner
-      theme={theme}
+      theme={resolved}
       className={cn("toaster group", className)}
       position="bottom-right"
       closeButton

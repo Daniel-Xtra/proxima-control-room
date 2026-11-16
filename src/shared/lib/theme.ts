@@ -1,40 +1,45 @@
 import { useSyncExternalStore } from "react";
 
-export type Theme = "light" | "dark";
+export type Theme = "system" | "light" | "dark";
+export const THEMES: Theme[] = ["system", "light", "dark"];
 const KEY = "proxima.theme";
 
-function systemTheme(): Theme {
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
+const query = () => window.matchMedia("(prefers-color-scheme: dark)");
 
-function initial(): Theme {
+function stored(): Theme {
   try {
     const value = window.localStorage.getItem(KEY);
-    if (value === "light" || value === "dark") return value;
+    return value === "light" || value === "dark" ? value : "system";
   } catch {
-    // Fall through to the system setting.
+    return "system";
   }
-  return systemTheme();
 }
 
-let current: Theme = "light";
+let choice: Theme = "system";
+let resolved: "light" | "dark" = "light";
 const listeners = new Set<() => void>();
 
+/** "system" follows the operating system and keeps following it while the app is open. */
 function apply(theme: Theme) {
-  current = theme;
-  document.documentElement.setAttribute("data-theme", theme);
+  choice = theme;
+  resolved = theme === "system" ? (query().matches ? "dark" : "light") : theme;
+  document.documentElement.setAttribute("data-theme", resolved);
   listeners.forEach((listener) => listener());
 }
 
 /** Called once before the first render so the sign-in page also follows the saved choice. */
 export function applyStoredTheme() {
-  apply(initial());
+  apply(stored());
+  query().addEventListener("change", () => {
+    if (choice === "system") apply("system");
+  });
 }
 
 export function setTheme(theme: Theme) {
   apply(theme);
   try {
-    window.localStorage.setItem(KEY, theme);
+    if (theme === "system") window.localStorage.removeItem(KEY);
+    else window.localStorage.setItem(KEY, theme);
   } catch {
     // The choice still applies for this visit.
   }
@@ -46,6 +51,8 @@ function subscribe(listener: () => void) {
 }
 
 export function useTheme() {
-  const theme = useSyncExternalStore(subscribe, () => current);
-  return { theme, toggle: () => setTheme(theme === "dark" ? "light" : "dark") };
+  const theme = useSyncExternalStore(subscribe, () => choice);
+  const actual = useSyncExternalStore(subscribe, () => resolved);
+  const next = () => setTheme(THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]!);
+  return { theme, resolved: actual, next };
 }

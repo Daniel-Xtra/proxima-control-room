@@ -167,7 +167,7 @@ export function NewBroadcastPage() {
                   <p className="m-0 mt-1 text-xs text-muted-text">
                     <Link
                       to="/content/broadcast-templates"
-                      className="text-blue-strong hover:underline"
+                      className="inline-block py-1.5 text-blue-strong hover:underline sm:py-0"
                     >
                       {t("broadcasts.field.manageTemplates")}
                     </Link>
@@ -251,7 +251,10 @@ export function NewBroadcastPage() {
                 <p className="m-0 mt-1 text-xs text-muted-text">{describeRules(segment.rules)}</p>
               ) : null}
               <p className="m-0 mt-1 text-xs">
-                <Link to="/content/audience-segments" className="text-blue-strong hover:underline">
+                <Link
+                  to="/content/audience-segments"
+                  className="inline-block py-1.5 text-blue-strong hover:underline sm:py-0"
+                >
                   {t("broadcasts.field.manageSegments")}
                 </Link>
               </p>
