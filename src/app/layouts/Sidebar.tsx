@@ -87,9 +87,7 @@ function SidebarContent({
                         className={({ isActive }) =>
                           cn(
                             "relative flex items-center rounded-sm text-sm font-medium text-body hover:bg-surface-muted",
-                            collapsed
-                              ? "mx-auto size-[51px] justify-center"
-                              : "h-[51px] gap-3 px-3",
+                            collapsed ? "mx-auto size-10 justify-center" : "h-10 gap-3 px-3",
                             isActive && "bg-nav-active text-ink",
                           )
                         }
