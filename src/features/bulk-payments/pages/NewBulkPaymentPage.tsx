@@ -29,7 +29,7 @@ const STEPS = ["details", "payees", "review"] as const;
 export function NewBulkPaymentPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [draft, setDraft] = useState<BatchDraft>(EMPTY_DRAFT);
+  const [stored, setDraft] = useState<BatchDraft>(EMPTY_DRAFT);
   const [step, setStep] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [createdId, setCreatedId] = useState<string>();
@@ -37,7 +37,14 @@ export function NewBulkPaymentPage() {
   const [now] = useState(() => new Date());
 
   const balances = useSourceBalances();
-  const balance: BalanceInfo = { status: balances.status, kobo: balances.data?.[draft.source] };
+  const sources = balances.data ?? [];
+  // Until one is picked, the first source is used.
+  const draft: BatchDraft = { ...stored, source: stored.source || sources[0]?.id || "" };
+  const chosen = sources.find((source) => source.id === draft.source);
+  const balance: BalanceInfo =
+    chosen?.error || (balances.status === "success" && !chosen)
+      ? { status: "error" }
+      : { status: balances.status, kobo: chosen?.balanceKobo ?? undefined };
 
   const update = (patch: Partial<BatchDraft>) => setDraft((current) => ({ ...current, ...patch }));
   const stepReady = [detailsComplete(draft, now), payeesComplete(draft), true] as const;
@@ -77,7 +84,13 @@ export function NewBulkPaymentPage() {
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex flex-col gap-4">
           {step === 0 ? (
-            <DetailsStep draft={draft} onChange={update} now={now} balance={balance} />
+            <DetailsStep
+              draft={draft}
+              onChange={update}
+              now={now}
+              balance={balance}
+              sources={sources}
+            />
           ) : null}
           {step === 1 ? (
             <PayeesStep

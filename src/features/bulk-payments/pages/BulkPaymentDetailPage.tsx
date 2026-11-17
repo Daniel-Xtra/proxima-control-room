@@ -43,7 +43,7 @@ function BatchDetail({ batch }: { batch: BulkBatch }) {
       : undefined;
   const pending = batch.status === "pending_approval";
   const canDecide = pending && can("bulk_payment:approve");
-  const canRetry = batch.status === "partially_failed" && can("bulk_payment:initiate");
+  const canRetry = batch.status === "partially_failed" && can("bulk_payment:approve");
   const refresh = () => queryClient.invalidateQueries({ queryKey: bulkKeys.all });
 
   const activity: TimelineEntry[] = [
@@ -74,7 +74,7 @@ function BatchDetail({ batch }: { batch: BulkBatch }) {
     <>
       <PageHeader
         title={batch.name}
-        description={t("bulk.detail.subtitle", { source: t(`bulk.source.${batch.sourceAccount}`) })}
+        description={t("bulk.detail.subtitle", { source: batch.sourceAccount })}
         crumbs={[
           { label: t("nav.group.payments") },
           { label: t("bulk.title"), to: "/bulk-payments" },
@@ -184,7 +184,7 @@ function BatchDetail({ batch }: { batch: BulkBatch }) {
               <KeyValueList
                 columns={1}
                 items={[
-                  { label: t("bulk.field.source"), value: t(`bulk.source.${batch.sourceAccount}`) },
+                  { label: t("bulk.field.source"), value: batch.sourceAccount },
                   { label: t("bulk.stat.debit"), value: <MoneyText kobo={debitKobo} /> },
                   {
                     label: t("bulk.field.timing"),

@@ -24,8 +24,9 @@ interface DataTableProps<T> {
   toolbarExtra?: ReactNode;
   /** Where the hidden-column choice is remembered. */
   storageKey: string;
-  sort: SortState | null;
-  onSortChange: (next: SortState | null) => void;
+  /** Leave both out for tables whose API cannot sort. */
+  sort?: SortState | null;
+  onSortChange?: (next: SortState | null) => void;
 }
 
 /** Server-side paginated and sorted table with a column picker and a Previous/Next footer. */

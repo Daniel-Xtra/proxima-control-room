@@ -11,7 +11,7 @@ import {
 } from "@/shared/components/ui/Select";
 import { t } from "@/shared/i18n/t";
 import type { BatchDraft } from "../model/draft";
-import { SOURCE_ACCOUNTS, type BalanceInfo, type SourceAccount } from "../model/types";
+import type { BalanceInfo, SourceAccount, SourceBalances } from "../model/types";
 import { AccountBalance } from "./AccountBalance";
 
 interface Props {
@@ -20,9 +20,11 @@ interface Props {
   /** Fixed when the page opens, so the allowed window does not shift while you type. */
   now: Date;
   balance: BalanceInfo;
+  /** The payout sources the API offers. */
+  sources: SourceBalances;
 }
 
-export function DetailsStep({ draft, onChange, now, balance }: Props) {
+export function DetailsStep({ draft, onChange, now, balance, sources }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <SectionCard title={t("bulk.section.details")} description={t("bulk.section.detailsHint")}>
@@ -47,9 +49,9 @@ export function DetailsStep({ draft, onChange, now, balance }: Props) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {SOURCE_ACCOUNTS.map((id) => (
-                  <SelectItem key={id} value={id}>
-                    {t(`bulk.source.${id}`)}
+                {sources.map((source) => (
+                  <SelectItem key={source.id} value={source.id}>
+                    {source.name}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -14,6 +14,7 @@ export {
 } from "./model/permissions";
 export type { ModuleId, Permission } from "./model/permissions";
 export { NAV_ACCESS, canAccess } from "./model/navAccess";
+export { toUiPermissions } from "./model/permissionMap";
 export type { NavAccess } from "./model/navAccess";
 export { ROLE_TEMPLATES } from "./model/roleTemplates";
 export type { RoleTemplate } from "./model/roleTemplates";

@@ -96,7 +96,10 @@ export function BankOneRepairPage() {
                 value={data.missingAccounts}
                 tone={data.missingAccounts > 0 ? "warning" : "default"}
               />
-              <StatCard label={t("bankone.stats.queued")} value={data.queued} />
+              <StatCard
+                label={t("bankone.stats.queued")}
+                value={data.queued ?? t("common.notAvailable")}
+              />
             </div>
           )}
         </AsyncBody>
@@ -166,7 +169,13 @@ export function BankOneRepairPage() {
                     cell: (r) => (
                       <StatusBadge
                         tone={r.queued ? "info" : "neutral"}
-                        label={r.queued ? t("bankone.queued") : t("bankone.notQueued")}
+                        label={
+                          r.queued === null
+                            ? t("common.notAvailable")
+                            : r.queued
+                              ? t("bankone.queued")
+                              : t("bankone.notQueued")
+                        }
                       />
                     ),
                   },

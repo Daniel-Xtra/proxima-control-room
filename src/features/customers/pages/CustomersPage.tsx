@@ -1,15 +1,10 @@
-import { DownloadSimple } from "@phosphor-icons/react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { useCan } from "@/features/auth";
 import { AsyncBody } from "@/shared/components/AsyncBody";
 import { DataTable } from "@/shared/components/DataTable";
 import { DateText } from "@/shared/components/DateText";
 import { FilterBar } from "@/shared/components/FilterBar";
-import { MoneyText } from "@/shared/components/MoneyText";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
-import { Button } from "@/shared/components/ui/Button";
 import {
   Select,
   SelectContent,
@@ -19,14 +14,14 @@ import {
 } from "@/shared/components/ui/Select";
 import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
-import { maskEmail, maskTail } from "@/shared/lib/format";
+import { maskTail } from "@/shared/lib/format";
 import { CustomerStatusBadge, KycLevelBadge } from "../components/CustomerStatusBadges";
 import { useCustomers } from "../api/queries";
 import type { CustomerFilters, CustomerRow } from "../model/types";
 
 const DEFAULTS = {
   q: "",
-  range: "365d",
+  range: "all",
   status: "all",
   kyc: "all",
   page: "1",
@@ -37,7 +32,6 @@ const DEFAULTS = {
 
 export function CustomersPage() {
   const navigate = useNavigate();
-  const can = useCan();
   const [filters, setFilter] = useUrlFilters(DEFAULTS);
 
   const query: CustomerFilters = {
@@ -65,7 +59,7 @@ export function CustomersPage() {
         }
         dirty={
           filters.q !== "" ||
-          filters.range !== DEFAULTS.range ||
+          filters.range !== "all" ||
           filters.status !== "all" ||
           filters.kyc !== "all"
         }
@@ -81,6 +75,7 @@ export function CustomersPage() {
           value={filters.range}
           onChange={(v) => setFilter("range", v)}
           options={[
+            ["all", t("customers.filter.anyRange")],
             ["7d", t("range.7d")],
             ["30d", t("range.30d")],
             ["90d", t("range.90d")],
@@ -105,7 +100,8 @@ export function CustomersPage() {
           onChange={(v) => setFilter("kyc", v)}
           options={[
             ["all", t("customers.filter.anyKyc")],
-            ["0", t("kyc.level.none")],
+            ["yes", t("customers.filter.kycDone")],
+            ["no", t("customers.filter.kycPending")],
             ["1", t("kyc.level.n", { level: 1 })],
             ["2", t("kyc.level.n", { level: 2 })],
           ]}
@@ -130,18 +126,6 @@ export function CustomersPage() {
               onLimitChange={(limit) => setFilter("limit", String(limit))}
               onRowOpen={(row) => navigate(`/customers/${row.id}`)}
               storageKey="customers"
-              toolbarExtra={
-                can("customer:export") ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toast.success(t("customers.exportQueued"))}
-                  >
-                    <DownloadSimple aria-hidden="true" />
-                    {t("common.exportCsv")}
-                  </Button>
-                ) : null
-              }
               sort={
                 filters.sort
                   ? { key: filters.sort, dir: filters.dir === "desc" ? "desc" : "asc" }
@@ -154,44 +138,45 @@ export function CustomersPage() {
               columns={[
                 {
                   key: "name",
-                  header: t("customers.col.name"),
                   sortKey: "name",
+                  header: t("customers.col.name"),
                   cell: (r) => r.name,
                 },
                 {
                   key: "phone",
                   header: t("customers.col.phone"),
-                  cell: (r) => maskTail(r.phone, 3),
+                  cell: (r) => r.phone,
                 },
-                { key: "email", header: t("customers.col.email"), cell: (r) => maskEmail(r.email) },
+                {
+                  key: "email",
+                  sortKey: "email",
+                  header: t("customers.col.email"),
+                  cell: (r) => r.email,
+                },
                 {
                   key: "account",
                   header: t("customers.col.account"),
-                  cell: (r) => <span className="tabular">{maskTail(r.reservedAccount, 4)}</span>,
-                },
-                {
-                  key: "limit",
-                  header: t("customers.col.tierLimit"),
-                  sortKey: "limit",
-                  align: "right",
-                  cell: (r) => <MoneyText kobo={r.dailyLimitKobo} />,
+                  cell: (r) =>
+                    r.reservedAccount ? (
+                      <span className="tabular">{maskTail(r.reservedAccount, 4)}</span>
+                    ) : (
+                      t("common.notAvailable")
+                    ),
                 },
                 {
                   key: "kyc",
                   header: t("customers.col.kyc"),
-                  sortKey: "kyc",
                   cell: (r) => <KycLevelBadge level={r.kycLevel} />,
                 },
                 {
                   key: "status",
                   header: t("customers.col.status"),
-                  sortKey: "status",
                   cell: (r) => <CustomerStatusBadge status={r.status} />,
                 },
                 {
                   key: "joined",
-                  header: t("customers.col.joined"),
                   sortKey: "joined",
+                  header: t("customers.col.joined"),
                   cell: (r) => <DateText iso={r.joinedAt} dateOnly />,
                 },
               ]}

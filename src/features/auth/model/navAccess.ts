@@ -34,8 +34,8 @@ export const NAV_ACCESS: NavAccess[] = [
   { id: "audit", label: "nav.audit", anyOf: ["audit_log:view"] },
   { id: "bankone", label: "nav.bankone", anyOf: ["customer:repair_bankone", "queues:manage"] },
   { id: "staff", label: "nav.staff", anyOf: ["staff:view"] },
-  { id: "roles", label: "nav.roles", anyOf: ["roles:manage"] },
-  { id: "approval-rules", label: "nav.approvalRules", anyOf: ["config:view"] },
+  { id: "roles", label: "nav.roles", anyOf: ["staff:view"] },
+  { id: "approval-rules", label: "nav.approvalRules", anyOf: ["approval_rules:view"] },
   { id: "platform-config", label: "nav.platformConfig", anyOf: ["config:view"] },
 ];
 

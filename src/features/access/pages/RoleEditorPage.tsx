@@ -1,17 +1,7 @@
-import { WarningCircle } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import {
-  MODULE_IDS,
-  NAV_ACCESS,
-  PERMISSIONS_BY_MODULE,
-  canAccess,
-  findConflicts,
-  moduleLabelKey,
-  permissionLabelKey,
-  type Permission,
-} from "@/features/auth";
+import { NAV_ACCESS, canAccess, toUiPermissions } from "@/features/auth";
 import { ActionDialog } from "@/shared/components/ActionDialog";
 import { AsyncBody } from "@/shared/components/AsyncBody";
 import { PageHeader } from "@/shared/components/PageHeader";
@@ -19,79 +9,88 @@ import { SectionCard } from "@/shared/components/SectionCard";
 import { Button } from "@/shared/components/ui/Button";
 import { Checkbox } from "@/shared/components/ui/Checkbox";
 import { Input } from "@/shared/components/ui/Input";
-import { Textarea } from "@/shared/components/ui/Textarea";
 import { Label } from "@/shared/components/ui/Label";
+import { Textarea } from "@/shared/components/ui/Textarea";
 import { t } from "@/shared/i18n/t";
-import { saveRole } from "../api/accessApi";
-import { useRole } from "../api/queries";
+import { saveRole, type PermissionDef, type RoleSummary } from "../api/accessApi";
+import { useRoleCatalogue } from "../api/queries";
+
+const CODE_PATTERN = /^[A-Z][A-Z0-9_]{2,39}$/;
 
 export function RoleEditorPage() {
   const { id = "new" } = useParams();
   const [params] = useSearchParams();
   const source = id === "new" ? (params.get("from") ?? "new") : id;
-  const query = useRole(source);
+  const query = useRoleCatalogue();
 
-  if (source === "new") return <RoleEditor roleId={null} initial={null} />;
   return (
-    <AsyncBody query={query}>
-      {(role) => (
+    <AsyncBody
+      query={query}
+      isEmpty={(data) => source !== "new" && !data.roles.some((role) => role.id === source)}
+    >
+      {(data) => (
         <RoleEditor
           roleId={id === "new" ? null : id}
-          cloned={id === "new"}
-          initial={{
-            name: id === "new" ? `${role.name} (copy)` : role.name,
-            description: role.description,
-            permissions: role.permissions,
-            ceilingNaira: String((role.approvalCeilingKobo ?? 0) / 100),
-            exempt: role.exemptFromConflicts ?? false,
-          }}
+          cloned={id === "new" && source !== "new"}
+          role={data.roles.find((role) => role.id === source)}
+          permissions={data.permissions}
         />
       )}
     </AsyncBody>
   );
 }
 
-interface Initial {
-  name: string;
-  description: string;
-  permissions: Permission[];
-  ceilingNaira: string;
-  exempt: boolean;
+/** Groups the permissions a role can hold by the area of the platform they belong to. */
+function groupByModule(permissions: PermissionDef[]) {
+  const groups = new Map<string, PermissionDef[]>();
+  for (const permission of permissions) {
+    groups.set(permission.module, [...(groups.get(permission.module) ?? []), permission]);
+  }
+  return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
 }
+
+const titleCase = (value: string) =>
+  value.replace(/[_-]/g, " ").replace(/^\w/, (first) => first.toUpperCase());
 
 function RoleEditor({
   roleId,
-  initial,
+  role,
   cloned,
+  permissions,
 }: {
   roleId: string | null;
-  initial: Initial | null;
-  cloned?: boolean;
+  role: RoleSummary | undefined;
+  cloned: boolean;
+  permissions: PermissionDef[];
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [name, setName] = useState(initial?.name ?? "");
-  const [description, setDescription] = useState(initial?.description ?? "");
-  const [ceiling, setCeiling] = useState(initial?.ceilingNaira ?? "0");
-  const [held, setHeld] = useState<Set<Permission>>(new Set(initial?.permissions ?? []));
+  const [code, setCode] = useState("");
+  const [name, setName] = useState(role ? (cloned ? `${role.name} (copy)` : role.name) : "");
+  const [description, setDescription] = useState(role?.description ?? "");
+  const [held, setHeld] = useState<Set<string>>(new Set(role?.permissionCodes ?? []));
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const conflicts = initial?.exempt ? [] : findConflicts(held);
-  const visible = NAV_ACCESS.filter((entry) => canAccess(entry, held));
+  // Built-in roles keep their permissions; a copy of one is a custom role and can change them.
+  const locked = roleId !== null && role?.isSystem === true;
+  const visible = NAV_ACCESS.filter((entry) =>
+    canAccess(entry, new Set(toUiPermissions([...held]))),
+  );
+  const codeOk = roleId !== null || CODE_PATTERN.test(code);
 
-  function toggle(permission: Permission, on: boolean) {
+  function toggle(permissionCode: string, on: boolean) {
     setHeld((prev) => {
       const next = new Set(prev);
-      if (on) next.add(permission);
-      else next.delete(permission);
+      if (on) next.add(permissionCode);
+      else next.delete(permissionCode);
       return next;
     });
   }
 
-  function toggleModule(permissions: readonly Permission[], on: boolean) {
+  function toggleModule(group: PermissionDef[], on: boolean) {
     setHeld((prev) => {
       const next = new Set(prev);
-      permissions.forEach((p) => (on ? next.add(p) : next.delete(p)));
+      group.forEach((p) => (on ? next.add(p.code) : next.delete(p.code)));
       return next;
     });
   }
@@ -103,7 +102,7 @@ function RoleEditor({
         title={roleId ? t("roles.edit") : cloned ? t("roles.clone") : t("roles.create")}
         actions={
           <Button
-            disabled={!name.trim() || held.size === 0 || conflicts.length > 0}
+            disabled={!name.trim() || !codeOk || held.size === 0}
             onClick={() => setConfirmOpen(true)}
           >
             {t("common.save")}
@@ -120,14 +119,14 @@ function RoleEditor({
                 <Input id="role-name" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="role-ceiling">{t("roles.editor.ceiling")}</Label>
+                <Label htmlFor="role-code">{t("roles.editor.code")}</Label>
                 <Input
-                  id="role-ceiling"
-                  inputMode="decimal"
-                  value={ceiling}
-                  onChange={(e) => setCeiling(e.target.value)}
+                  id="role-code"
+                  value={roleId ?? code}
+                  disabled={roleId !== null}
+                  onChange={(e) => setCode(e.target.value.toUpperCase())}
                 />
-                <p className="text-xs text-muted-text">{t("roles.editor.ceilingHint")}</p>
+                <p className="text-xs text-muted-text">{t("roles.editor.codeHint")}</p>
               </div>
               <div className="flex flex-col gap-1.5 sm:col-span-2">
                 <Label htmlFor="role-description">{t("roles.editor.description")}</Label>
@@ -140,53 +139,46 @@ function RoleEditor({
             </div>
           </SectionCard>
 
-          {conflicts.length > 0 ? (
-            <div
-              role="alert"
-              className="flex gap-2 rounded-lg border border-danger bg-danger-bg p-3 text-sm text-danger-text"
-            >
-              <WarningCircle aria-hidden="true" weight="fill" className="mt-0.5 size-4 shrink-0" />
-              <div>
-                <p className="font-semibold">{t("roles.editor.conflicts")}</p>
-                <ul className="mt-1 list-disc pl-4">
-                  {conflicts.map((c) => (
-                    <li key={`${c.a}-${c.b}`}>
-                      {t(permissionLabelKey(c.a))} + {t(permissionLabelKey(c.b))}: {t(c.reason)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
+          {locked ? (
+            <output className="block rounded-md bg-info-bg p-3 text-sm text-info-text">
+              {t("roles.editor.systemNote")}
+            </output>
           ) : null}
 
-          {MODULE_IDS.map((moduleId) => {
-            const permissions = PERMISSIONS_BY_MODULE[moduleId];
-            const all = permissions.every((p) => held.has(p));
+          {groupByModule(permissions).map(([module, group]) => {
+            const all = group.every((p) => held.has(p.code));
             return (
               <SectionCard
-                key={moduleId}
-                title={t(moduleLabelKey(moduleId))}
+                key={module}
+                title={titleCase(module)}
                 actions={
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id={`module-${moduleId}`}
-                      checked={all}
-                      onChange={(event) => toggleModule(permissions, event.target.checked)}
-                    />
-                    <Label htmlFor={`module-${moduleId}`}>{t("roles.editor.selectAll")}</Label>
-                  </div>
+                  locked ? null : (
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id={`module-${module}`}
+                        checked={all}
+                        onChange={(event) => toggleModule(group, event.target.checked)}
+                      />
+                      <Label htmlFor={`module-${module}`}>{t("roles.editor.selectAll")}</Label>
+                    </div>
+                  )
                 }
               >
                 <ul className="grid gap-2 sm:grid-cols-2">
-                  {permissions.map((permission) => (
-                    <li key={permission} className="flex items-center gap-2">
+                  {group.map((permission) => (
+                    <li key={permission.code} className="flex items-center gap-2">
                       <Checkbox
-                        id={`perm-${permission}`}
-                        checked={held.has(permission)}
-                        onChange={(event) => toggle(permission, event.target.checked)}
+                        id={`perm-${permission.code}`}
+                        checked={held.has(permission.code)}
+                        disabled={locked}
+                        onChange={(event) => toggle(permission.code, event.target.checked)}
                       />
-                      <Label htmlFor={`perm-${permission}`} className="font-normal">
-                        {t(permissionLabelKey(permission))}
+                      <Label
+                        htmlFor={`perm-${permission.code}`}
+                        className="font-normal"
+                        title={permission.description}
+                      >
+                        {permission.displayName}
                       </Label>
                     </li>
                   ))}
@@ -223,12 +215,7 @@ function RoleEditor({
         onConfirm={async ({ reason }) => {
           await saveRole(
             roleId,
-            {
-              name: name.trim(),
-              description,
-              permissions: [...held],
-              approvalCeilingKobo: Math.round(Number(ceiling || 0) * 100),
-            },
+            { code, name: name.trim(), description, permissions: [...held] },
             reason,
           );
           await queryClient.invalidateQueries({ queryKey: ["access"] });

@@ -1,224 +1,252 @@
-import { recordAudit } from "@/shared/api/auditStore";
-import { ApiError, paginate, simulate, type Page } from "@/shared/api/client";
-import { onDomainEvent } from "@/shared/api/domainEvents";
-import { compareValues } from "@/shared/components/tableSort";
-import { FIXTURE_CUSTOMERS, daysAgo, seeded } from "@/shared/api/mockFixtures";
+import { request, type Page } from "@/shared/api/client";
+import { fromApiAmount } from "@/shared/api/money";
 import type {
   ComplianceStatus,
+  ComplianceType,
   Customer,
   CustomerFilters,
   CustomerRow,
   CustomerStatus,
-  KycLevel,
 } from "../model/types";
 
-const STATUSES: CustomerStatus[] = [
-  "active",
-  "active",
-  "active",
-  "active",
-  "locked",
-  "frozen",
-  "deactivated",
-];
-
-const store = new Map<string, Customer>();
-
-function build(index: number): Customer {
-  const base = FIXTURE_CUSTOMERS[index]!;
-  const rand = seeded(5000 + index);
-  const kycLevel = (index % 7 === 0 ? 0 : index % 3 === 0 ? 1 : 2) as KycLevel;
-  const status = STATUSES[index % STATUSES.length]!;
-  const dailyLimitKobo = [5_000_000, 20_000_000, 100_000_000][kycLevel] ?? 5_000_000;
-  const kycStatus: ComplianceStatus = kycLevel === 0 ? "pending" : "approved";
-  const failed = status === "locked" ? 5 : index % 4 === 0 ? 2 : 0;
-  return {
-    ...base,
-    dateOfBirth: `199${index % 10}-0${(index % 9) + 1}-1${index % 9}`,
-    gender: (["male", "female", "unspecified"] as const)[index % 3]!,
-    referralCode: `PRX${(7000 + index * 13).toString(36).toUpperCase()}`,
-    joinedAt: daysAgo(index * 4 + 3),
-    kycLevel,
-    status,
-    reservedAccount: `99${String(Math.floor(rand() * 90_000_000) + 10_000_000)}`,
-    balanceKobo: Math.floor(rand() * 900_000_00) + 10_000,
-    ledgerBalanceKobo: Math.floor(rand() * 900_000_00) + 10_000,
-    moneyInKobo: Math.floor(rand() * 5_000_000_00),
-    moneyOutKobo: Math.floor(rand() * 4_800_000_00),
-    dailyLimitKobo,
-    perTransactionLimitKobo: Math.round(dailyLimitKobo / 2),
-    dailyUsedKobo: Math.floor(rand() * dailyLimitKobo),
-    phoneVerified: true,
-    emailVerified: index % 5 !== 0,
-    pinSet: index % 6 !== 0,
-    addressSet: index % 4 !== 0,
-    pinLocked: index % 11 === 0,
-    hasMerchantAccount: index % 9 === 0,
-    loginLock: {
-      failedAttempts: failed,
-      remainingAttempts: Math.max(0, 5 - failed),
-      lockedUntil: status === "locked" ? "2026-11-15T14:30:00.000Z" : null,
-    },
-    compliances: [
-      {
-        id: `${base.id}-nin`,
-        type: "NIN",
-        status: kycLevel >= 1 ? "approved" : "pending",
-        value: String(Math.floor(rand() * 90_000_000_000) + 10_000_000_000),
-        approvedAt: kycLevel >= 1 ? daysAgo(index * 4) : null,
-        documents: ["nin-slip.pdf"],
-      },
-      {
-        id: `${base.id}-bvn`,
-        type: "BVN",
-        status: kycLevel === 2 ? "approved" : index % 2 ? "rejected" : "draft",
-        value: String(Math.floor(rand() * 90_000_000_000) + 10_000_000_000),
-        approvedAt: kycLevel === 2 ? daysAgo(index * 4) : null,
-        documents: [],
-      },
-      {
-        id: `${base.id}-live`,
-        type: "LIVELINESS",
-        status: kycStatus,
-        value: "liveliness-image.jpg",
-        approvedAt: kycLevel >= 1 ? daysAgo(index * 4) : null,
-        documents: ["liveliness-image.jpg"],
-      },
-    ],
-    freezeHistory:
-      status === "frozen"
-        ? [
-            {
-              id: `${base.id}-f1`,
-              kind: "freeze",
-              at: daysAgo(2),
-              by: "Tolu Adebayo",
-              reason: "Suspected account takeover",
-            },
-          ]
-        : [],
-  };
+interface DirectoryItem {
+  unique_identifier: string;
+  name: string;
+  email: string;
+  phone_number: string;
+  is_enabled: boolean;
+  is_kyc_completed: boolean;
+  kyc_level: 1 | 2;
+  account_number: string | null;
+  is_frozen: boolean;
+  is_locked: boolean;
+  created_at: string;
 }
 
-function ensure() {
-  if (store.size === 0)
-    FIXTURE_CUSTOMERS.forEach((_, i) => {
-      const customer = build(i);
-      store.set(customer.id, customer);
-    });
+interface DirectoryPage {
+  data: DirectoryItem[];
+  total: number;
+  page: number;
+  limit: number;
 }
+
+const SORT_KEYS: Record<string, "name" | "email" | "created_at" | undefined> = {
+  name: "name",
+  email: "email",
+  joined: "created_at",
+};
 
 const RANGE_DAYS: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90, "365d": 365 };
 
-export function listCustomers(filters: CustomerFilters): Promise<Page<CustomerRow>> {
-  return simulate(() => {
-    ensure();
-    const needle = filters.search.trim().toLowerCase();
-    const days = RANGE_DAYS[filters.range];
-    const cutoff = days ? new Date(daysAgo(days)).getTime() : 0;
-    const rows = [...store.values()]
-      .filter((c) => !needle || `${c.name} ${c.email} ${c.phone}`.toLowerCase().includes(needle))
-      .filter((c) => filters.status === "all" || c.status === filters.status)
-      .filter((c) => filters.kyc === "all" || String(c.kycLevel) === filters.kyc)
-      .filter((c) => new Date(c.joinedAt).getTime() >= cutoff)
-      .map<CustomerRow>((c) => ({
-        id: c.id,
-        name: c.name,
-        phone: c.phone,
-        email: c.email,
-        reservedAccount: c.reservedAccount,
-        dailyLimitKobo: c.dailyLimitKobo,
-        kycLevel: c.kycLevel,
-        status: c.status,
-        joinedAt: c.joinedAt,
-      }));
-    const sorter = SORTERS[filters.sort];
-    if (sorter) {
-      const factor = filters.dir === "desc" ? -1 : 1;
-      rows.sort((a, b) => factor * compareValues(sorter(a), sorter(b)));
-    }
-    return paginate(rows, filters.page, filters.limit);
+function joinedFrom(range: string) {
+  const days = RANGE_DAYS[range];
+  return days ? new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10) : undefined;
+}
+
+/** The directory is searched server-side: it takes a 3+ character search and boolean filters, and cannot sort. */
+export async function listCustomers(filters: CustomerFilters): Promise<Page<CustomerRow>> {
+  const search = filters.search.trim();
+  const result = await request<DirectoryPage>("/admin/customers", {
+    query: {
+      search: search.length >= 3 ? search : undefined,
+      is_enabled: filters.status === "deactivated" ? false : undefined,
+      frozen: filters.status === "frozen" ? true : filters.status === "active" ? false : undefined,
+      locked: filters.status === "locked" ? true : filters.status === "active" ? false : undefined,
+      is_kyc_completed: filters.kyc === "yes" ? true : filters.kyc === "no" ? false : undefined,
+      kyc_level: filters.kyc === "1" || filters.kyc === "2" ? Number(filters.kyc) : undefined,
+      joined_from: joinedFrom(filters.range),
+      sort: SORT_KEYS[filters.sort],
+      dir: SORT_KEYS[filters.sort] ? filters.dir : undefined,
+      page: filters.page,
+      limit: filters.limit,
+    },
   });
+  return {
+    items: result.data.map((item) => ({
+      id: item.unique_identifier,
+      name: item.name,
+      phone: item.phone_number,
+      email: item.email,
+      kycLevel: item.kyc_level,
+      reservedAccount: item.account_number,
+      status: !item.is_enabled
+        ? "deactivated"
+        : item.is_frozen
+          ? "frozen"
+          : item.is_locked
+            ? "locked"
+            : "active",
+      joinedAt: item.created_at,
+    })),
+    total: result.total,
+    page: result.page,
+    limit: result.limit,
+  };
 }
 
-/** Sortable columns, keyed as the table sends them. */
-const SORTERS: Record<string, (row: CustomerRow) => string | number> = {
-  name: (row) => row.name,
-  limit: (row) => row.dailyLimitKobo,
-  kyc: (row) => row.kycLevel,
-  status: (row) => row.status,
-  joined: (row) => row.joinedAt,
-};
+interface Overview {
+  profile: {
+    unique_identifier: string;
+    name: string;
+    email: string;
+    phone_number: string;
+    membership_type: string;
+    is_enabled: boolean;
+    email_verified: boolean;
+    phone_verified: boolean;
+    created_at: string;
+    gender: string | null;
+    referral_code: string | null;
+    kyc_level: 1 | 2;
+    reserved_account_number: string | null;
+    amount_unit?: string;
+  };
+  onboarding: {
+    is_kyc_completed: boolean;
+    is_transaction_pin_set: boolean;
+    is_address_set: boolean;
+    verifications: {
+      type: string;
+      document_name?: string | null;
+      status: string;
+      approved_at: string | null;
+    }[];
+  };
+  account: { is_frozen: boolean } | null;
+  wallet: {
+    balance: number;
+    ledger_balance: number;
+    money_in: number;
+    money_out: number;
+  } | null;
+  limits: { daily_limit: number; transaction_limit: number; current_daily_total: number } | null;
+  security: {
+    login_locked: boolean;
+    login_locked_until: string | null;
+    failed_login_attempts: number;
+    pin_locked: boolean;
+  };
+  freeze_history: {
+    freeze_reason: string | null;
+    unfreeze_reason: string | null;
+    date_frozen: string | null;
+    date_unfrozen: string | null;
+  }[];
+}
 
-export function getCustomer(id: string): Promise<Customer> {
-  return simulate(() => {
-    ensure();
-    const customer = store.get(id);
-    if (!customer) throw new ApiError(404, "Customer not found.");
-    return customer;
+const COMPLIANCE_TYPES: ComplianceType[] = ["NIN", "BVN", "LIVELINESS"];
+const COMPLIANCE_STATUSES: ComplianceStatus[] = [
+  "draft",
+  "pending",
+  "approved",
+  "rejected",
+  "resubmitted",
+];
+const MAX_LOGIN_ATTEMPTS = 5;
+
+function toCustomer(o: Overview): Customer {
+  const unit = o.profile.amount_unit;
+  const [firstName = "", ...rest] = o.profile.name.split(" ");
+  const compliances = o.onboarding.verifications.flatMap((v, index) => {
+    const type = v.type.toUpperCase() as ComplianceType;
+    if (!COMPLIANCE_TYPES.includes(type)) return [];
+    const status = v.status.toLowerCase() as ComplianceStatus;
+    return [
+      {
+        id: `${o.profile.unique_identifier}-${index}`,
+        type,
+        status: COMPLIANCE_STATUSES.includes(status) ? status : ("pending" as const),
+        value: "",
+        approvedAt: v.approved_at,
+        documents: v.document_name ? [v.document_name] : [],
+      },
+    ];
   });
+  const failed = o.security.failed_login_attempts;
+  const status: CustomerStatus = !o.profile.is_enabled
+    ? "deactivated"
+    : o.account?.is_frozen
+      ? "frozen"
+      : o.security.login_locked
+        ? "locked"
+        : "active";
+  return {
+    id: o.profile.unique_identifier,
+    firstName,
+    lastName: rest.join(" "),
+    name: o.profile.name,
+    email: o.profile.email,
+    phone: o.profile.phone_number,
+    dateOfBirth: null,
+    gender:
+      o.profile.gender === "male" || o.profile.gender === "female"
+        ? o.profile.gender
+        : "unspecified",
+    referralCode: o.profile.referral_code,
+    joinedAt: o.profile.created_at,
+    kycLevel: o.profile.kyc_level,
+    status,
+    reservedAccount: o.profile.reserved_account_number,
+    balanceKobo: fromApiAmount(o.wallet?.balance, unit),
+    ledgerBalanceKobo: fromApiAmount(o.wallet?.ledger_balance, unit),
+    moneyInKobo: fromApiAmount(o.wallet?.money_in, unit),
+    moneyOutKobo: fromApiAmount(o.wallet?.money_out, unit),
+    dailyLimitKobo: fromApiAmount(o.limits?.daily_limit, unit),
+    perTransactionLimitKobo: fromApiAmount(o.limits?.transaction_limit, unit),
+    dailyUsedKobo: fromApiAmount(o.limits?.current_daily_total, unit),
+    phoneVerified: o.profile.phone_verified,
+    emailVerified: o.profile.email_verified,
+    pinSet: o.onboarding.is_transaction_pin_set,
+    addressSet: o.onboarding.is_address_set,
+    pinLocked: o.security.pin_locked,
+    hasMerchantAccount: o.profile.membership_type === "merchant",
+    loginLock: {
+      failedAttempts: failed,
+      remainingAttempts: Math.max(0, MAX_LOGIN_ATTEMPTS - failed),
+      lockedUntil: o.security.login_locked_until,
+    },
+    compliances,
+    freezeHistory: o.freeze_history.flatMap((event, index) => {
+      const events: Customer["freezeHistory"] = [];
+      if (event.date_frozen)
+        events.push({
+          id: `${index}-freeze`,
+          kind: "freeze",
+          at: event.date_frozen,
+          by: "",
+          reason: event.freeze_reason ?? "",
+        });
+      if (event.date_unfrozen)
+        events.push({
+          id: `${index}-unfreeze`,
+          kind: "unfreeze",
+          at: event.date_unfrozen,
+          by: "",
+          reason: event.unfreeze_reason ?? "",
+        });
+      return events;
+    }),
+  };
 }
 
-function mutate(id: string, apply: (customer: Customer) => void) {
-  ensure();
-  const customer = store.get(id);
-  if (!customer) throw new ApiError(404, "Customer not found.");
-  apply(customer);
+export async function getCustomer(id: string): Promise<Customer> {
+  return toCustomer(await request<Overview>(`/admin/customers/${encodeURIComponent(id)}/overview`));
 }
 
-export function resetCustomerPassword(id: string, reason: string) {
-  return simulate(() => {
-    mutate(id, (c) => {
-      recordAudit({ action: "customer.password.reset", target: c.name, reason });
-    });
-  });
+export async function repairBankOneCustomer(id: string, _reason: string) {
+  const result = await request<{ success: boolean; customer_created: boolean }>(
+    "/admin/bankone-repair/repair/single",
+    { method: "POST", body: { user_unique_identifier: id } },
+  );
+  return { customerCreated: result.customer_created };
 }
 
-export function unlockCustomerLogin(id: string, reason: string) {
-  return simulate(() => {
-    mutate(id, (c) => {
-      const before = `${c.loginLock.failedAttempts} failed attempts`;
-      c.loginLock = { failedAttempts: 0, remainingAttempts: 5, lockedUntil: null };
-      if (c.status === "locked") c.status = "active";
-      recordAudit({
-        action: "customer.login.unlock",
-        target: c.name,
-        reason,
-        before,
-        after: "0 failed attempts",
-      });
-    });
-  });
-}
+export type UnmaskField = "email" | "phone_number" | "date_of_birth";
 
-export function repairBankOneCustomer(id: string, reason: string) {
-  return simulate(() => {
-    let created = false;
-    mutate(id, (c) => {
-      created = c.id.endsWith("1");
-      recordAudit({ action: "bankone.repair", target: c.name, reason });
-    });
-    return { customerCreated: created, accountFound: true };
-  }, 700);
+/** Reveals chosen fields. The API needs a fresh MFA step-up and a written reason, and audits the access. */
+export function unmaskCustomer(id: string, fields: UnmaskField[], reason: string) {
+  return request<Partial<Record<UnmaskField, string | null>>>(
+    `/admin/customers/${encodeURIComponent(id)}/unmask`,
+    { method: "POST", body: { fields, reason } },
+  );
 }
-
-// Approved requests elsewhere in the console change the customer record.
-onDomainEvent((event) => {
-  ensure();
-  const customer = store.get(event.customerId);
-  if (!customer) return;
-  if (event.type === "limits.changed") {
-    customer.dailyLimitKobo = event.dailyLimitKobo;
-    customer.perTransactionLimitKobo = event.perTransactionLimitKobo;
-    return;
-  }
-  const frozen = event.type === "account.frozen";
-  customer.status = frozen ? "frozen" : "active";
-  customer.freezeHistory.unshift({
-    id: crypto.randomUUID(),
-    kind: frozen ? "freeze" : "unfreeze",
-    at: new Date().toISOString(),
-    by: event.by,
-    reason: event.reason,
-  });
-});

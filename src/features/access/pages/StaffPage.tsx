@@ -1,13 +1,7 @@
 import { DotsThree } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import {
-  useCan,
-  useCurrentUser,
-  ROLE_TEMPLATES,
-  findConflicts,
-  type Permission,
-} from "@/features/auth";
+import { useCan, useCurrentUser } from "@/features/auth";
 import { ActionDialog } from "@/shared/components/ActionDialog";
 import { AsyncBody } from "@/shared/components/AsyncBody";
 import { DateText } from "@/shared/components/DateText";
@@ -17,7 +11,6 @@ import { SectionCard } from "@/shared/components/SectionCard";
 import { SimpleTable } from "@/shared/components/SimpleTable";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { Button } from "@/shared/components/ui/Button";
-import { Checkbox } from "@/shared/components/ui/Checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,10 +18,18 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/DropdownMenu";
 import { Label } from "@/shared/components/ui/Label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/Select";
 import { t } from "@/shared/i18n/t";
 import {
-  assignRoles,
+  assignRole,
   resetTwoFactor,
+  revokeStaffSessions,
   setStaffActive,
   type StaffMember,
   type TwoFactorState,
@@ -39,9 +40,10 @@ const TwoFactorBadge = defineStatusBadge<TwoFactorState>({
   enrolled: { tone: "success", label: t("staff.2fa.enrolled") },
   "not-enrolled": { tone: "warning", label: t("staff.2fa.notEnrolled") },
   "reset-pending": { tone: "warning", label: t("staff.2fa.resetPending") },
+  unknown: { tone: "neutral", label: t("common.notAvailable") },
 });
 
-type Dialog = { kind: "roles" | "2fa" | "toggle"; member: StaffMember } | null;
+type Dialog = { kind: "role" | "2fa" | "toggle" | "sessions"; member: StaffMember } | null;
 
 export function StaffPage() {
   const queryClient = useQueryClient();
@@ -50,15 +52,16 @@ export function StaffPage() {
   const staff = useStaff();
   const roles = useRoles();
   const [dialog, setDialog] = useState<Dialog>(null);
-  const [selected, setSelected] = useState<string[]>([]);
+  const [roleId, setRoleId] = useState("");
   const refresh = () => queryClient.invalidateQueries({ queryKey: accessKeys.staff });
+  // Staff changes become approval requests, so the pending count and requests list change too.
+  const refreshRequests = () => queryClient.invalidateQueries({ queryKey: ["requests"] });
   const roleName = (id: string) => roles.data?.find((r) => r.id === id)?.name ?? id;
   const close = (open: boolean) => !open && setDialog(null);
 
-  const chosen = (roles.data ?? []).filter((r) => selected.includes(r.id));
-  const union = new Set<Permission>(chosen.flatMap((r) => r.permissions));
-  const exempt = chosen.some((r) => r.exemptFromConflicts);
-  const conflicts = exempt ? [] : findConflicts(union);
+  // Changes go through a request that another admin approves; ending sessions is immediate.
+  const canRequest = can("staff:manage");
+  const canRevoke = can("staff:revoke_sessions");
 
   return (
     <>
@@ -124,7 +127,7 @@ export function StaffPage() {
                   header: "",
                   align: "right",
                   cell: (r) =>
-                    r.name === user.name || !(can("staff:manage") || can("2fa:reset")) ? null : (
+                    r.id === user.id || !(canRequest || canRevoke) ? null : (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -136,28 +139,35 @@ export function StaffPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          {can("staff:manage") ? (
+                          {canRequest ? (
                             <DropdownMenuItem
                               onSelect={() => {
-                                setSelected(r.roleIds);
-                                setDialog({ kind: "roles", member: r });
+                                setRoleId(r.roleIds[0] ?? "");
+                                setDialog({ kind: "role", member: r });
                               }}
                             >
-                              {t("staff.assignRoles")}
+                              {t("staff.changeRole")}
                             </DropdownMenuItem>
                           ) : null}
-                          {can("2fa:reset") ? (
+                          {canRequest ? (
                             <DropdownMenuItem
                               onSelect={() => setDialog({ kind: "2fa", member: r })}
                             >
                               {t("staff.reset2fa")}
                             </DropdownMenuItem>
                           ) : null}
-                          {can("staff:manage") ? (
+                          {canRequest ? (
                             <DropdownMenuItem
                               onSelect={() => setDialog({ kind: "toggle", member: r })}
                             >
                               {r.active ? t("staff.disable") : t("staff.enable")}
+                            </DropdownMenuItem>
+                          ) : null}
+                          {canRevoke ? (
+                            <DropdownMenuItem
+                              onSelect={() => setDialog({ kind: "sessions", member: r })}
+                            >
+                              {t("staff.revokeSessions")}
                             </DropdownMenuItem>
                           ) : null}
                         </DropdownMenuContent>
@@ -171,43 +181,34 @@ export function StaffPage() {
       </SectionCard>
 
       <ActionDialog
-        open={dialog?.kind === "roles"}
+        open={dialog?.kind === "role"}
         onOpenChange={close}
-        title={t("staff.assignRoles")}
+        title={t("staff.changeRole")}
         description={dialog?.member.name}
         impact={t("staff.assign.impact")}
-        confirmLabel={t("staff.assignRoles")}
-        blocked={selected.length === 0 || conflicts.length > 0}
+        confirmLabel={t("staff.changeRole")}
+        blocked={roleId === "" || roleId === dialog?.member.roleIds[0]}
         onConfirm={async ({ reason }) => {
-          if (dialog) await assignRoles(dialog.member.id, selected, user.name, reason);
-          await refresh();
+          if (dialog) await assignRole(dialog.member.id, roleId, reason);
+          await refreshRequests();
           return t("staff.assign.done");
         }}
       >
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-medium">{t("staff.col.roles")}</legend>
-          {(roles.data ?? ROLE_TEMPLATES).map((role) => (
-            <div key={role.id} className="flex items-center gap-2">
-              <Checkbox
-                id={`assign-${role.id}`}
-                checked={selected.includes(role.id)}
-                onChange={(event) =>
-                  setSelected((prev) =>
-                    event.target.checked ? [...prev, role.id] : prev.filter((id) => id !== role.id),
-                  )
-                }
-              />
-              <Label htmlFor={`assign-${role.id}`}>{role.name}</Label>
-            </div>
-          ))}
-        </fieldset>
-        {conflicts.length > 0 ? (
-          <ul role="alert" className="rounded-md bg-danger-bg p-3 text-sm text-danger-text">
-            {conflicts.map((c) => (
-              <li key={`${c.a}-${c.b}`}>{t(c.reason)}</li>
-            ))}
-          </ul>
-        ) : null}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="staff-role">{t("staff.col.roles")}</Label>
+          <Select value={roleId} onValueChange={setRoleId}>
+            <SelectTrigger id="staff-role">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(roles.data ?? []).map((role) => (
+                <SelectItem key={role.id} value={role.id}>
+                  {role.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </ActionDialog>
 
       <ActionDialog
@@ -219,8 +220,8 @@ export function StaffPage() {
         confirmLabel={t("staff.reset2fa")}
         destructive
         onConfirm={async ({ reason }) => {
-          if (dialog) await resetTwoFactor(dialog.member.id, user.name, reason);
-          await refresh();
+          if (dialog) await resetTwoFactor(dialog.member.id, reason);
+          await refreshRequests();
           return t("staff.reset2fa.done");
         }}
       />
@@ -230,13 +231,28 @@ export function StaffPage() {
         onOpenChange={close}
         title={dialog?.member.active ? t("staff.disable") : t("staff.enable")}
         description={dialog?.member.name}
-        impact={dialog?.member.active ? t("staff.disable.impact") : undefined}
+        impact={dialog?.member.active ? t("staff.disable.impact") : t("staff.enable.impact")}
         confirmLabel={dialog?.member.active ? t("staff.disable") : t("staff.enable")}
         destructive={dialog?.member.active}
         onConfirm={async ({ reason }) => {
           if (dialog) await setStaffActive(dialog.member.id, !dialog.member.active, reason);
-          await refresh();
+          await refreshRequests();
           return t("staff.toggle.done");
+        }}
+      />
+
+      <ActionDialog
+        open={dialog?.kind === "sessions"}
+        onOpenChange={close}
+        title={t("staff.revokeSessions")}
+        description={dialog?.member.name}
+        impact={t("staff.revokeSessions.impact")}
+        confirmLabel={t("staff.revokeSessions")}
+        destructive
+        onConfirm={async ({ reason }) => {
+          if (dialog) await revokeStaffSessions(dialog.member.id, reason);
+          await refresh();
+          return t("staff.revokeSessions.done");
         }}
       />
     </>

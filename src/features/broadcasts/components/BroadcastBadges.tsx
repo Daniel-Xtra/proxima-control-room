@@ -6,13 +6,17 @@ import type { BroadcastStatus, Channel, DeliveryStatus } from "../model/types";
 export const BroadcastStatusBadge = defineStatusBadge<BroadcastStatus>({
   pending_approval: { tone: "warning", label: t("broadcasts.status.pending_approval") },
   scheduled: { tone: "info", label: t("broadcasts.status.scheduled") },
+  sending: { tone: "info", label: t("broadcasts.status.sending") },
   sent: { tone: "success", label: t("broadcasts.status.sent") },
+  failed: { tone: "danger", label: t("broadcasts.status.failed") },
   rejected: { tone: "neutral", label: t("broadcasts.status.rejected") },
+  cancelled: { tone: "neutral", label: t("broadcasts.status.cancelled") },
 });
 
 export const DeliveryStatusBadge = defineStatusBadge<DeliveryStatus>({
-  delivered: { tone: "success", label: t("broadcasts.delivery.delivered") },
+  queued: { tone: "success", label: t("broadcasts.delivery.queued") },
   failed: { tone: "danger", label: t("broadcasts.delivery.failed") },
+  skipped: { tone: "neutral", label: t("broadcasts.delivery.skipped") },
 });
 
 export const CHANNEL_ICONS: Record<Channel, Icon> = {

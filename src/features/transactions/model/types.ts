@@ -11,22 +11,44 @@ export const TRANSACTION_PURPOSES = [
   "fixed_deposit",
   "target_savings",
 ] as const;
-export type TransactionPurpose = (typeof TRANSACTION_PURPOSES)[number];
+export type KnownPurpose = (typeof TRANSACTION_PURPOSES)[number];
 
 export interface Transaction {
   reference: string;
-  customerId: string;
+  customerId: string | null;
   customerName: string;
   direction: TransactionDirection;
-  purpose: TransactionPurpose;
+  /** The ledger can hold purposes the UI has no label for, so this is any string. */
+  purpose: string;
   amountKobo: number;
   status: TransactionStatus;
   balanceBeforeKobo: number;
   balanceAfterKobo: number;
   narration: string;
-  metadata: Record<string, string | number>;
-  providerResponse: string;
   createdAt: string;
+}
+
+export type ProviderKind = "bank_transfer" | "bill_payment";
+
+export interface ProviderRecord {
+  kind: ProviderKind;
+  processor: string | null;
+  status: string;
+  message: string | null;
+  /** Bank, account and session for transfers; bill type and customer for bills. */
+  details: Record<string, string>;
+  metadata: Record<string, unknown> | null;
+  /** Only present when the viewer may see raw provider payloads. */
+  rawResponse: unknown;
+}
+
+export interface TransactionDetail {
+  reference: string;
+  /** The unit the API reports amounts in: refund amounts are sent back in it. */
+  unit: string | undefined;
+  entries: (Transaction & { metadata: Record<string, unknown> | null })[];
+  provider: ProviderRecord | null;
+  rawVisible: boolean;
 }
 
 export interface TransactionFilters {

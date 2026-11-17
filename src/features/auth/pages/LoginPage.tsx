@@ -2,6 +2,7 @@ import { BrandMark } from "@/shared/components/BrandMark";
 import { useState, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { ApiError } from "@/shared/api/client";
+import { QrCode } from "@/shared/components/QrCode";
 import { TotpInput } from "@/shared/components/TotpInput";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
@@ -37,6 +38,7 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [mfaToken, setMfaToken] = useState("");
   const [setupKey, setSetupKey] = useState("");
+  const [otpauthUri, setOtpauthUri] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string>();
   const [failures, setFailures] = useState(0);
@@ -91,6 +93,7 @@ export function LoginPage() {
       }
       const enrolment = await beginEnrolment(result.mfaToken);
       setSetupKey(enrolment.secret);
+      setOtpauthUri(enrolment.otpauthUri);
       setStep("enrol");
     });
   }
@@ -178,6 +181,9 @@ export function LoginPage() {
         {step === "enrol" ? (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-text">{t("auth.enrol.description")}</p>
+            <div className="flex justify-center">
+              <QrCode value={otpauthUri} label={t("auth.enrol.qrLabel")} />
+            </div>
             <dl className="rounded-md border border-border p-3 text-sm">
               <dt className="text-xs text-muted-text">{t("auth.enrol.issuer")}</dt>
               <dd className="text-ink">{t("app.name")}</dd>

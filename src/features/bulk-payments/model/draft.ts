@@ -18,7 +18,7 @@ export interface BatchDraft {
 
 export const EMPTY_DRAFT: BatchDraft = {
   name: "",
-  source: "settlement",
+  source: "",
   timing: "now",
   when: "",
   payees: [],

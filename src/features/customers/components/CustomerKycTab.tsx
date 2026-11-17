@@ -1,19 +1,16 @@
 import { UploadSimple } from "@phosphor-icons/react";
 import { useState } from "react";
-import { Can, useCan } from "@/features/auth";
+import { Can } from "@/features/auth";
 import { DateText } from "@/shared/components/DateText";
-import { MaskedValue } from "@/shared/components/MaskedValue";
 import { SectionCard } from "@/shared/components/SectionCard";
 import { SimpleTable } from "@/shared/components/SimpleTable";
 import { Button } from "@/shared/components/ui/Button";
 import { t } from "@/shared/i18n/t";
-import { maskTail } from "@/shared/lib/format";
 import type { Customer } from "../model/types";
 import { UploadDocumentDialog } from "./CustomerActionDialogs";
 import { ComplianceStatusBadge, KycLevelBadge } from "./CustomerStatusBadges";
 
 export function CustomerKycTab({ customer }: { customer: Customer }) {
-  const can = useCan();
   const [uploadOpen, setUploadOpen] = useState(false);
 
   return (
@@ -48,17 +45,8 @@ export function CustomerKycTab({ customer }: { customer: Customer }) {
             {
               key: "value",
               header: t("kyc.col.value"),
-              cell: (r) =>
-                r.type === "LIVELINESS" ? (
-                  r.value
-                ) : (
-                  <MaskedValue
-                    value={r.value}
-                    mask={(v) => maskTail(v, 3)}
-                    auditTarget={`${r.type} of ${customer.name}`}
-                    canReveal={can("customer:view_sensitive")}
-                  />
-                ),
+              // BVN and NIN are never revealed through the admin API.
+              cell: (r) => r.value || t("common.notAvailable"),
             },
             {
               key: "approved",

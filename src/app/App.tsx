@@ -187,7 +187,7 @@ export function App() {
               <Route
                 path="settings/roles"
                 element={
-                  <RequirePermission permission="roles:manage">
+                  <RequirePermission permission="staff:view">
                     <RolesPage />
                   </RequirePermission>
                 }
@@ -203,7 +203,7 @@ export function App() {
               <Route
                 path="settings/approval-rules"
                 element={
-                  <RequirePermission permission="config:view">
+                  <RequirePermission permission="approval_rules:view">
                     <ApprovalRulesPage />
                   </RequirePermission>
                 }

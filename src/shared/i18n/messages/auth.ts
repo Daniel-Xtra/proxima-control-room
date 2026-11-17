@@ -13,7 +13,8 @@ export const auth = {
 
   "auth.enrol.title": "Set up your authenticator",
   "auth.enrol.description":
-    "Add the setup key to an authenticator app. Access stays blocked until you confirm a code.",
+    "Scan the QR code in an authenticator app, or type the setup key. Access stays blocked until you confirm a code.",
+  "auth.enrol.qrLabel": "QR code for your authenticator app",
   "auth.enrol.issuer": "Issuer",
   "auth.enrol.account": "Account",
   "auth.enrol.setupKey": "Setup key",

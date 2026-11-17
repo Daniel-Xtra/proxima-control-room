@@ -33,7 +33,7 @@ export function BatchSummaryPanel({ draft, balance }: { draft: BatchDraft; balan
             )
           }
         />
-        <Row label={t("bulk.field.source")} value={t(`bulk.source.${draft.source}`)} />
+        <Row label={t("bulk.field.source")} value={draft.source} />
         <Row
           label={t("bulk.field.timing")}
           value={when ? formatLagos(when.toISOString()) : t("bulk.timing.onApproval")}

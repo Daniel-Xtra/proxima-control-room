@@ -3,8 +3,7 @@ import { clearTokens, getTokens, setTokens } from "./tokenStore";
 
 /**
  * Transport layer. The backend responds with a `{ status, message, data }` envelope.
- * `request` talks to the real admin API. Features not yet wired in still resolve their data
- * through `simulate`, which mimics latency and the error shape so the UI states can be exercised.
+ * `request` calls the admin API with the stored bearer token and refreshes it once on a 401.
  */
 export interface Envelope<T> {
   status: boolean;
@@ -29,23 +28,6 @@ export interface Page<T> {
   limit: number;
 }
 
-export function simulate<T>(produce: () => T, delay = 350): Promise<T> {
-  return new Promise((resolve, reject) => {
-    window.setTimeout(() => {
-      try {
-        resolve(produce());
-      } catch (error) {
-        reject(error instanceof ApiError ? error : new ApiError(500, "Unexpected error"));
-      }
-    }, delay);
-  });
-}
-
-export function paginate<T>(rows: T[], page: number, limit: number): Page<T> {
-  const start = (page - 1) * limit;
-  return { items: rows.slice(start, start + limit), total: rows.length, page, limit };
-}
-
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3200/api/v1").replace(
   /\/+$/,
   "",
@@ -61,6 +43,7 @@ export interface RequestOptions {
   auth?: boolean;
   /** Use this bearer token instead of the stored one (MFA enrolment before a session exists). */
   token?: string;
+  headers?: Record<string, string>;
   signal?: AbortSignal;
 }
 
@@ -86,6 +69,7 @@ async function execute<T>(path: string, options: RequestOptions, token: string |
       method: options.method ?? "GET",
       headers: {
         Accept: "application/json",
+        ...options.headers,
         ...(options.body === undefined ? {} : { "Content-Type": "application/json" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
@@ -142,21 +126,85 @@ function expireSession(): never {
   throw new ApiError(401, t("api.sessionExpired"));
 }
 
-/** Calls the admin API and returns the envelope's `data`. */
-export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  if (options.auth === false) return execute<T>(path, options, options.token ?? null);
+/** Runs `send` with the bearer token and, on a 401, refreshes the token once and tries again. */
+async function withAuth<T>(
+  options: RequestOptions,
+  send: (token: string | null) => Promise<T>,
+): Promise<T> {
+  if (options.auth === false) return send(options.token ?? null);
 
-  const send = () => execute<T>(path, options, options.token ?? getTokens()?.accessToken ?? null);
+  const run = () => send(options.token ?? getTokens()?.accessToken ?? null);
   try {
-    return await send();
+    return await run();
   } catch (error) {
     if (!(error instanceof ApiError) || error.status !== 401 || options.token) throw error;
     if (!(await refreshTokens())) return expireSession();
     try {
-      return await send();
+      return await run();
     } catch (retryError) {
       if (retryError instanceof ApiError && retryError.status === 401) return expireSession();
       throw retryError;
     }
   }
+}
+
+/** Calls the admin API and returns the envelope's `data`. */
+export function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return withAuth(options, (token) => execute<T>(path, options, token));
+}
+
+export interface DownloadedFile {
+  blob: Blob;
+  filename: string;
+}
+
+/** For endpoints that answer with a file (such as a CSV export) instead of the JSON envelope. */
+export function requestFile(
+  path: string,
+  options: RequestOptions & { fallbackName?: string } = {},
+): Promise<DownloadedFile> {
+  return withAuth(options, async (token) => {
+    let response: Response;
+    try {
+      response = await fetch(buildUrl(path, options.query), {
+        method: options.method ?? "GET",
+        headers: {
+          ...(options.body === undefined ? {} : { "Content-Type": "application/json" }),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        signal: options.signal,
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") throw error;
+      throw new ApiError(0, t("api.unreachable"));
+    }
+    if (!response.ok) {
+      let message = t("state.error.title");
+      try {
+        const envelope = (await response.json()) as Envelope<unknown>;
+        message = envelope.errors ?? envelope.message ?? message;
+      } catch {
+        // Keep the generic message.
+      }
+      throw new ApiError(response.status, message);
+    }
+    const named = /filename="?([^";]+)"?/.exec(response.headers.get("Content-Disposition") ?? "");
+    return {
+      blob: await response.blob(),
+      filename: named?.[1] ?? options.fallbackName ?? "export",
+    };
+  });
+}
+
+/** Saves a downloaded file through the browser. */
+export function saveFile({ blob, filename }: DownloadedFile) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }

@@ -7,6 +7,7 @@ import {
   RequestFreezeDialog,
   RequestLimitDialog,
 } from "@/features/requests";
+import { CustomerActivityPanel } from "@/features/risk";
 import { CustomerSavingsPanel } from "@/features/savings";
 import { CustomerTransactionsPanel, StatementDialog } from "@/features/transactions";
 import { AsyncBody } from "@/shared/components/AsyncBody";
@@ -19,7 +20,6 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/DropdownMenu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/Tabs";
-import { EmptyState } from "@/shared/components/EmptyState";
 import { t } from "@/shared/i18n/t";
 import { initials } from "@/shared/lib/format";
 import { useCustomer } from "../api/queries";
@@ -98,9 +98,11 @@ function CustomerDetail({ customer }: { customer: Customer }) {
           { label: customer.name },
         ]}
         title={customer.name}
-        description={t("customers.detail.subtitle", {
-          account: customer.reservedAccount.slice(-4),
-        })}
+        description={
+          customer.reservedAccount
+            ? t("customers.detail.subtitle", { account: customer.reservedAccount.slice(-4) })
+            : undefined
+        }
         logo={
           <span
             aria-hidden="true"
@@ -166,10 +168,7 @@ function CustomerDetail({ customer }: { customer: Customer }) {
           <CustomerRequestsPanel customerId={customer.id} freezeHistory={customer.freezeHistory} />
         </TabsContent>
         <TabsContent value="activity">
-          <EmptyState
-            title={t("customers.activity.title")}
-            description={t("customers.activity.gap")}
-          />
+          <CustomerActivityPanel customerId={customer.id} />
         </TabsContent>
       </Tabs>
 
@@ -194,6 +193,7 @@ function CustomerDetail({ customer }: { customer: Customer }) {
       <StatementDialog
         open={dialog === "statement"}
         onOpenChange={close}
+        customerId={customer.id}
         customerName={customer.name}
       />
     </>

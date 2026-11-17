@@ -1,150 +1,208 @@
-import { recordAudit } from "@/shared/api/auditStore";
-import { ApiError, paginate, simulate, type Page } from "@/shared/api/client";
-import { compareValues } from "@/shared/components/tableSort";
-import { FIXTURE_CUSTOMERS, daysAgo, seeded } from "@/shared/api/mockFixtures";
-import {
-  TRANSACTION_PURPOSES,
-  type Transaction,
-  type TransactionDirection,
-  type TransactionFilters,
-  type TransactionStatus,
+import { request, requestFile, type Page } from "@/shared/api/client";
+import { fromApiAmount, toApiAmount } from "@/shared/api/money";
+import type {
+  ProviderRecord,
+  Transaction,
+  TransactionDetail,
+  TransactionFilters,
+  TransactionStatus,
 } from "../model/types";
 
-let store: Transaction[] | null = null;
-
-const PROVIDER_RESPONSES: Record<TransactionStatus, string> = {
-  success: '{"responseCode":"00","responseMessage":"Approved or completed successfully"}',
-  failed: '{"responseCode":"91","responseMessage":"Issuer or switch inoperative"}',
-  pending: '{"responseCode":"09","responseMessage":"Request in progress"}',
-};
-
-function build(): Transaction[] {
-  const rand = seeded(777);
-  return Array.from({ length: 240 }, (_, index) => {
-    const customer = FIXTURE_CUSTOMERS[Math.floor(rand() * FIXTURE_CUSTOMERS.length)]!;
-    const purpose = TRANSACTION_PURPOSES[Math.floor(rand() * 7)]!;
-    const roll = rand();
-    const status: TransactionStatus = roll < 0.78 ? "success" : roll < 0.9 ? "failed" : "pending";
-    const direction: TransactionDirection =
-      purpose === "reserved_account_funding" || purpose === "reversal" ? "credit" : "debit";
-    const amountKobo = Math.round((rand() * 480_000 + 500) * 100);
-    const before = Math.round(rand() * 900_000 * 100) + amountKobo;
-    const after =
-      status !== "success"
-        ? before
-        : direction === "credit"
-          ? before + amountKobo
-          : before - amountKobo;
-    return {
-      reference: `PRX${(1_000_000 + index * 37).toString(36).toUpperCase()}${index.toString().padStart(4, "0")}`,
-      customerId: customer.id,
-      customerName: customer.name,
-      direction,
-      purpose,
-      amountKobo,
-      status,
-      balanceBeforeKobo: before,
-      balanceAfterKobo: after,
-      narration: `${purpose.replace(/_/g, " ")} ${direction === "credit" ? "from" : "to"} ${FIXTURE_CUSTOMERS[(index * 7) % FIXTURE_CUSTOMERS.length]!.name}`,
-      metadata: {
-        channel: "mobile",
-        session: `SES${index * 91}`,
-        fee: purpose === "bank_transfer" ? 5000 : 0,
-      },
-      providerResponse: PROVIDER_RESPONSES[status],
-      createdAt: daysAgo(Math.floor(rand() * 60), 6 + Math.floor(rand() * 14)),
-    };
-  }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+interface LedgerItem {
+  reference: string;
+  customer_id: string | null;
+  customer_name: string | null;
+  direction: "credit" | "debit";
+  purpose: string;
+  amount: number;
+  amount_unit?: string;
+  status: TransactionStatus;
+  balance_before: number;
+  balance_after: number;
+  narration: string | null;
+  created_at: string;
+  metadata?: Record<string, unknown> | null;
 }
 
-function all(): Transaction[] {
-  store ??= build();
-  return store;
+function toTransaction(item: LedgerItem): Transaction {
+  const unit = item.amount_unit;
+  return {
+    reference: item.reference,
+    customerId: item.customer_id,
+    customerName: item.customer_name ?? "",
+    direction: item.direction,
+    purpose: item.purpose,
+    amountKobo: fromApiAmount(item.amount, unit),
+    status: item.status,
+    balanceBeforeKobo: fromApiAmount(item.balance_before, unit),
+    balanceAfterKobo: fromApiAmount(item.balance_after, unit),
+    narration: item.narration ?? "",
+    createdAt: item.created_at,
+  };
 }
-
-/** Sortable columns, keyed as the table sends them. */
-const SORTERS: Record<string, (tx: Transaction) => string | number> = {
-  reference: (tx) => tx.reference,
-  customer: (tx) => tx.customerName,
-  purpose: (tx) => tx.purpose,
-  amount: (tx) => tx.amountKobo,
-  status: (tx) => tx.status,
-  date: (tx) => tx.createdAt,
-};
 
 const RANGE_DAYS: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90 };
+const SORT_KEYS: Record<string, "created_at" | "amount" | undefined> = {
+  date: "created_at",
+  amount: "amount",
+};
 
-export function listTransactions(filters: TransactionFilters): Promise<Page<Transaction>> {
-  return simulate(() => {
-    const needle = filters.search.trim().toLowerCase();
-    const days = RANGE_DAYS[filters.range];
-    const cutoff = days ? new Date(daysAgo(days)).getTime() : 0;
-    const rows = all()
-      .filter((tx) => !filters.customerId || tx.customerId === filters.customerId)
-      .filter((tx) => filters.status === "all" || tx.status === filters.status)
-      .filter((tx) => filters.purpose === "all" || tx.purpose === filters.purpose)
-      .filter((tx) => new Date(tx.createdAt).getTime() >= cutoff)
-      .filter(
-        (tx) => !needle || `${tx.reference} ${tx.customerName}`.toLowerCase().includes(needle),
-      );
-    const sorter = SORTERS[filters.sort];
-    if (sorter) {
-      const factor = filters.dir === "desc" ? -1 : 1;
-      rows.sort((a, b) => factor * compareValues(sorter(a), sorter(b)));
-    }
-    return paginate(rows, filters.page, filters.limit);
+/** The date window: a customer view may reach further back than the all-customers ledger allows. */
+function windowQuery(range: string) {
+  const days = RANGE_DAYS[range];
+  return days ? { from: new Date(Date.now() - days * 86_400_000).toISOString() } : {};
+}
+
+function filterQuery(filters: Pick<TransactionFilters, "search" | "range" | "status" | "purpose">) {
+  const search = filters.search.trim();
+  return {
+    search: search.length >= 3 ? search : undefined,
+    status: filters.status === "all" ? undefined : filters.status,
+    purpose: filters.purpose === "all" ? undefined : filters.purpose,
+    ...windowQuery(filters.range),
+  };
+}
+
+export async function listTransactions(filters: TransactionFilters): Promise<Page<Transaction>> {
+  const sort = SORT_KEYS[filters.sort];
+  const result = await request<{
+    data: LedgerItem[];
+    total: number;
+    page: number;
+    limit: number;
+  }>("/admin/transactions", {
+    query: {
+      ...filterQuery(filters),
+      customer_id: filters.customerId,
+      sort,
+      dir: sort ? filters.dir : undefined,
+      page: filters.page,
+      limit: filters.limit,
+    },
+  });
+  return {
+    items: result.data.map(toTransaction),
+    total: result.total,
+    page: result.page,
+    limit: result.limit,
+  };
+}
+
+interface ProviderRow {
+  kind: "bank_transfer" | "bill_payment";
+  processor: string | null;
+  status: string;
+  message?: string | null;
+  bank_name?: string;
+  account_name?: string;
+  account_number?: string;
+  external_reference?: string | null;
+  session_id?: string | null;
+  bill_type?: string;
+  customer?: string;
+  metadata: Record<string, unknown> | null;
+  raw_response?: unknown;
+}
+
+function toProvider(row: ProviderRow): ProviderRecord {
+  const details: Record<string, string> = {};
+  const add = (key: string, value: string | null | undefined) => {
+    if (value) details[key] = value;
+  };
+  add("bank", row.bank_name);
+  add("accountName", row.account_name);
+  add("accountNumber", row.account_number);
+  add("externalReference", row.external_reference);
+  add("sessionId", row.session_id);
+  add("billType", row.bill_type);
+  add("billCustomer", row.customer);
+  return {
+    kind: row.kind,
+    processor: row.processor,
+    status: row.status,
+    message: row.message ?? null,
+    details,
+    metadata: row.metadata,
+    rawResponse: row.raw_response,
+  };
+}
+
+export async function getTransactionDetail(reference: string): Promise<TransactionDetail> {
+  const data = await request<{
+    reference: string;
+    amount_unit?: string;
+    entries: LedgerItem[];
+    provider: ProviderRow | null;
+    raw_response_visible: boolean;
+  }>(`/admin/transactions/${encodeURIComponent(reference)}`);
+  return {
+    reference: data.reference,
+    unit: data.amount_unit,
+    entries: data.entries.map((entry) => ({
+      ...toTransaction({ ...entry, amount_unit: entry.amount_unit ?? data.amount_unit }),
+      metadata: entry.metadata ?? null,
+    })),
+    provider: data.provider ? toProvider(data.provider) : null,
+    rawVisible: data.raw_response_visible,
+  };
+}
+
+/** Asks the provider for the final status. It does not change anything if the transaction is already final. */
+export async function requeryTransaction(kind: string, reference: string) {
+  return request<{ skipped_terminal?: boolean }>(
+    `/admin/transactions/${encodeURIComponent(kind)}/${encodeURIComponent(reference)}/requery`,
+    { method: "POST" },
+  );
+}
+
+const idempotency = () => ({ "Idempotency-Key": crypto.randomUUID() });
+
+/** For a transaction that failed after the customer was debited. Another admin approves it. */
+export function requestReversal(reference: string, reason: string) {
+  return request(`/admin/transactions/${encodeURIComponent(reference)}/reversal-requests`, {
+    method: "POST",
+    headers: idempotency(),
+    body: { reason },
   });
 }
 
-export function requeryTransaction(reference: string, reason: string) {
-  return simulate(() => {
-    const tx = all().find((candidate) => candidate.reference === reference);
-    if (!tx) throw new ApiError(404, "Transaction not found.");
-    if (tx.status !== "pending")
-      throw new ApiError(409, "Only pending transactions can be requeried.");
-    tx.status = "success";
-    tx.providerResponse = PROVIDER_RESPONSES.success;
-    recordAudit({
-      action: "transaction.requery",
-      target: reference,
-      reason,
-      before: "pending",
-      after: "success",
-    });
-    return tx.status;
-  }, 600);
-}
-
-export function reverseTransaction(reference: string, reason: string) {
-  return simulate(() => {
-    const tx = all().find((candidate) => candidate.reference === reference);
-    if (!tx) throw new ApiError(404, "Transaction not found.");
-    if (tx.status !== "success")
-      throw new ApiError(409, "Only successful transactions can be reversed.");
-    all().unshift({
-      ...tx,
-      reference: `${tx.reference}-RVSL`,
-      purpose: "reversal",
-      direction: tx.direction === "debit" ? "credit" : "debit",
-      narration: `Reversal of ${tx.reference}`,
-      createdAt: new Date().toISOString(),
-    });
-    recordAudit({ action: "transaction.reverse", target: reference, reason });
-  }, 600);
+/** For a successful transaction. The amount goes back in the unit the ledger reports. */
+export function requestRefund(
+  reference: string,
+  amountKobo: number,
+  unit: string | undefined,
+  reason: string,
+) {
+  return request(`/admin/transactions/${encodeURIComponent(reference)}/refund-requests`, {
+    method: "POST",
+    headers: idempotency(),
+    body: { amount: toApiAmount(amountKobo, unit), reason },
+  });
 }
 
 export function requestStatement(input: {
-  customerName: string;
-  format: string;
-  recipient: string;
+  customerId: string;
+  format: "csv" | "pdf";
+  recipient: "customer" | "third_party";
+  email?: string;
+  from: string;
+  to: string;
   reason: string;
 }) {
-  return simulate(() => {
-    recordAudit({
-      action: "customer.statement.export",
-      target: input.customerName,
-      reason: input.reason,
-      after: `${input.format} to ${input.recipient}`,
-    });
-  }, 600);
+  const { customerId, ...body } = input;
+  return request(`/admin/customers/${encodeURIComponent(customerId)}/statements`, {
+    method: "POST",
+    body,
+  });
+}
+
+/** Downloads a CSV of the filtered ledger. */
+export function exportTransactions(
+  filters: Pick<TransactionFilters, "search" | "range" | "status" | "purpose" | "customerId">,
+  reason: string,
+) {
+  return requestFile("/admin/transactions/export", {
+    method: "POST",
+    body: { ...filterQuery(filters), customer_id: filters.customerId, reason },
+  });
 }

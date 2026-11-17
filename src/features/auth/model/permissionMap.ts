@@ -24,16 +24,28 @@ export const PERMISSION_SOURCES: Record<Permission, readonly string[]> = {
   "unfreeze_request:approve": ["customer.unfreeze.approve"],
   "limit_request:initiate": ["customer.limit_change.request"],
   "limit_request:approve": ["customer.limit_change.approve"],
+  "unlock_request:approve": ["customer.unlock_login.approve"],
+  "password_reset_request:approve": ["customer.password_reset.approve"],
   "request:view_all": [
     "customer.freeze.approve",
     "customer.unfreeze.approve",
     "customer.limit_change.approve",
+    "customer.unlock_login.approve",
+    "customer.password_reset.approve",
+    "txn.reversal.approve",
+    "txn.refund.approve",
+    "staff.change_role",
+    "staff.mfa_reset",
+    "staff.disable",
   ],
 
   "transaction:view": ["txn.view"],
   "transaction:export": ["txn.export"],
   "transaction:requery": ["txn.requery"],
   "transaction:reverse": ["txn.reversal.request"],
+  "transaction:refund": ["txn.refund.request"],
+  "reversal_request:approve": ["txn.reversal.approve"],
+  "refund_request:approve": ["txn.refund.approve"],
   "transaction:retry": ["txn.retry"],
 
   "kyc:review": ["kyb.document.review", "kyc.retail.review"],
@@ -41,12 +53,12 @@ export const PERMISSION_SOURCES: Record<Permission, readonly string[]> = {
   "kyc:reject": [],
   "kyc:override": [],
 
-  "savings:view": [],
+  "savings:view": ["savings.view"],
   "savings:liquidate": [],
 
-  "bulk_payment:view": [],
-  "bulk_payment:initiate": [],
-  "bulk_payment:approve": [],
+  "bulk_payment:view": ["bulk_payment.view"],
+  "bulk_payment:initiate": ["bulk_payment.initiate"],
+  "bulk_payment:approve": ["bulk_payment.approve"],
 
   "compliance:view_alerts": ["risk.alert.view"],
   "compliance:manage_cases": ["risk.case.manage"],
@@ -63,25 +75,30 @@ export const PERMISSION_SOURCES: Record<Permission, readonly string[]> = {
     "limits.tier.change.approve",
     "provider.config.change.approve",
   ],
-  "config:kill_switch": [],
+  "config:kill_switch": ["config.kill_switch"],
+  "approval_rules:view": ["approval.rule.view"],
+  "approval_rules:manage": ["approval.rule.manage"],
 
-  "content:view": ["banner.manage", "notification.view"],
-  "content:edit": ["banner.manage"],
-  "content:publish": ["banner.manage"],
+  "content:view": ["banner.manage", "notification.view", "broadcast.view"],
+  "content:edit": ["banner.manage", "broadcast.request", "broadcast.template.manage"],
+  "content:publish": ["banner.manage", "broadcast.approve"],
 
   "report:view": ["report.compliance.generate"],
   "report:schedule": [],
   "report:export": [],
 
   "audit_log:view": ["audit.view"],
-  "integrations:view": ["webhook_ip.manage", "provider.view"],
+  "integrations:view": ["webhook_ip.manage"],
   "integrations:manage": ["webhook_ip.manage"],
   "queues:manage": ["ops.dlq.replay.request"],
   "security_policy:edit": ["settings.account_lock.manage"],
 
   "staff:view": ["staff.view"],
-  "staff:manage": ["staff.invite", "staff.change_role", "staff.disable"],
-  "roles:manage": ["staff.change_role"],
+  // Raising a role, access or authenticator change; another admin approves it.
+  "staff:manage": ["staff.change.request"],
+  "staff_change:approve": ["staff.change_role", "staff.mfa_reset", "staff.disable"],
+  "staff:revoke_sessions": ["staff.session.revoke"],
+  "roles:manage": ["role.manage"],
   "2fa:reset": ["staff.mfa_reset"],
 };
 

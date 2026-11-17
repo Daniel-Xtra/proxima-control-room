@@ -1,113 +1,168 @@
-import { getAuditActor, recordAudit } from "@/shared/api/auditStore";
-import { ApiError, simulate } from "@/shared/api/client";
-import { FIXTURE_CUSTOMERS, daysAgo, seeded } from "@/shared/api/mockFixtures";
-import { isScheduleAllowed } from "../model/draft";
-import {
-  BANKS,
-  FEE_PER_PAYEE_KOBO,
-  MAX_SCHEDULE_DAYS,
-  type SourceBalances,
-  summarize,
-  type BatchFilters,
-  type BatchRow,
-  type BatchStatus,
-  type BulkBatch,
-  type BulkItem,
-  type PayeeDraft,
-  type SourceAccount,
+import { ApiError, request } from "@/shared/api/client";
+import { fromApiAmount } from "@/shared/api/money";
+import type {
+  BatchFilters,
+  BatchRow,
+  BatchStatus,
+  BulkBatch,
+  BulkItem,
+  ItemStatus,
+  PayeeDraft,
+  SourceAccount,
+  SourceBalances,
 } from "../model/types";
 
-const FAILURES = ["Account closed", "Beneficiary bank unavailable", "Account name mismatch"];
-
-function seedItems(batchIndex: number, count: number, resolve: boolean): BulkItem[] {
-  const rand = seeded(900 + batchIndex);
-  return Array.from({ length: count }, (_, i) => {
-    const payee = FIXTURE_CUSTOMERS[(batchIndex * 7 + i) % FIXTURE_CUSTOMERS.length]!;
-    const failed = resolve && batchIndex === 2 && i % 5 === 3;
-    return {
-      id: `item-${batchIndex}-${i}`,
-      row: i + 1,
-      accountName: payee.name,
-      accountNumber: String(Math.floor(rand() * 9_000_000_000) + 1_000_000_000),
-      bank: BANKS[Math.floor(rand() * BANKS.length)]!,
-      amountKobo: Math.round((rand() * 280_000 + 5_000) * 100),
-      narration: "Batch payout",
-      status: !resolve ? "pending" : failed ? "failed" : "success",
-      failureReason: failed ? FAILURES[i % FAILURES.length] : undefined,
-    };
-  });
+interface BatchView {
+  id: string;
+  name: string;
+  source_account: string;
+  status: BatchStatus;
+  total_amount: number;
+  fee_amount: number;
+  amount_unit?: string;
+  item_count: number;
+  scheduled_for: string | null;
+  created_by_name: string | null;
+  decided_by_name: string | null;
+  decision_reason: string | null;
+  started_at: string | null;
+  created_at: string;
 }
 
-function seedBatch(
-  index: number,
-  name: string,
-  status: BatchStatus,
-  createdBy: string,
-  count: number,
-  days: number,
-): BulkBatch {
-  const decided = status !== "pending_approval";
+interface ItemView {
+  id: string;
+  position: number;
+  payee_name: string;
+  bank_name: string | null;
+  bank_code: string;
+  account_number: string;
+  amount: number;
+  status: ItemStatus;
+  error: string | null;
+}
+
+interface BatchDetail extends BatchView {
+  item_counts: Record<string, number>;
+  items: { data: ItemView[] };
+}
+
+function toBatch(view: BatchView): Omit<BulkBatch, "items"> {
   return {
-    id: `00000000-0000-4000-8000-0007${index.toString(16).padStart(8, "0")}`,
-    name,
-    sourceAccount: index % 2 ? "float" : "settlement",
-    createdBy,
-    createdAt: daysAgo(days, 9),
-    reason: "Scheduled payout approved by finance.",
-    status,
-    ...(decided
-      ? {
-          decidedBy: "Chuka Obi",
-          decidedAt: daysAgo(days, 14),
-          decisionComment: status === "rejected" ? "Total does not match the invoice." : "Checked.",
-        }
-      : {}),
-    items: seedItems(index, count, status === "completed" || status === "partially_failed"),
+    id: view.id,
+    name: view.name,
+    sourceAccount: view.source_account,
+    createdBy: view.created_by_name ?? "",
+    createdAt: view.created_at,
+    // The API does not send the reason the batch was raised with.
+    reason: "",
+    ...(view.scheduled_for ? { scheduledFor: view.scheduled_for } : {}),
+    status: view.status,
+    ...(view.decided_by_name ? { decidedBy: view.decided_by_name } : {}),
+    ...(view.started_at ? { decidedAt: view.started_at } : {}),
+    ...(view.decision_reason ? { decisionComment: view.decision_reason } : {}),
   };
 }
 
-let store: BulkBatch[] | null = null;
-
-function all(): BulkBatch[] {
-  store ??= [
-    seedBatch(1, "November vendor payouts", "pending_approval", "Tolu Adebayo", 24, 0),
-    seedBatch(2, "Refund run, October", "partially_failed", "Ife Johnson", 18, 6),
-    seedBatch(3, "Staff allowances, October", "completed", "Tolu Adebayo", 32, 14),
-    seedBatch(4, "Cashback promotion", "rejected", "Ife Johnson", 12, 20),
-    {
-      ...seedBatch(5, "Supplier settlements", "pending_approval", "Amaka Eze", 9, 1),
-      scheduledFor: daysAgo(-3, 8),
-    },
-  ];
-  return store;
+export async function listBatches(filters: BatchFilters): Promise<BatchRow[]> {
+  const page = await request<{ data: BatchView[] }>("/admin/bulk-payments", {
+    query: { status: filters.status === "all" ? undefined : filters.status, limit: 100 },
+  });
+  const needle = filters.search.trim().toLowerCase();
+  return page.data
+    .map((view) => ({
+      ...toBatch(view),
+      itemCount: view.item_count,
+      totalKobo: fromApiAmount(view.total_amount, view.amount_unit),
+      feeKobo: fromApiAmount(view.fee_amount, view.amount_unit),
+      // The list does not count outcomes per batch; the detail page does.
+      successCount: 0,
+      failedCount: 0,
+    }))
+    .filter(
+      (batch) => !needle || `${batch.name} ${batch.createdBy}`.toLowerCase().includes(needle),
+    );
 }
 
-/** The float account is kept low on purpose, so an oversized batch shows the "not enough balance" state. */
-const BALANCES: SourceBalances = {
-  settlement: 4_825_000_000,
-  float: 300_000_000,
-};
-
-export const getSourceBalances = (): Promise<SourceBalances> =>
-  simulate(() => ({ ...BALANCES }), 250);
-
-export function listBatches(filters: BatchFilters): Promise<BatchRow[]> {
-  return simulate(() => {
-    const needle = filters.search.trim().toLowerCase();
-    return all()
-      .filter((b) => filters.status === "all" || b.status === filters.status)
-      .filter((b) => !needle || `${b.name} ${b.createdBy}`.toLowerCase().includes(needle))
-      .map(({ items, ...batch }) => ({ ...batch, ...summarize(items) }))
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+export async function getBatch(id: string): Promise<BulkBatch> {
+  const view = await request<BatchDetail>(`/admin/bulk-payments/${encodeURIComponent(id)}`, {
+    query: { limit: 500 },
   });
+  const items: BulkItem[] = view.items.data.map((item) => ({
+    id: item.id,
+    row: item.position,
+    accountName: item.payee_name,
+    accountNumber: item.account_number,
+    bank: item.bank_name ?? item.bank_code,
+    amountKobo: fromApiAmount(item.amount, view.amount_unit),
+    narration: "",
+    status: item.status,
+    ...(item.error ? { failureReason: item.error } : {}),
+  }));
+  return { ...toBatch(view), items };
 }
 
-export function getBatch(id: string): Promise<BulkBatch> {
-  return simulate(() => {
-    const batch = all().find((b) => b.id === id);
-    if (!batch) throw new ApiError(404, "Batch not found.");
-    return { ...batch, items: batch.items.map((item) => ({ ...item })) };
+export async function decideBatch(input: {
+  id: string;
+  decision: "approved" | "rejected";
+  comment: string;
+}): Promise<BulkBatch> {
+  const path = input.decision === "approved" ? "approve" : "reject";
+  await request(`/admin/bulk-payments/${encodeURIComponent(input.id)}/${path}`, {
+    method: "POST",
+    // Approving takes no body; rejecting needs a reason.
+    ...(input.decision === "rejected" ? { body: { reason: input.comment } } : {}),
   });
+  return getBatch(input.id);
+}
+
+export async function retryFailed(id: string, reason: string): Promise<BulkBatch> {
+  await request(`/admin/bulk-payments/${encodeURIComponent(id)}/retry-failed`, {
+    method: "POST",
+    body: { reason },
+  });
+  return getBatch(id);
+}
+
+interface SourceRow {
+  id: string;
+  name: string;
+  available_balance: number | null;
+  amount_unit?: string;
+  error: string | null;
+}
+
+/** Payout sources the batch can be paid from, with their live balance. */
+export async function getSourceBalances(): Promise<SourceBalances> {
+  const result = await request<{ data: SourceRow[] }>("/admin/bulk-payments/source-balances");
+  return result.data.map((row) => ({
+    id: row.id,
+    name: row.name,
+    balanceKobo:
+      row.available_balance === null ? null : fromApiAmount(row.available_balance, row.amount_unit),
+    error: row.error,
+  }));
+}
+
+export interface Bank {
+  code: string;
+  name: string;
+}
+
+export async function listBanks(): Promise<Bank[]> {
+  const result = await request<{ data: Bank[] }>("/admin/bulk-payments/banks");
+  return result.data;
+}
+
+const normalise = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/** Finds a bank by code, or by name ignoring case and punctuation. */
+function findBank(banks: Bank[], text: string): Bank | undefined {
+  const wanted = normalise(text);
+  return (
+    banks.find((bank) => bank.code === text.trim()) ??
+    banks.find((bank) => normalise(bank.name) === wanted) ??
+    banks.find((bank) => normalise(bank.name).includes(wanted) && wanted.length >= 3)
+  );
 }
 
 export interface NewBatch {
@@ -119,115 +174,30 @@ export interface NewBatch {
   scheduledFor?: string;
 }
 
-export function createBatch(input: NewBatch): Promise<BulkBatch> {
-  return simulate(() => {
-    if (input.payees.length === 0 || input.payees.some((p) => p.errors.length > 0)) {
-      throw new ApiError(422, "Fix or remove the invalid rows first.");
-    }
-    const debitKobo =
-      input.payees.reduce((sum, p) => sum + (p.amountKobo ?? 0), 0) +
-      input.payees.length * FEE_PER_PAYEE_KOBO;
-    if (debitKobo > BALANCES[input.sourceAccount]) {
-      throw new ApiError(422, "The account does not have enough balance for this batch.");
-    }
-    // The 30-day limit is enforced here as well, not only in the form.
-    if (input.scheduledFor && !isScheduleAllowed(new Date(input.scheduledFor), new Date())) {
-      throw new ApiError(
-        422,
-        `The payment time must be in the future and within ${MAX_SCHEDULE_DAYS} days.`,
-      );
-    }
-    const batch: BulkBatch = {
-      id: crypto.randomUUID(),
+export async function createBatch(input: NewBatch): Promise<BulkBatch> {
+  const banks = await listBanks();
+  const unknown = [
+    ...new Set(input.payees.filter((p) => !findBank(banks, p.bank)).map((p) => p.bank)),
+  ];
+  if (unknown.length > 0) {
+    throw new ApiError(422, `Unknown bank: ${unknown.join(", ")}. Use the bank's name or code.`);
+  }
+  const created = await request<{ id: string }>("/admin/bulk-payments", {
+    method: "POST",
+    body: {
       name: input.name,
-      sourceAccount: input.sourceAccount,
-      createdBy: getAuditActor(),
-      createdAt: new Date().toISOString(),
-      reason: input.reason,
-      scheduledFor: input.scheduledFor,
-      status: "pending_approval",
-      items: input.payees.map((p, i) => ({
-        id: crypto.randomUUID(),
-        row: i + 1,
-        accountName: p.accountName,
-        accountNumber: p.accountNumber,
-        bank: p.bank,
-        amountKobo: p.amountKobo ?? 0,
-        narration: p.narration,
-        status: "pending",
+      source_account: input.sourceAccount,
+      payees: input.payees.map((payee) => ({
+        name: payee.accountName,
+        bank: findBank(banks, payee.bank)?.code,
+        account_number: payee.accountNumber,
+        // Payee amounts go in the unit the batch lists use; the API takes naira.
+        amount: (payee.amountKobo ?? 0) / 100,
+        ...(payee.narration ? { narration: payee.narration } : {}),
       })),
-    };
-    all().unshift(batch);
-    recordAudit({
-      action: "bulk_payment.submit",
-      target: input.name,
+      ...(input.scheduledFor ? { scheduled_for: input.scheduledFor } : {}),
       reason: input.reason,
-      after: `${batch.items.length} payees`,
-    });
-    return batch;
-  }, 600);
-}
-
-export function decideBatch(input: {
-  id: string;
-  decision: "approved" | "rejected";
-  comment: string;
-}): Promise<BulkBatch> {
-  return simulate(() => {
-    const batch = all().find((b) => b.id === input.id);
-    if (!batch) throw new ApiError(404, "Batch not found.");
-    if (batch.status !== "pending_approval") {
-      throw new ApiError(409, "This batch has already been decided.");
-    }
-    const actor = getAuditActor();
-    if (batch.createdBy === actor) {
-      throw new ApiError(403, "You cannot decide a batch you created.");
-    }
-    batch.decidedBy = actor;
-    batch.decidedAt = new Date().toISOString();
-    batch.decisionComment = input.comment;
-    if (input.decision === "rejected") {
-      batch.status = "rejected";
-    } else if (batch.scheduledFor && new Date(batch.scheduledFor).getTime() > Date.now()) {
-      // Approved for a later date: payees stay waiting until the scheduled time.
-      batch.status = "scheduled";
-    } else {
-      // Processing is simulated: every fourth payee fails so the retry path can be exercised.
-      batch.items.forEach((item, i) => {
-        const failed = i % 4 === 3;
-        item.status = failed ? "failed" : "success";
-        item.failureReason = failed ? FAILURES[i % FAILURES.length] : undefined;
-      });
-      batch.status = batch.items.some((i) => i.status === "failed")
-        ? "partially_failed"
-        : "completed";
-    }
-    recordAudit({
-      action: `bulk_payment.${input.decision}`,
-      target: batch.name,
-      reason: input.comment,
-      before: "pending_approval",
-      after: batch.status,
-    });
-    return batch;
-  }, 700);
-}
-
-export function retryFailed(id: string, reason: string): Promise<BulkBatch> {
-  return simulate(() => {
-    const batch = all().find((b) => b.id === id);
-    if (!batch) throw new ApiError(404, "Batch not found.");
-    if (batch.status !== "partially_failed") {
-      throw new ApiError(409, "There are no failed payees to retry.");
-    }
-    batch.items.forEach((item) => {
-      if (item.status === "failed") {
-        item.status = "success";
-        item.failureReason = undefined;
-      }
-    });
-    batch.status = "completed";
-    recordAudit({ action: "bulk_payment.retry", target: batch.name, reason });
-    return batch;
-  }, 700);
+    },
+  });
+  return getBatch(created.id);
 }

@@ -128,19 +128,6 @@ export function TemplatesPage() {
                   ),
                 },
                 {
-                  key: "used",
-                  header: t("templates.col.used"),
-                  align: "right",
-                  sortValue: (r) => r.usedCount,
-                  cell: (r) => r.usedCount,
-                },
-                {
-                  key: "by",
-                  header: t("templates.col.updatedBy"),
-                  sortValue: (r) => r.updatedBy,
-                  cell: (r) => r.updatedBy,
-                },
-                {
                   key: "at",
                   header: t("templates.col.updated"),
                   sortValue: (r) => r.updatedAt,

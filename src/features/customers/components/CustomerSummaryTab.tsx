@@ -3,21 +3,21 @@ import { useCan } from "@/features/auth";
 import { BooleanBadge } from "@/shared/components/BooleanBadge";
 import { DateText } from "@/shared/components/DateText";
 import { KeyValueList } from "@/shared/components/KeyValueList";
-import { MaskedValue } from "@/shared/components/MaskedValue";
 import { MoneyText } from "@/shared/components/MoneyText";
 import { SectionCard } from "@/shared/components/SectionCard";
 import { StatCard } from "@/shared/components/StatCard";
 import { t } from "@/shared/i18n/t";
-import { maskEmail, maskTail } from "@/shared/lib/format";
 import type { Customer } from "../model/types";
+import { RevealableField } from "./RevealableField";
 
 export function CustomerSummaryTab({ customer }: { customer: Customer }) {
   const can = useCan();
   const reveal = can("customer:view_sensitive");
-  const usedPercent = Math.min(
-    100,
-    Math.round((customer.dailyUsedKobo / customer.dailyLimitKobo) * 100),
-  );
+  // A customer with no daily limit on record has nothing to measure usage against.
+  const usedPercent =
+    customer.dailyLimitKobo > 0
+      ? Math.min(100, Math.round((customer.dailyUsedKobo / customer.dailyLimitKobo) * 100))
+      : 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -86,10 +86,11 @@ export function CustomerSummaryTab({ customer }: { customer: Customer }) {
               {
                 label: t("customers.col.phone"),
                 value: (
-                  <MaskedValue
-                    value={customer.phone}
-                    mask={(v) => maskTail(v, 3)}
-                    auditTarget={`phone of ${customer.name}`}
+                  <RevealableField
+                    customerId={customer.id}
+                    field="phone_number"
+                    label={t("customers.col.phone")}
+                    masked={customer.phone}
                     canReveal={reveal}
                   />
                 ),
@@ -97,28 +98,32 @@ export function CustomerSummaryTab({ customer }: { customer: Customer }) {
               {
                 label: t("customers.col.email"),
                 value: (
-                  <MaskedValue
-                    value={customer.email}
-                    mask={maskEmail}
-                    auditTarget={`email of ${customer.name}`}
+                  <RevealableField
+                    customerId={customer.id}
+                    field="email"
+                    label={t("customers.col.email")}
+                    masked={customer.email}
                     canReveal={reveal}
                   />
                 ),
               },
               {
-                label: t("customers.col.account"),
+                label: t("customers.summary.dob"),
                 value: (
-                  <MaskedValue
-                    value={customer.reservedAccount}
-                    mask={(v) => maskTail(v, 4)}
-                    auditTarget={`account number of ${customer.name}`}
+                  <RevealableField
+                    customerId={customer.id}
+                    field="date_of_birth"
+                    label={t("customers.summary.dob")}
+                    masked="••••••"
                     canReveal={reveal}
                   />
                 ),
               },
-              { label: t("customers.summary.dob"), value: customer.dateOfBirth },
               { label: t("customers.summary.gender"), value: t(`gender.${customer.gender}`) },
-              { label: t("customers.summary.referral"), value: customer.referralCode },
+              {
+                label: t("customers.summary.referral"),
+                value: customer.referralCode ?? t("common.notAvailable"),
+              },
               { label: t("customers.col.joined"), value: <DateText iso={customer.joinedAt} /> },
               {
                 label: t("customers.summary.merchant"),

@@ -3,10 +3,10 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useCan, useCurrentUser } from "@/features/auth";
 import { usePendingRequestCount } from "@/features/requests";
-import { daysAgo } from "@/shared/api/mockFixtures";
 import { AsyncBody } from "@/shared/components/AsyncBody";
 import { BarList } from "@/shared/components/BarList";
 import { MoneyText } from "@/shared/components/MoneyText";
+import { EmptyState } from "@/shared/components/EmptyState";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
 import { SimpleTable } from "@/shared/components/SimpleTable";
@@ -25,6 +25,7 @@ import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
 import { formatCompactKobo, formatCount, formatLagos } from "@/shared/lib/format";
+import { purposeLabel } from "@/shared/lib/purposeLabel";
 import { getOverview, type Overview } from "../api/overviewApi";
 
 const DEFAULTS = { range: "30d" };
@@ -45,8 +46,8 @@ export function OverviewPage() {
   const pending = usePendingRequestCount(can("request:view_all"));
   const days = Number(filters.range.replace("d", "")) || 30;
   const period = t("overview.period", {
-    from: formatLagos(daysAgo(days), true),
-    to: formatLagos(daysAgo(0), true),
+    from: formatLagos(isoDaysAgo(days), true),
+    to: formatLagos(isoDaysAgo(0), true),
   });
 
   return (
@@ -109,7 +110,9 @@ export function OverviewPage() {
 
 function OverviewBody({ data }: { data: Overview }) {
   const { transfers: tr, bills, customers, savings } = data;
-  const rate = Math.round((tr.successful.count / tr.total.count) * 1000) / 10;
+  // No transfers in the period means there is no rate to show, not a division by zero.
+  const rate =
+    tr.total.count > 0 ? Math.round((tr.successful.count / tr.total.count) * 1000) / 10 : 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -158,31 +161,39 @@ function OverviewBody({ data }: { data: Overview }) {
             </Link>
           }
         >
-          <ul className="m-0 flex list-none flex-col gap-3 p-0">
-            {data.recent.map((row) => (
-              <li key={row.id} className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="m-0 truncate text-sm font-medium text-ink">{row.name}</p>
-                  <p className="m-0 truncate text-xs text-muted-text">
-                    {t(`purpose.${row.purpose}`)}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  <MoneyText kobo={row.amountKobo} className="text-sm font-medium text-ink" />
-                  <StatusBadge
-                    tone={
-                      row.status === "success"
-                        ? "success"
-                        : row.status === "pending"
-                          ? "warning"
-                          : "danger"
-                    }
-                    label={t(`transactions.status.${row.status}`)}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
+          {data.recent.length === 0 ? (
+            <EmptyState
+              icon={Swap}
+              title={t("overview.recent.empty.title")}
+              description={t("overview.recent.empty.description")}
+            />
+          ) : (
+            <ul className="m-0 flex list-none flex-col gap-3 p-0">
+              {data.recent.map((row) => (
+                <li key={row.id} className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="m-0 truncate text-sm font-medium text-ink">{row.name}</p>
+                    <p className="m-0 truncate text-xs text-muted-text">
+                      {purposeLabel(row.purpose)}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <MoneyText kobo={row.amountKobo} className="text-sm font-medium text-ink" />
+                    <StatusBadge
+                      tone={
+                        row.status === "success"
+                          ? "success"
+                          : row.status === "pending"
+                            ? "warning"
+                            : "danger"
+                      }
+                      label={t(`transactions.status.${row.status}`)}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </SectionCard>
       </div>
 
@@ -401,4 +412,8 @@ function Metric({
       </p>
     </div>
   );
+}
+
+function isoDaysAgo(days: number) {
+  return new Date(Date.now() - days * 86_400_000).toISOString();
 }

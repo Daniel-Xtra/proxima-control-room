@@ -15,8 +15,7 @@ import {
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
-import type { AuditEntry } from "@/shared/api/auditStore";
-import { listAuditLog } from "../api/riskApi";
+import { listAuditLog, type AuditEntry } from "../api/riskApi";
 
 const DEFAULTS = { q: "", status: "all" };
 

@@ -128,15 +128,15 @@ export function validateDrafts(drafts: PayeeDraft[]): PayeeDraft[] {
   const seen = new Set<string>();
   return drafts.map((draft) => {
     const errors: PayeeDraft["errors"] = [];
-    const bank = BANKS.find((b) => b.toLowerCase() === draft.bank.toLowerCase());
     if (draft.accountName.length < 2) errors.push("bulk.err.name");
     if (!/^\d{10}$/.test(draft.accountNumber)) errors.push("bulk.err.account");
-    if (!bank) errors.push("bulk.err.bank");
+    // The bank name is matched to a bank code when the batch is submitted.
+    if (draft.bank.trim() === "") errors.push("bulk.err.bank");
     if (draft.amountKobo === null || draft.amountKobo <= 0) errors.push("bulk.err.amount");
     else if (draft.amountKobo > MAX_PAYEE_KOBO) errors.push("bulk.err.amountMax");
     const key = `${draft.accountNumber}:${draft.amountKobo}`;
     if (errors.length === 0 && seen.has(key)) errors.push("bulk.err.duplicate");
     seen.add(key);
-    return { ...draft, bank: bank ?? draft.bank, errors };
+    return { ...draft, errors };
   });
 }

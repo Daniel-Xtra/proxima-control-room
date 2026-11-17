@@ -1,4 +1,4 @@
-import { ShieldSlash, WarningCircle } from "@phosphor-icons/react";
+import { Prohibit, ShieldSlash, WarningCircle } from "@phosphor-icons/react";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type { ApiError } from "../api/client";
@@ -47,6 +47,15 @@ export function AsyncBody<T>({
           icon={ShieldSlash}
           title={t("state.forbidden.title")}
           description={t("state.forbidden.description")}
+        />
+      );
+    }
+    if (query.error?.status === 501) {
+      return (
+        <EmptyState
+          icon={Prohibit}
+          title={t("state.unavailable.title")}
+          description={t("api.unavailable")}
         />
       );
     }

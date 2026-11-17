@@ -22,8 +22,9 @@ export interface Banner {
   displayType: DisplayType;
   priority: number;
   active: boolean;
-  impressions: number;
-  clicks: number;
+  /** Counts come from the per-banner analytics endpoint, so the list does not have them. */
+  impressions: number | null;
+  clicks: number | null;
 }
 
 export type BannerDraft = Omit<Banner, "id" | "impressions" | "clicks">;

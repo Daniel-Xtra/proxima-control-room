@@ -13,8 +13,8 @@ export const BANKS = [
   "Sterling Bank",
 ] as const;
 
-export const SOURCE_ACCOUNTS = ["settlement", "float"] as const;
-export type SourceAccount = (typeof SOURCE_ACCOUNTS)[number];
+/** A payout source reported by the API (an id such as the settlement account). */
+export type SourceAccount = string;
 /** What the form knows about the selected account's balance. */
 export interface BalanceInfo {
   status: "pending" | "error" | "success";
@@ -22,7 +22,13 @@ export interface BalanceInfo {
 }
 
 /** Available balance of each payout account, in kobo. */
-export type SourceBalances = Record<SourceAccount, number>;
+/** A payout source from the API with its live balance. `balanceKobo` is null when it could not be read. */
+export type SourceBalances = {
+  id: SourceAccount;
+  name: string;
+  balanceKobo: number | null;
+  error: string | null;
+}[];
 
 /** Fee charged per payee, in kobo. */
 export const FEE_PER_PAYEE_KOBO = 5_000;
@@ -34,8 +40,16 @@ export const LARGE_BATCH_KOBO = 1_000_000_000;
 export { MAX_SCHEDULE_DAYS } from "@/shared/lib/schedule";
 
 export type BatchStatus =
-  "pending_approval" | "scheduled" | "completed" | "partially_failed" | "rejected";
-export type ItemStatus = "success" | "failed" | "pending";
+  | "pending_approval"
+  | "approved"
+  | "processing"
+  | "reconciling"
+  | "completed"
+  | "partially_failed"
+  | "failed"
+  | "rejected"
+  | "cancelled";
+export type ItemStatus = "success" | "failed" | "pending" | "processing" | "unknown";
 
 export interface BulkItem {
   id: string;

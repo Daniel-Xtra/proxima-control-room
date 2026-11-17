@@ -1,9 +1,6 @@
-import { recordAudit } from "@/shared/api/auditStore";
-import { ApiError, simulate } from "@/shared/api/client";
-import { daysAgo } from "@/shared/api/mockFixtures";
-import { ROLE_TEMPLATES, type Permission, type RoleTemplate } from "@/features/auth";
+import { ApiError, request } from "@/shared/api/client";
 
-export type TwoFactorState = "enrolled" | "not-enrolled" | "reset-pending";
+export type TwoFactorState = "enrolled" | "not-enrolled" | "reset-pending" | "unknown";
 
 export interface StaffMember {
   id: string;
@@ -15,162 +12,176 @@ export interface StaffMember {
   lastLoginAt: string | null;
 }
 
-let roles: RoleTemplate[] = ROLE_TEMPLATES.map((r) => ({ ...r }));
-
-let staff: StaffMember[] = [
-  {
-    id: "st-1",
-    name: "Chuka Obi",
-    email: "chuka.obi@proxima.example",
-    roleIds: ["role-super-admin"],
-    twoFactor: "enrolled",
-    active: true,
-    lastLoginAt: daysAgo(0, 7),
-  },
-  {
-    id: "st-2",
-    name: "Amaka Eze",
-    email: "amaka.eze@proxima.example",
-    roleIds: ["role-support-lead"],
-    twoFactor: "enrolled",
-    active: true,
-    lastLoginAt: daysAgo(1, 9),
-  },
-  {
-    id: "st-3",
-    name: "Tolu Adebayo",
-    email: "tolu.adebayo@proxima.example",
-    roleIds: ["role-support-1"],
-    twoFactor: "enrolled",
-    active: true,
-    lastLoginAt: daysAgo(0, 8),
-  },
-  {
-    id: "st-4",
-    name: "Ife Johnson",
-    email: "ife.johnson@proxima.example",
-    roleIds: ["role-operations"],
-    twoFactor: "enrolled",
-    active: true,
-    lastLoginAt: daysAgo(2, 14),
-  },
-  {
-    id: "st-5",
-    name: "Ngozi Bassey",
-    email: "ngozi.bassey@proxima.example",
-    roleIds: ["role-compliance"],
-    twoFactor: "reset-pending",
-    active: true,
-    lastLoginAt: daysAgo(9, 10),
-  },
-  {
-    id: "st-6",
-    name: "Seyi Martins",
-    email: "seyi.martins@proxima.example",
-    roleIds: ["role-marketing"],
-    twoFactor: "not-enrolled",
-    active: true,
-    lastLoginAt: null,
-  },
-  {
-    id: "st-7",
-    name: "Dayo Ajayi",
-    email: "dayo.ajayi@proxima.example",
-    roleIds: ["role-auditor"],
-    twoFactor: "enrolled",
-    active: false,
-    lastLoginAt: daysAgo(70, 11),
-  },
-];
-
-export const listRoles = () =>
-  simulate(() =>
-    roles.map((r) => ({ ...r, memberCount: staff.filter((s) => s.roleIds.includes(r.id)).length })),
-  );
-
-export const getRole = (id: string) =>
-  simulate(() => {
-    const role = roles.find((r) => r.id === id);
-    if (!role) throw new ApiError(404, "Role not found.");
-    return { ...role };
-  });
-
-export interface RoleInput {
+export interface RoleSummary {
+  /** The role code, e.g. FINANCE_ADMIN. */
+  id: string;
   name: string;
   description: string;
-  permissions: Permission[];
-  approvalCeilingKobo: number;
+  /** Built-in roles keep their permissions; only custom roles can change them. */
+  isSystem: boolean;
+  permissionCodes: string[];
+  memberCount: number;
 }
 
-export function saveRole(id: string | null, input: RoleInput, reason: string) {
-  return simulate(() => {
-    if (id) {
-      const role = roles.find((r) => r.id === id);
-      if (!role) throw new ApiError(404, "Role not found.");
-      Object.assign(role, input);
-      recordAudit({
-        action: "role.update",
-        target: input.name,
+export interface PermissionDef {
+  code: string;
+  displayName: string;
+  description: string;
+  module: string;
+}
+
+export interface RoleCatalogue {
+  roles: RoleSummary[];
+  permissions: PermissionDef[];
+}
+
+interface RoleRow {
+  code: string;
+  name: string;
+  description: string | null;
+  is_system: boolean;
+  permissions: string[];
+}
+
+interface PermissionRow {
+  code: string;
+  display_name: string;
+  description: string | null;
+  module: string;
+  is_active: boolean;
+}
+
+interface StaffRow {
+  unique_identifier: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: string | null;
+  is_enabled: boolean;
+  two_factor?: "enrolled" | "not_enrolled" | "reset_pending";
+  last_login_at?: string | null;
+}
+
+interface StaffPage {
+  data: StaffRow[];
+}
+
+const TWO_FACTOR = {
+  enrolled: "enrolled",
+  not_enrolled: "not-enrolled",
+  reset_pending: "reset-pending",
+} as const;
+
+export async function listStaff(): Promise<StaffMember[]> {
+  const page = await request<StaffPage>("/admin/staff", { query: { limit: 100 } });
+  return page.data.map((row) => ({
+    id: row.unique_identifier,
+    name: `${row.first_name} ${row.last_name}`.trim(),
+    email: row.email,
+    roleIds: row.role ? [row.role] : [],
+    twoFactor: row.two_factor ? TWO_FACTOR[row.two_factor] : "unknown",
+    active: row.is_enabled,
+    lastLoginAt: row.last_login_at ?? null,
+  }));
+}
+
+/** Roles with how many staff hold each, plus every permission a role can be given. */
+export async function listRoleCatalogue(): Promise<RoleCatalogue> {
+  const [data, staff] = await Promise.all([
+    request<{ roles: RoleRow[]; permissions: PermissionRow[] }>("/admin/roles"),
+    listStaff(),
+  ]);
+  return {
+    roles: data.roles.map((role) => ({
+      id: role.code,
+      name: role.name,
+      description: role.description ?? "",
+      isSystem: role.is_system,
+      permissionCodes: role.permissions,
+      memberCount: staff.filter((member) => member.roleIds.includes(role.code)).length,
+    })),
+    permissions: data.permissions
+      .filter((permission) => permission.is_active)
+      .map((permission) => ({
+        code: permission.code,
+        displayName: permission.display_name,
+        description: permission.description ?? "",
+        module: permission.module,
+      })),
+  };
+}
+
+export async function getRole(id: string): Promise<RoleSummary> {
+  const role = (await listRoleCatalogue()).roles.find((candidate) => candidate.id === id);
+  if (!role) throw new ApiError(404, "Role not found.");
+  return role;
+}
+
+export interface RoleInput {
+  /** Needed when creating: capital letters, digits and underscores. */
+  code?: string;
+  name: string;
+  description: string;
+  permissions: string[];
+}
+
+/** Creates a role, or updates one when `id` is given. Returns the role code. */
+export async function saveRole(id: string | null, input: RoleInput, reason: string) {
+  if (id) {
+    await request(`/admin/roles/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: {
+        name: input.name,
+        description: input.description,
+        permissions: input.permissions,
         reason,
-        after: `${input.permissions.length} permissions`,
-      });
-      return role.id;
-    }
-    const created: RoleTemplate = { id: crypto.randomUUID(), ...input };
-    roles = [...roles, created];
-    recordAudit({
-      action: "role.create",
-      target: input.name,
-      reason,
-      after: `${input.permissions.length} permissions`,
+      },
     });
-    return created.id;
-  });
-}
-
-export function retireRole(id: string, reason: string) {
-  return simulate(() => {
-    const role = roles.find((r) => r.id === id);
-    if (staff.some((s) => s.roleIds.includes(id))) {
-      throw new ApiError(409, "Reassign staff holding this role before retiring it.");
-    }
-    roles = roles.filter((r) => r.id !== id);
-    recordAudit({ action: "role.retire", target: role?.name ?? id, reason });
-  });
-}
-
-export const listStaff = () => simulate(() => staff.map((s) => ({ ...s })));
-
-export function assignRoles(staffId: string, roleIds: string[], actorName: string, reason: string) {
-  return simulate(() => {
-    const member = staff.find((s) => s.id === staffId);
-    if (!member) throw new ApiError(404, "Staff member not found.");
-    if (member.name === actorName) throw new ApiError(403, "You cannot change your own roles.");
-    member.roleIds = roleIds;
-    recordAudit({
-      action: "staff.roles.assign",
-      target: member.name,
+    return id;
+  }
+  await request("/admin/roles", {
+    method: "POST",
+    body: {
+      code: input.code,
+      name: input.name,
+      description: input.description || undefined,
+      permissions: input.permissions,
       reason,
-      after: roleIds.join(", "),
-    });
+    },
+  });
+  return input.code ?? "";
+}
+
+export async function retireRole(id: string, reason: string) {
+  await request(`/admin/roles/${encodeURIComponent(id)}`, { method: "DELETE", body: { reason } });
+}
+
+const staffPath = (id: string, action: string) =>
+  `/admin/staff/${encodeURIComponent(id)}/${action}`;
+
+/** Staff changes are requests: another admin approves them in the requests inbox. */
+function staffRequest(staffId: string, action: string, body: Record<string, unknown>) {
+  return request(staffPath(staffId, action), {
+    method: "POST",
+    headers: { "Idempotency-Key": crypto.randomUUID() },
+    body,
   });
 }
 
-export function resetTwoFactor(staffId: string, actorName: string, reason: string) {
-  return simulate(() => {
-    const member = staff.find((s) => s.id === staffId);
-    if (!member) throw new ApiError(404, "Staff member not found.");
-    if (member.name === actorName) throw new ApiError(403, "You cannot reset your own 2FA.");
-    member.twoFactor = "reset-pending";
-    recordAudit({ action: "staff.2fa.reset", target: member.name, reason });
-  });
+/** The API gives each staff member one role. */
+export async function assignRole(staffId: string, roleCode: string, reason: string) {
+  await staffRequest(staffId, "role", { role_code: roleCode, reason });
 }
 
-export function setStaffActive(staffId: string, active: boolean, reason: string) {
-  return simulate(() => {
-    const member = staff.find((s) => s.id === staffId);
-    if (!member) throw new ApiError(404, "Staff member not found.");
-    member.active = active;
-    recordAudit({ action: active ? "staff.enable" : "staff.disable", target: member.name, reason });
-  });
+export async function resetTwoFactor(staffId: string, reason: string) {
+  await staffRequest(staffId, "mfa/reset", { reason });
+}
+
+export async function setStaffActive(staffId: string, active: boolean, reason: string) {
+  await staffRequest(staffId, active ? "enable" : "disable", { reason });
+}
+
+/** Ending sessions takes effect straight away, with no second approval. */
+export async function revokeStaffSessions(staffId: string, reason: string) {
+  await request(staffPath(staffId, "sessions/revoke"), { method: "POST", body: { reason } });
 }

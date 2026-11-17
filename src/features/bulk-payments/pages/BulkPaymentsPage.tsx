@@ -63,7 +63,10 @@ export function BulkPaymentsPage() {
             <SelectContent>
               <SelectItem value="all">{t("bulk.filter.any")}</SelectItem>
               <SelectItem value="pending_approval">{t("bulk.status.pending_approval")}</SelectItem>
-              <SelectItem value="scheduled">{t("bulk.status.scheduled")}</SelectItem>
+              <SelectItem value="approved">{t("bulk.status.approved")}</SelectItem>
+              <SelectItem value="processing">{t("bulk.status.processing")}</SelectItem>
+              <SelectItem value="failed">{t("bulk.status.failed")}</SelectItem>
+              <SelectItem value="cancelled">{t("bulk.status.cancelled")}</SelectItem>
               <SelectItem value="completed">{t("bulk.status.completed")}</SelectItem>
               <SelectItem value="partially_failed">{t("bulk.status.partially_failed")}</SelectItem>
               <SelectItem value="rejected">{t("bulk.status.rejected")}</SelectItem>

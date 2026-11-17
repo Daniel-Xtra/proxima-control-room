@@ -7,6 +7,7 @@ import { SimpleTable } from "@/shared/components/SimpleTable";
 import { t } from "@/shared/i18n/t";
 import { useRequests } from "../api/queries";
 import type { AccountRequest, RequestFilters } from "../model/types";
+import { requestLabel } from "./requestLabel";
 import { RequestStatusBadge } from "./RequestStatusBadge";
 import { ReviewDrawer } from "./ReviewDrawer";
 
@@ -49,7 +50,7 @@ export function RequestsTable({
                       key: "kind",
                       header: t("requests.col.type"),
                       sortValue: (r: { kind: string }) => r.kind,
-                      cell: (r: AccountRequest) => t(`requests.kind.${r.kind}`),
+                      cell: (r: AccountRequest) => requestLabel(r),
                     },
                   ]),
               ...(showCustomer && !filters.kind
@@ -58,7 +59,7 @@ export function RequestsTable({
                       key: "kind",
                       header: t("requests.col.type"),
                       sortValue: (r: { kind: string }) => r.kind,
-                      cell: (r: AccountRequest) => t(`requests.kind.${r.kind}`),
+                      cell: (r: AccountRequest) => requestLabel(r),
                     },
                   ]
                 : []),
@@ -69,22 +70,17 @@ export function RequestsTable({
                 cell: (r) =>
                   r.limits ? (
                     <span className="inline-flex items-center gap-1.5">
-                      <MoneyText kobo={r.limits.currentDailyKobo} />
-                      <ArrowRight aria-hidden="true" className="size-3 text-muted-text" />
+                      {r.limits.currentDailyKobo === null ? null : (
+                        <>
+                          <MoneyText kobo={r.limits.currentDailyKobo} />
+                          <ArrowRight aria-hidden="true" className="size-3 text-muted-text" />
+                        </>
+                      )}
                       <MoneyText kobo={r.limits.requestedDailyKobo} className="font-semibold" />
                     </span>
                   ) : (
                     r.reason
                   ),
-              },
-              {
-                key: "comment",
-                header: t("requests.col.staffComment"),
-                cell: (r) => (
-                  <span className="text-muted-text">
-                    {r.staffComment || t("common.notAvailable")}
-                  </span>
-                ),
               },
               {
                 key: "status",

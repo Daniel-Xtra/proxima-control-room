@@ -1,5 +1,5 @@
-import { simulate } from "@/shared/api/client";
-import { FIXTURE_CUSTOMERS, daysAgo, seeded } from "@/shared/api/mockFixtures";
+import { request } from "@/shared/api/client";
+import { fromApiAmount } from "@/shared/api/money";
 
 export interface Bucket {
   count: number;
@@ -10,8 +10,8 @@ export interface RecentTransaction {
   id: string;
   name: string;
   amountKobo: number;
-  purpose:
-    "wallet_transfer" | "bank_transfer" | "bill_payment" | "airtime_payment" | "data_payment";
+  /** Any ledger purpose; label it with `purposeLabel`. */
+  purpose: string;
   status: "success" | "pending" | "failed";
 }
 
@@ -55,106 +55,139 @@ export interface Overview {
   };
 }
 
-export function getOverview(range: string): Promise<Overview> {
-  return simulate(() => {
-    const days = Number(range.replace("d", "")) || 30;
-    const rand = seeded(days * 13);
-    const points = (base: number) =>
-      Array.from({ length: 12 }, () => Math.round(base * (0.6 + rand() * 0.8)));
-    const scale = days / 30;
-    const successCount = Math.round(18_400 * scale);
-    const failedCount = Math.round(1_150 * scale);
-    const pendingCount = Math.round(240 * scale);
-    const avg = 3_800_00;
-    const bucket = (count: number): Bucket => ({
-      count,
-      amountKobo: count * Math.round(avg * (0.8 + rand() * 0.5)),
-    });
-    const walletCount = Math.round(successCount * 0.58);
-    const bill = (count: number) => ({
-      ...bucket(count),
-      successes: Math.round(count * 0.93),
-      failures: Math.round(count * 0.05),
-      pending: Math.round(count * 0.02),
-    });
-    const signUps = Math.round(2_960 * scale);
-    const successful = bucket(successCount);
-    const dayCount = Math.min(days, 30);
-    const labels = Array.from({ length: dayCount }, (_, i) =>
-      new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(
-        new Date(daysAgo(dayCount - 1 - i)),
-      ),
-    );
-    const volume = Array.from({ length: dayCount }, () =>
-      Math.round((successCount / dayCount) * (0.5 + rand())),
-    );
-    const purposes = [
-      "wallet_transfer",
-      "bank_transfer",
-      "bill_payment",
-      "airtime_payment",
-      "data_payment",
-    ] as const;
-    return {
-      deltas: {
-        transactions: Math.round((rand() * 30 - 10) * 10) / 10,
-        value: Math.round((rand() * 30 - 15) * 10) / 10,
-        fixedDeposits: Math.round((rand() * 20 - 4) * 10) / 10,
-        targetSavings: Math.round((rand() * 20 - 8) * 10) / 10,
+interface Series {
+  volume: number;
+  value: number;
+  volume_delta_pct: number | null;
+  value_delta_pct: number | null;
+  trend: { date: string; volume: number; value: number }[];
+}
+
+interface BillType {
+  type: string;
+  count: number;
+  amount: number;
+  failures: number;
+}
+
+interface OverviewResponse {
+  amount_unit?: string;
+  transactions: Series;
+  fixed_deposits: Series & { active: { count: number } };
+  target_savings: Series & { active: { count: number } };
+  transfers: {
+    total: number;
+    successful: number;
+    failed: number;
+    pending: number;
+    value: number;
+    wallet: number;
+    other_bank: number;
+    weekday: { day: string; count: number }[];
+  };
+  bills: { airtime: BillType; data: BillType; billers: BillType[] };
+  signups: {
+    total: number;
+    trend: { date: string; count: number }[];
+    gender: { male: number; female: number; other: number; unknown: number };
+  };
+  savings: {
+    fixed_deposit_principal: number;
+    fixed_deposit_interest: number;
+    target_savings_balance: number;
+  };
+  recent_transactions: {
+    reference: string;
+    customer_name: string | null;
+    amount: number;
+    purpose: string;
+    status: "success" | "pending" | "failed";
+  }[];
+}
+
+const dayLabel = (iso: string) =>
+  new Date(`${iso}T12:00:00`).toLocaleDateString("en-NG", { day: "numeric", month: "short" });
+
+export async function getOverview(range: string): Promise<Overview> {
+  const r = await request<OverviewResponse>("/admin/overview", { query: { range } });
+  const money = (amount: number) => fromApiAmount(amount, r.amount_unit);
+  // No period to compare with means no change to report.
+  const delta = (pct: number | null) => pct ?? 0;
+  // The API gives counts for transfers and money only for the successful ones.
+  const count = (n: number, amountKobo = 0): Bucket => ({ count: n, amountKobo });
+  const bill = (b: BillType) => ({
+    count: b.count,
+    amountKobo: money(b.amount),
+    successes: Math.max(0, b.count - b.failures),
+    failures: b.failures,
+    pending: 0,
+  });
+
+  return {
+    deltas: {
+      transactions: delta(r.transactions.volume_delta_pct),
+      value: delta(r.transactions.value_delta_pct),
+      fixedDeposits: delta(r.fixed_deposits.volume_delta_pct),
+      targetSavings: delta(r.target_savings.volume_delta_pct),
+    },
+    valueKobo: money(r.transactions.value),
+    series: {
+      labels: r.transactions.trend.map((point) => dayLabel(point.date)),
+      valueKobo: r.transactions.trend.map((point) => money(point.value)),
+      volume: r.transactions.trend.map((point) => point.volume),
+    },
+    recent: r.recent_transactions.map((row) => ({
+      id: row.reference,
+      name: row.customer_name ?? "",
+      amountKobo: money(row.amount),
+      purpose: row.purpose,
+      status: row.status,
+    })),
+    kpis: {
+      transactions: {
+        total: r.transactions.volume,
+        trend: r.transactions.trend.map((point) => point.volume),
       },
-      valueKobo: successful.amountKobo,
-      series: {
-        labels,
-        volume,
-        valueKobo: volume.map((v) => v * Math.round(avg * (0.8 + rand() * 0.5))),
+      fixedDeposits: {
+        total: r.fixed_deposits.volume,
+        trend: r.fixed_deposits.trend.map((point) => point.volume),
       },
-      recent: purposes.map((purpose, i) => ({
-        id: `recent-${i}`,
-        name: FIXTURE_CUSTOMERS[(i * 11 + days) % FIXTURE_CUSTOMERS.length]!.name,
-        amountKobo: Math.round((rand() * 480_000 + 2_000) * 100),
-        purpose,
-        status: i === 3 ? "pending" : i === 4 ? "failed" : "success",
+      targetSavings: {
+        total: r.target_savings.volume,
+        trend: r.target_savings.trend.map((point) => point.volume),
+      },
+    },
+    transfers: {
+      total: count(r.transfers.total),
+      successful: count(r.transfers.successful, money(r.transfers.value)),
+      failed: count(r.transfers.failed),
+      pending: count(r.transfers.pending),
+      wallet: count(r.transfers.wallet),
+      otherBank: count(r.transfers.other_bank),
+      weekday: r.transfers.weekday.map((entry) => ({ label: entry.day, count: entry.count })),
+    },
+    bills: {
+      airtime: bill(r.bills.airtime),
+      data: bill(r.bills.data),
+      billers: r.bills.billers.map((biller) => ({
+        name: biller.type,
+        count: biller.count,
+        amountKobo: money(biller.amount),
+        failures: biller.failures,
       })),
-      kpis: {
-        transactions: { total: successCount + failedCount + pendingCount, trend: points(600) },
-        fixedDeposits: { total: Math.round(412 * scale), trend: points(14) },
-        targetSavings: { total: Math.round(1_020 * scale), trend: points(34) },
-      },
-      transfers: {
-        total: bucket(successCount + failedCount + pendingCount),
-        successful: bucket(successCount),
-        failed: bucket(failedCount),
-        pending: bucket(pendingCount),
-        wallet: bucket(walletCount),
-        otherBank: bucket(successCount - walletCount),
-        weekday: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label, i) => ({
-          label,
-          count: Math.round((successCount / 7) * (i < 5 ? 1.1 : 0.7) * (0.85 + rand() * 0.3)),
-        })),
-      },
-      bills: {
-        airtime: bill(Math.round(5_200 * scale)),
-        data: bill(Math.round(3_100 * scale)),
-        billers: ["Electricity", "Cable TV", "Internet", "Betting wallet"].map((name) => ({
-          name,
-          count: Math.round((400 + rand() * 900) * scale),
-          amountKobo: Math.round((2_000_000 + rand() * 9_000_000) * scale) * 100,
-          failures: Math.round((10 + rand() * 40) * scale),
-        })),
-      },
-      customers: {
-        signUps,
-        trend: points(100),
-        male: Math.round(signUps * 0.48),
-        female: Math.round(signUps * 0.43),
-        unspecified: signUps - Math.round(signUps * 0.48) - Math.round(signUps * 0.43),
-      },
-      savings: {
-        fixedCount: Math.round(412 * scale),
-        fixedTotalKobo: Math.round(412 * scale) * 1_850_000_00,
-        targetCount: Math.round(1_020 * scale),
-        targetTotalKobo: Math.round(1_020 * scale) * 420_000_00,
-      },
-    };
-  }, 500);
+    },
+    customers: {
+      signUps: r.signups.total,
+      trend: r.signups.trend.map((point) => point.count),
+      male: r.signups.gender.male,
+      female: r.signups.gender.female,
+      unspecified: r.signups.gender.other + r.signups.gender.unknown,
+    },
+    savings: {
+      fixedTotalKobo: money(r.savings.fixed_deposit_principal + r.savings.fixed_deposit_interest),
+      fixedCount: r.fixed_deposits.active.count,
+      targetTotalKobo: money(r.savings.target_savings_balance),
+      targetCount: r.target_savings.active.count,
+    },
+  };
 }

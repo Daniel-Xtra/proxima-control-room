@@ -20,6 +20,8 @@ export const PERMISSIONS_BY_MODULE = {
     "unfreeze_request:approve",
     "limit_request:initiate",
     "limit_request:approve",
+    "unlock_request:approve",
+    "password_reset_request:approve",
     "request:view_all",
   ],
   transactions: [
@@ -27,13 +29,23 @@ export const PERMISSIONS_BY_MODULE = {
     "transaction:export",
     "transaction:requery",
     "transaction:reverse",
+    "transaction:refund",
+    "reversal_request:approve",
+    "refund_request:approve",
     "transaction:retry",
   ],
   kyc: ["kyc:review", "kyc:approve", "kyc:reject", "kyc:override"],
   savings: ["savings:view", "savings:liquidate"],
   bulk: ["bulk_payment:view", "bulk_payment:initiate", "bulk_payment:approve"],
   compliance: ["compliance:view_alerts", "compliance:manage_cases", "compliance:manage_blocklist"],
-  config: ["config:view", "config:edit", "config:approve", "config:kill_switch"],
+  config: [
+    "config:view",
+    "config:edit",
+    "config:approve",
+    "config:kill_switch",
+    "approval_rules:view",
+    "approval_rules:manage",
+  ],
   content: ["content:view", "content:edit", "content:publish"],
   reports: ["report:view", "report:schedule", "report:export"],
   platform: [
@@ -43,7 +55,14 @@ export const PERMISSIONS_BY_MODULE = {
     "queues:manage",
     "security_policy:edit",
   ],
-  staff: ["staff:view", "staff:manage", "roles:manage", "2fa:reset"],
+  staff: [
+    "staff:view",
+    "staff:manage",
+    "staff_change:approve",
+    "staff:revoke_sessions",
+    "roles:manage",
+    "2fa:reset",
+  ],
 } as const;
 
 export type ModuleId = keyof typeof PERMISSIONS_BY_MODULE;

@@ -1,7 +1,7 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { recordAudit } from "@/shared/api/auditStore";
-import { simulate } from "@/shared/api/client";
 import { ActionDialog } from "@/shared/components/ActionDialog";
+import { AsyncBody } from "@/shared/components/AsyncBody";
 import { DateText } from "@/shared/components/DateText";
 import { KeyValueList } from "@/shared/components/KeyValueList";
 import { PageHeader } from "@/shared/components/PageHeader";
@@ -9,44 +9,17 @@ import { SectionCard } from "@/shared/components/SectionCard";
 import { SimpleTable } from "@/shared/components/SimpleTable";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { Button } from "@/shared/components/ui/Button";
+import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { t } from "@/shared/i18n/t";
+import { listSessions, revokeOtherSessions, type SessionRow } from "../api/sessionsApi";
 import { useCurrentUser } from "../hooks/useSession";
 
-interface SessionRow {
-  id: string;
-  device: string;
-  ip: string;
-  lastActive: string;
-  current: boolean;
-}
-
-const INITIAL_SESSIONS: SessionRow[] = [
-  {
-    id: "s1",
-    device: "Chrome on Windows",
-    ip: "102.89.34.17",
-    lastActive: "2026-11-15T09:40:00.000Z",
-    current: true,
-  },
-  {
-    id: "s2",
-    device: "Safari on macOS",
-    ip: "105.112.8.201",
-    lastActive: "2026-11-14T16:05:00.000Z",
-    current: false,
-  },
-  {
-    id: "s3",
-    device: "Firefox on Linux",
-    ip: "197.210.65.9",
-    lastActive: "2026-11-12T11:22:00.000Z",
-    current: false,
-  },
-];
+const SESSIONS_KEY = ["auth", "sessions"];
 
 export function SecuritySettingsPage() {
   const user = useCurrentUser();
-  const [sessions, setSessions] = useState(INITIAL_SESSIONS);
+  const queryClient = useQueryClient();
+  const sessions = useApiQuery(SESSIONS_KEY, listSessions, { staleTime: 0 });
   const [signOutOpen, setSignOutOpen] = useState(false);
 
   return (
@@ -83,30 +56,34 @@ export function SecuritySettingsPage() {
             </Button>
           }
         >
-          <SimpleTable
-            caption={t("security.sessions")}
-            rows={sessions}
-            getRowId={(row) => row.id}
-            columns={[
-              { key: "device", header: t("security.device"), cell: (r) => r.device },
-              { key: "ip", header: t("audit.ip"), cell: (r) => r.ip },
-              {
-                key: "active",
-                header: t("security.lastActive"),
-                cell: (r) => <DateText iso={r.lastActive} />,
-              },
-              {
-                key: "current",
-                header: t("common.status"),
-                cell: (r) =>
-                  r.current ? (
-                    <StatusBadge tone="info" label={t("security.thisDevice")} />
-                  ) : (
-                    <StatusBadge tone="neutral" label={t("security.signedIn")} />
-                  ),
-              },
-            ]}
-          />
+          <AsyncBody query={sessions} isEmpty={(rows) => rows.length === 0}>
+            {(rows) => (
+              <SimpleTable<SessionRow>
+                caption={t("security.sessions")}
+                rows={rows}
+                getRowId={(row) => row.id}
+                columns={[
+                  { key: "device", header: t("security.device"), cell: (r) => r.device },
+                  { key: "ip", header: t("audit.ip"), cell: (r) => r.ip },
+                  {
+                    key: "active",
+                    header: t("security.lastActive"),
+                    cell: (r) => <DateText iso={r.lastActive} />,
+                  },
+                  {
+                    key: "current",
+                    header: t("common.status"),
+                    cell: (r) =>
+                      r.current ? (
+                        <StatusBadge tone="info" label={t("security.thisDevice")} />
+                      ) : (
+                        <StatusBadge tone="neutral" label={t("security.signedIn")} />
+                      ),
+                  },
+                ]}
+              />
+            )}
+          </AsyncBody>
         </SectionCard>
       </div>
 
@@ -119,9 +96,8 @@ export function SecuritySettingsPage() {
         requireReason={false}
         requireTotp={false}
         onConfirm={async () => {
-          await simulate(() => undefined);
-          setSessions((rows) => rows.filter((row) => row.current));
-          recordAudit({ action: "auth.sessions.revoke_others", target: user.email });
+          await revokeOtherSessions(sessions.data ?? []);
+          await queryClient.invalidateQueries({ queryKey: SESSIONS_KEY });
           return t("security.signedOutOthers");
         }}
       />

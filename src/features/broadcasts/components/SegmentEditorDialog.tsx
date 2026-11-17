@@ -13,14 +13,16 @@ import {
 import { Textarea } from "@/shared/components/ui/Textarea";
 import { t } from "@/shared/i18n/t";
 import { formatCount } from "@/shared/lib/format";
+import { broadcastKeys, useAudienceEstimate } from "../api/queries";
 import { saveSegment } from "../api/segmentsApi";
-import { broadcastKeys } from "../api/queries";
-import { MAX_RULE_DAYS, estimateSize, segmentProblems } from "../model/audience";
+import { segmentProblems } from "../model/audience";
 import {
   EMPTY_RULES,
+  type AudienceRules,
   type AudienceSegment,
+  type FlagRule,
+  type GenderRule,
   type KycRule,
-  type SavingsRule,
   type SegmentDraft,
 } from "../model/types";
 
@@ -31,10 +33,9 @@ interface Props {
   segment: AudienceSegment | null;
 }
 
-const KYC_OPTIONS: KycRule[] = ["any", "none", "level1", "level2"];
-const SAVINGS_OPTIONS: SavingsRule[] = ["any", "yes", "no"];
-
-const toDays = (value: string): number | null => (value === "" ? null : Number(value));
+const KYC_OPTIONS: KycRule[] = ["any", "level1", "level2"];
+const FLAG_OPTIONS: FlagRule[] = ["any", "yes", "no"];
+const GENDER_OPTIONS: GenderRule[] = ["any", "male", "female"];
 
 /** Mount with a `key` per segment so the form starts from that segment's values. */
 export function SegmentEditorDialog({ open, onOpenChange, segment }: Props) {
@@ -45,11 +46,37 @@ export function SegmentEditorDialog({ open, onOpenChange, segment }: Props) {
       : { name: "", description: "", rules: { ...EMPTY_RULES } },
   );
   const update = (patch: Partial<SegmentDraft>) => setDraft((d) => ({ ...d, ...patch }));
-  const rule = (patch: Partial<SegmentDraft["rules"]>) =>
+  const rule = (patch: Partial<AudienceRules>) =>
     setDraft((d) => ({ ...d, rules: { ...d.rules, ...patch } }));
   const problems = segmentProblems(draft);
   // Do not nag about the rules before the user has had a chance to add any.
   const shown = draft.name === "" ? [] : problems;
+  const estimate = useAudienceEstimate(
+    draft.rules,
+    open && !problems.includes("segments.err.dates"),
+  );
+
+  const flagSelect = (
+    id: string,
+    labelKey: Parameters<typeof t>[0],
+    key: "kycCompleted" | "fixedDeposit" | "targetSavings",
+  ) => (
+    <div>
+      <Label htmlFor={id}>{t(labelKey)}</Label>
+      <Select value={draft.rules[key]} onValueChange={(v) => rule({ [key]: v as FlagRule })}>
+        <SelectTrigger id={id} className="mt-1 h-[52px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {FLAG_OPTIONS.map((option) => (
+            <SelectItem key={option} value={option}>
+              {t(`segments.flag.${option}`)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
 
   return (
     <ActionDialog
@@ -103,55 +130,54 @@ export function SegmentEditorDialog({ open, onOpenChange, segment }: Props) {
             </SelectContent>
           </Select>
         </div>
+        {flagSelect("seg-kyc-done", "segments.field.kycCompleted", "kycCompleted")}
         <div>
-          <Label htmlFor="seg-savings">{t("segments.field.savings")}</Label>
+          <Label htmlFor="seg-gender">{t("segments.field.gender")}</Label>
           <Select
-            value={draft.rules.savings}
-            onValueChange={(v) => rule({ savings: v as SavingsRule })}
+            value={draft.rules.gender}
+            onValueChange={(v) => rule({ gender: v as GenderRule })}
           >
-            <SelectTrigger id="seg-savings" className="mt-1 h-[52px]">
+            <SelectTrigger id="seg-gender" className="mt-1 h-[52px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {SAVINGS_OPTIONS.map((option) => (
+              {GENDER_OPTIONS.map((option) => (
                 <SelectItem key={option} value={option}>
-                  {t(`segments.savings.${option}`)}
+                  {t(`segments.gender.${option}`)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+        <div />
         <div>
-          <Label htmlFor="seg-joined">{t("segments.field.joined")}</Label>
+          <Label htmlFor="seg-from">{t("segments.field.joinedFrom")}</Label>
           <Input
-            id="seg-joined"
+            id="seg-from"
             className="mt-1"
-            type="number"
-            min={1}
-            max={MAX_RULE_DAYS}
-            value={draft.rules.joinedWithinDays ?? ""}
-            onChange={(e) => rule({ joinedWithinDays: toDays(e.target.value) })}
+            type="date"
+            value={draft.rules.joinedFrom}
+            onChange={(e) => rule({ joinedFrom: e.target.value })}
           />
         </div>
         <div>
-          <Label htmlFor="seg-inactive">{t("segments.field.inactive")}</Label>
+          <Label htmlFor="seg-to">{t("segments.field.joinedTo")}</Label>
           <Input
-            id="seg-inactive"
+            id="seg-to"
             className="mt-1"
-            type="number"
-            min={1}
-            max={MAX_RULE_DAYS}
-            value={draft.rules.inactiveDays ?? ""}
-            onChange={(e) => rule({ inactiveDays: toDays(e.target.value) })}
+            type="date"
+            value={draft.rules.joinedTo}
+            onChange={(e) => rule({ joinedTo: e.target.value })}
           />
         </div>
+        {flagSelect("seg-fixed", "segments.field.fixedDeposit", "fixedDeposit")}
+        {flagSelect("seg-target", "segments.field.targetSavings", "targetSavings")}
       </div>
-      <p className="m-0 text-xs text-muted-text">{t("segments.field.daysHelp")}</p>
       <div className="rounded-md bg-surface-muted p-3 text-sm">
         <p className="m-0 flex justify-between gap-2">
           <span className="text-muted-text">{t("segments.estimate")}</span>
           <span className="font-semibold text-ink">
-            {formatCount(problems.includes("segments.err.days") ? 0 : estimateSize(draft.rules))}
+            {estimate.data === undefined ? t("common.notAvailable") : formatCount(estimate.data)}
           </span>
         </p>
         <p className="m-0 mt-1 text-xs text-muted-text">{t("segments.estimate.note")}</p>

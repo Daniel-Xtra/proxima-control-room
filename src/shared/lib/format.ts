@@ -5,20 +5,26 @@ const naira = new Intl.NumberFormat("en-NG", {
   maximumFractionDigits: 2,
 });
 
+/** Shown instead of a value that is missing or not a number. */
+export const NO_VALUE = "–";
+
+const isNumber = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+
 /** Money is integer kobo everywhere in the UI. */
 export function formatKobo(kobo: number): string {
-  return naira.format(kobo / 100);
+  return isNumber(kobo) ? naira.format(kobo / 100) : NO_VALUE;
 }
 
 const compact = new Intl.NumberFormat("en-NG", { notation: "compact", maximumFractionDigits: 1 });
 
 /** Short money for chart axes, e.g. ₦22.5M. */
 export function formatCompactKobo(kobo: number): string {
-  return `₦${compact.format(kobo / 100)}`;
+  return isNumber(kobo) ? `₦${compact.format(kobo / 100)}` : NO_VALUE;
 }
 
 export function formatCount(value: number): string {
-  return new Intl.NumberFormat("en-NG").format(value);
+  return isNumber(value) ? new Intl.NumberFormat("en-NG").format(value) : NO_VALUE;
 }
 
 const lagos = new Intl.DateTimeFormat("en-GB", {
@@ -41,11 +47,14 @@ const lagosDay = new Intl.DateTimeFormat("en-GB", {
 /** ISO UTC string to Africa/Lagos, 12-hour clock. */
 export function formatLagos(iso: string, dateOnly = false): string {
   const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return NO_VALUE;
   return (dateOnly ? lagosDay : lagos).format(date).replace(",", "");
 }
 
 export function formatUtc(iso: string): string {
-  return new Date(iso).toISOString().replace("T", " ").replace(".000Z", " UTC");
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().replace("T", " ").replace(".000Z", " UTC");
 }
 
 export function maskEmail(email: string): string {

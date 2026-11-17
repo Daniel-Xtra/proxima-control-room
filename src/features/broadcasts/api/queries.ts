@@ -1,7 +1,12 @@
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
-import type { BroadcastFilters, SegmentFilters, TemplateFilters } from "../model/types";
+import type {
+  AudienceRules,
+  BroadcastFilters,
+  SegmentFilters,
+  TemplateFilters,
+} from "../model/types";
 import { getBroadcast, listBroadcasts, listTemplates } from "./broadcastsApi";
-import { listSegments } from "./segmentsApi";
+import { estimateAudience, listSegments } from "./segmentsApi";
 
 export const broadcastKeys = {
   all: ["broadcasts"] as const,
@@ -22,3 +27,7 @@ export const useTemplates = (filters: TemplateFilters) =>
 
 export const useSegments = (filters: SegmentFilters) =>
   useApiQuery(broadcastKeys.segments(filters), () => listSegments(filters));
+
+/** How many customers a set of rules reaches. */
+export const useAudienceEstimate = (rules: AudienceRules, enabled = true) =>
+  useApiQuery(["broadcasts", "estimate", rules], () => estimateAudience(rules), { enabled });

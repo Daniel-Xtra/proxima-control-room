@@ -28,13 +28,14 @@ export interface Customer {
   name: string;
   email: string;
   phone: string;
-  dateOfBirth: string;
+  dateOfBirth: string | null;
   gender: "male" | "female" | "unspecified";
-  referralCode: string;
+  referralCode: string | null;
   joinedAt: string;
   kycLevel: KycLevel;
   status: CustomerStatus;
-  reservedAccount: string;
+  /** Not exposed by the admin API yet. */
+  reservedAccount: string | null;
   balanceKobo: number;
   ledgerBalanceKobo: number;
   moneyInKobo: number;
@@ -53,25 +54,27 @@ export interface Customer {
   freezeHistory: FreezeEvent[];
 }
 
-export type CustomerRow = Pick<
-  Customer,
-  | "id"
-  | "name"
-  | "phone"
-  | "email"
-  | "reservedAccount"
-  | "dailyLimitKobo"
-  | "kycLevel"
-  | "status"
-  | "joinedAt"
->;
+/** One row of the masked customer directory. Email and phone arrive already masked. */
+export interface CustomerRow {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  kycLevel: KycLevel;
+  reservedAccount: string | null;
+  status: CustomerStatus;
+  joinedAt: string;
+}
 
 export interface CustomerFilters {
   search: string;
-  range: string;
+  /** "all", "active", "locked", "frozen" or "deactivated". */
   status: string;
+  /** "all", "yes" (completed), "no" (not completed), "1" or "2" (KYC level). */
   kyc: string;
-  /** Sort key and direction ("asc" or "desc"); an empty key keeps the default order. */
+  /** "all", "7d", "30d", "90d" or "365d": how recently they joined. */
+  range: string;
+  /** "name", "email" or "joined"; empty keeps newest first. */
   sort: string;
   dir: string;
   page: number;

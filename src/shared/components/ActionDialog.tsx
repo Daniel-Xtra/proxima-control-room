@@ -2,10 +2,10 @@ import { CheckCircle } from "@phosphor-icons/react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { getAuditActor } from "../api/auditStore";
+import { stepUp } from "../api/stepUp";
 import { ApiError } from "../api/client";
 import { t } from "../i18n/t";
 import { formatLagos } from "../lib/format";
-import { FileUpload, type EvidenceFile } from "./FileUpload";
 import { KeyValueList } from "./KeyValueList";
 import { TotpInput } from "./TotpInput";
 import { Button } from "./ui/Button";
@@ -23,9 +23,7 @@ import { Label } from "./ui/Label";
 import { Textarea } from "./ui/Textarea";
 
 export interface ActionValues {
-  ticket: string;
   reason: string;
-  evidence: EvidenceFile[];
   code: string;
 }
 
@@ -50,16 +48,14 @@ export interface ActionDialogProps {
   requireReason?: boolean;
   /** The reason is a comment and may be left empty. */
   reasonOptional?: boolean;
-  /** Evidence upload: "optional" (default when a reason is asked for), "required" or "none". */
-  evidence?: "none" | "optional" | "required";
   /** The user must type the confirmation word before the action can run. */
   typedConfirmation?: boolean;
   /** Runs the change. The resolved string is the outcome shown in the result and the toast. */
   onConfirm: (values: ActionValues) => Promise<string>;
 }
 
-const EMPTY: ActionValues = { ticket: "", reason: "", evidence: [], code: "" };
-const MIN_REASON = 5;
+const EMPTY: ActionValues = { reason: "", code: "" };
+const MIN_REASON = 10;
 
 /**
  * The one dialog every mutation goes through: ticket reference, reason, evidence,
@@ -78,7 +74,6 @@ export function ActionDialog({
   requireTotp = true,
   requireReason = true,
   reasonOptional,
-  evidence,
   typedConfirmation,
   onConfirm,
 }: ActionDialogProps) {
@@ -89,7 +84,6 @@ export function ActionDialog({
   const [error, setError] = useState<string>();
   const [result, setResult] = useState<{ outcome: string; at: string; values: ActionValues }>();
 
-  const evidenceMode = evidence ?? (requireReason ? "optional" : "none");
   const confirmWord = t("action.confirmWord");
 
   function reset() {
@@ -109,13 +103,13 @@ export function ActionDialog({
 
   const reasonOk = !requireReason || reasonOptional || values.reason.trim().length >= MIN_REASON;
   const typedOk = !typedConfirmation || typed === confirmWord;
-  const evidenceOk = evidenceMode !== "required" || values.evidence.length > 0;
-  const detailsValid = !blocked && reasonOk && typedOk && evidenceOk;
+  const detailsValid = !blocked && reasonOk && typedOk;
 
   async function submit() {
     setBusy(true);
     setError(undefined);
     try {
+      if (requireTotp) await stepUp(values.code);
       const outcome = await onConfirm(values);
       toast.success(outcome);
       setResult({ outcome, at: new Date().toISOString(), values });
@@ -161,7 +155,6 @@ export function ActionDialog({
                     ...(requireReason
                       ? [{ label: t("action.audit.reason"), value: result.values.reason || "—" }]
                       : []),
-                    { label: t("action.audit.ticket"), value: result.values.ticket || "—" },
                   ]}
                 />
               </div>
@@ -194,21 +187,6 @@ export function ActionDialog({
                     </div>
                   ) : null}
                   {children}
-                  <div>
-                    <Label htmlFor="action-ticket">{t("action.ticket")}</Label>
-                    <Input
-                      id="action-ticket"
-                      className="mt-1"
-                      autoComplete="off"
-                      placeholder={t("action.ticketPlaceholder")}
-                      value={values.ticket}
-                      onChange={(e) => setValues({ ...values, ticket: e.target.value })}
-                      aria-describedby="action-ticket-help"
-                    />
-                    <p id="action-ticket-help" className="m-0 mt-1 text-xs text-muted-text">
-                      {t("action.ticketHelp")}
-                    </p>
-                  </div>
                   {requireReason ? (
                     <div>
                       <Label htmlFor="action-reason">
@@ -227,15 +205,6 @@ export function ActionDialog({
                         {t("action.reasonHelp")}
                       </p>
                     </div>
-                  ) : null}
-                  {evidenceMode !== "none" ? (
-                    <FileUpload
-                      label={`${t("action.evidence")}${evidenceMode === "optional" ? ` (${t("action.optional")})` : ""}`}
-                      help={t("action.evidenceHelp")}
-                      onChange={(evidenceFiles) =>
-                        setValues((prev) => ({ ...prev, evidence: evidenceFiles }))
-                      }
-                    />
                   ) : null}
                   {typedConfirmation ? (
                     <div>

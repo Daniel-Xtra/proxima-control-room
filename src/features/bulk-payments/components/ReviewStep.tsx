@@ -26,7 +26,7 @@ export function ReviewStep({ draft, balance }: { draft: BatchDraft; balance: Bal
         <KeyValueList
           items={[
             { label: t("bulk.field.name"), value: draft.name.trim() },
-            { label: t("bulk.field.source"), value: t(`bulk.source.${draft.source}`) },
+            { label: t("bulk.field.source"), value: draft.source },
             {
               label: t("bulk.field.timing"),
               value: when ? formatLagos(when.toISOString()) : t("bulk.timing.onApproval"),

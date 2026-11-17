@@ -18,7 +18,10 @@ export function CustomerRequestsPanel({ customerId, freezeHistory }: Props) {
   return (
     <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
       <SectionCard title={t("requests.customer.title")} flush>
-        <RequestsTable filters={{ status: "all", customerId }} showCustomer={false} />
+        <RequestsTable
+          filters={{ status: "all", scope: "customer", customerId }}
+          showCustomer={false}
+        />
       </SectionCard>
       <SectionCard title={t("requests.customer.freezeHistory")}>
         {freezeHistory.length === 0 ? (

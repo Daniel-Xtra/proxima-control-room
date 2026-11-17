@@ -17,7 +17,9 @@ export const common = {
 
   "state.empty.title": "Nothing to show",
   "state.error.title": "Something went wrong",
+  "state.unavailable.title": "Not available yet",
   "api.unreachable": "Cannot reach the server. Check your connection and try again.",
+  "api.unavailable": "This is not available yet: the admin API has no endpoint for it.",
   "api.sessionExpired": "Your session has ended. Sign in again.",
   "state.forbidden.title": "You don't have access to this",
   "state.forbidden.description":
@@ -42,14 +44,9 @@ export const common = {
 
   "action.defaultDescription": "Review the change below. It is recorded in the audit log.",
   "action.optional": "optional",
-  "action.evidence": "Evidence",
-  "action.evidenceHelp":
-    "Screenshots, documents or exports that support this change. PDF, PNG, JPG, CSV or XLSX up to 10 MB.",
   "action.reason": "Reason",
-  "action.reasonHelp": "Say why this change is needed. It is saved in the audit log.",
-  "action.ticket": "Ticket reference",
-  "action.ticketPlaceholder": "e.g. SUP-1042",
-  "action.ticketHelp": "The support or incident ticket this change belongs to, if there is one.",
+  "action.reasonHelp":
+    "Say why this change is needed (at least 10 characters). It is saved in the audit log.",
   "action.confirmWord": "CONFIRM",
   "action.typeToConfirm": "Type {word} to confirm",
   "action.error.title": "That did not go through",
@@ -58,7 +55,6 @@ export const common = {
   "action.audit.who": "Done by",
   "action.audit.when": "When",
   "action.audit.reason": "Reason",
-  "action.audit.ticket": "Ticket",
 
   "upload.drop": "Drop files here or",
   "upload.browse": "browse",
@@ -72,11 +68,8 @@ export const common = {
   "totp.hint": "Open your authenticator app and enter the 6-digit code.",
   "totp.stepUpLabel": "Confirm with your authenticator",
 
-  "sensitive.hide": "Hide value",
-  "sensitive.reveal": "Reveal value (this is logged)",
-
   "shell.accountMenu": "Account menu",
-  "shell.environment": "Staging data · mock services",
+  "shell.environment": "Admin console",
   "shell.navigation": "Main navigation",
   "shell.openMenu": "Open menu",
   "shell.theme": "Theme",
@@ -108,7 +101,7 @@ export const common = {
   "nav.staff": "Staff",
   "nav.roles": "Roles",
   "nav.approvalRules": "Approval rules",
-  "nav.platformConfig": "Fees, limits, switches",
+  "nav.platformConfig": "Configuration",
   "nav.group.customers": "Customer operations",
   "nav.group.content": "Content",
   "nav.group.risk": "Risk and security",
