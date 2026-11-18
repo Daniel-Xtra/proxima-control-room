@@ -6,6 +6,7 @@ import { KeyValueList } from "@/shared/components/KeyValueList";
 import { MoneyText } from "@/shared/components/MoneyText";
 import { SectionCard } from "@/shared/components/SectionCard";
 import { StatCard } from "@/shared/components/StatCard";
+import { NO_VALUE } from "@/shared/lib/format";
 import { t } from "@/shared/i18n/t";
 import type { Customer } from "../model/types";
 import { RevealableField } from "./RevealableField";
@@ -84,6 +85,15 @@ export function CustomerSummaryTab({ customer }: { customer: Customer }) {
           <KeyValueList
             items={[
               {
+                label: t("customers.summary.accountNumber"),
+                value: customer.reservedAccount ? (
+                  <span className="tabular">{customer.reservedAccount}</span>
+                ) : (
+                  NO_VALUE
+                ),
+              },
+              { label: t("customers.summary.bank"), value: customer.reservedBank ?? NO_VALUE },
+              {
                 label: t("customers.col.phone"),
                 value: (
                   <RevealableField
@@ -140,7 +150,7 @@ export function CustomerSummaryTab({ customer }: { customer: Customer }) {
             [
               [t("customers.verify.phone"), customer.phoneVerified],
               [t("customers.verify.email"), customer.emailVerified],
-              [t("customers.verify.kyc"), customer.kycLevel > 0],
+              [t("customers.verify.kyc"), customer.kycCompleted],
               [t("customers.verify.pin"), customer.pinSet],
               [t("customers.verify.address"), customer.addressSet],
               [

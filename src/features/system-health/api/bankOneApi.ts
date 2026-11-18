@@ -3,9 +3,8 @@ import { request } from "@/shared/api/client";
 export interface MissingAccount {
   customerId: string;
   customerName: string;
-  /** The API does not return phone numbers for this list. */
   phone: string;
-  /** The API does not say whether an account is already queued. */
+  /** Queued for repair in the last few hours. */
   queued: boolean | null;
 }
 
@@ -23,7 +22,12 @@ interface Statistics {
 
 interface MissingList {
   total: number;
-  accounts: { user_id: string; user_name: string }[];
+  accounts: {
+    user_id: string;
+    user_name: string;
+    phone_number?: string | null;
+    already_queued?: boolean;
+  }[];
 }
 
 const BASE = "/admin/bankone-repair";
@@ -41,9 +45,9 @@ export async function listMissingAccounts(): Promise<MissingAccount[]> {
   const result = await request<MissingList>(`${BASE}/missing-accounts`, { query: { limit: 100 } });
   return result.accounts.map((account) => ({
     customerId: account.user_id,
-    customerName: account.user_name,
-    phone: "",
-    queued: null,
+    customerName: account.user_name.replace(/undefined/g, "").trim() || "–",
+    phone: account.phone_number ?? "",
+    queued: account.already_queued ?? null,
   }));
 }
 

@@ -1,4 +1,4 @@
-import { request } from "@/shared/api/client";
+import { request, type Page } from "@/shared/api/client";
 
 export interface WhitelistEntry {
   id: string;
@@ -58,8 +58,21 @@ const body = (input: WhitelistInput) => ({
   ...(input.expiresAt ? { expires_at: input.expiresAt } : {}),
 });
 
-export async function listWhitelist(): Promise<WhitelistEntry[]> {
-  return (await request<Row[]>("/admin/webhook-ip-whitelist")).map(toEntry);
+/** One page of active addresses. The API lists active entries only. */
+export async function listWhitelist(
+  page: number,
+  limit: number,
+  search = "",
+): Promise<Page<WhitelistEntry>> {
+  const result = await request<{ data: Row[]; total?: number }>("/admin/webhook-ip-whitelist", {
+    query: { page, limit, search: search.trim() || undefined },
+  });
+  return {
+    items: result.data.map(toEntry),
+    total: result.total ?? result.data.length,
+    page,
+    limit,
+  };
 }
 
 /** Active addresses per service. */

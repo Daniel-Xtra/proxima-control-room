@@ -130,6 +130,7 @@ function BatchDetail({ batch }: { batch: BulkBatch }) {
         <div className="grid gap-4 lg:grid-cols-3">
           <SectionCard title={t("bulk.section.payees")} flush className="lg:col-span-2">
             <SimpleTable<BulkItem>
+              storageKey="bulk-items"
               caption={t("bulk.section.payees")}
               rows={batch.items}
               getRowId={(item) => item.id}

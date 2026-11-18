@@ -59,6 +59,7 @@ export function SecuritySettingsPage() {
           <AsyncBody query={sessions} isEmpty={(rows) => rows.length === 0}>
             {(rows) => (
               <SimpleTable<SessionRow>
+                storageKey="sessions"
                 caption={t("security.sessions")}
                 rows={rows}
                 getRowId={(row) => row.id}

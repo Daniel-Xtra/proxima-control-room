@@ -1,3 +1,4 @@
+import { humanize } from "@/shared/lib/format";
 import { request } from "@/shared/api/client";
 import { fromApiAmount, toApiAmount } from "@/shared/api/money";
 import type {
@@ -28,7 +29,11 @@ interface Approval {
   reason: string;
   status: ApprovalStatus;
   maker_unique_identifier: string;
+  maker_name?: string | null;
   checker_unique_identifier: string | null;
+  checker_name?: string | null;
+  customer_name?: string | null;
+  current_limits?: { daily_limit: number; transaction_limit: number } | null;
   decision_reason: string | null;
   decided_at: string | null;
   failure: string | null;
@@ -86,31 +91,40 @@ const STATUS: Record<ApprovalStatus, RequestStatus> = {
 
 const short = (id: string) => id.slice(0, 8);
 
-function toRequest(a: Approval): AccountRequest | null {
-  const kind = TYPE_TO_KIND[a.type];
-  if (!kind) return null;
+function toRequest(a: Approval): AccountRequest {
+  // Types the UI has no dedicated screen for (fees, tier limits, bulk payments, broadcasts) still show up.
+  const kind = TYPE_TO_KIND[a.type] ?? "other";
   const limits: LimitDiff | undefined =
     kind === "limit" && a.payload.daily_limit !== undefined
       ? {
-          currentDailyKobo: null,
+          currentDailyKobo: a.current_limits ? fromApiAmount(a.current_limits.daily_limit) : null,
           requestedDailyKobo: fromApiAmount(a.payload.daily_limit),
-          currentPerTransactionKobo: null,
+          currentPerTransactionKobo: a.current_limits
+            ? fromApiAmount(a.current_limits.transaction_limit)
+            : null,
           requestedPerTransactionKobo: fromApiAmount(a.payload.transaction_limit ?? 0),
         }
       : undefined;
   return {
     id: a.id,
     kind,
+    type: a.type,
+    payloadSummary: Object.entries(a.payload ?? {}).map(
+      ([key, value]) =>
+        `${humanize(key)}: ${typeof value === "string" ? humanize(value) : String(value)}`,
+    ),
     customerId: a.target_id,
-    customerName: short(a.target_id),
+    customerName: a.customer_name ?? short(a.target_id),
     ...(STAFF_ACTION[a.type] ? { staffAction: STAFF_ACTION[a.type] } : {}),
     ...(a.payload.role_code ? { roleCode: a.payload.role_code } : {}),
     requestedById: a.maker_unique_identifier,
-    requestedBy: short(a.maker_unique_identifier),
+    requestedBy: a.maker_name ?? short(a.maker_unique_identifier),
     reason: a.reason,
     status: STATUS[a.status],
     createdAt: a.created_at,
-    ...(a.checker_unique_identifier ? { decidedBy: short(a.checker_unique_identifier) } : {}),
+    ...(a.checker_unique_identifier
+      ? { decidedBy: a.checker_name ?? short(a.checker_unique_identifier) }
+      : {}),
     ...(a.decided_at ? { decidedAt: a.decided_at } : {}),
     ...(a.decision_reason ? { adminComment: a.decision_reason } : {}),
     ...(a.failure ? { failure: a.failure } : {}),
@@ -124,7 +138,10 @@ function fetchScope(scope: Exclude<RequestScope, "customer">, type?: string) {
 
 export async function listRequests(filters: RequestFilters): Promise<AccountRequest[]> {
   // Staff changes span several approval types, so they are narrowed after the fetch.
-  const type = filters.kind && filters.kind !== "staff" ? KIND_TO_TYPE[filters.kind] : undefined;
+  const type =
+    filters.kind && filters.kind !== "staff" && filters.kind !== "other"
+      ? KIND_TO_TYPE[filters.kind]
+      : undefined;
   const pages =
     filters.scope === "customer"
       ? await Promise.all([fetchScope("assigned", type), fetchScope("mine", type)])
@@ -134,7 +151,6 @@ export async function listRequests(filters: RequestFilters): Promise<AccountRequ
     .flatMap((page) => page.data)
     .filter((a) => !seen.has(a.id) && seen.add(a.id))
     .map(toRequest)
-    .filter((r): r is AccountRequest => r !== null)
     .filter((r) => !filters.kind || r.kind === filters.kind)
     .filter((r) => !filters.customerId || r.customerId === filters.customerId)
     .filter((r) => filters.status === "all" || r.status === filters.status)
@@ -150,13 +166,16 @@ export async function countPending(): Promise<number> {
 }
 
 export interface NewRequest {
-  kind: Exclude<RequestKind, "staff" | "reversal" | "refund">;
+  kind: Exclude<RequestKind, "staff" | "reversal" | "refund" | "other">;
   customerId: string;
   reason: string;
   limits?: { dailyKobo: number; perTransactionKobo: number };
 }
 
-const CREATE_PATH: Record<Exclude<RequestKind, "staff" | "reversal" | "refund">, string> = {
+const CREATE_PATH: Record<
+  Exclude<RequestKind, "staff" | "reversal" | "refund" | "other">,
+  string
+> = {
   freeze: "freeze-requests",
   unfreeze: "unfreeze-requests",
   limit: "limit-requests",

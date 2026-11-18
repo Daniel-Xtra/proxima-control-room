@@ -1,3 +1,4 @@
+import { humanize } from "@/shared/lib/format";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActionDialog } from "@/shared/components/ActionDialog";
@@ -24,7 +25,7 @@ interface Props {
 /** Names a tier: the KYC level for retail tiers, otherwise the tier code. */
 function tierName(limit: TierLimit) {
   return limit.kycLevel === null
-    ? `${limit.type} · ${limit.tier}`
+    ? `${humanize(limit.type)} · ${humanize(limit.tier)}`
     : t("config.tier.level", { level: limit.kycLevel });
 }
 
@@ -49,6 +50,7 @@ export function LimitsPanel({ limits, unit, editable }: Props) {
       flush
     >
       <SimpleTable<TierLimit>
+        storageKey="tier-limits"
         caption={t("config.section.limits")}
         rows={limits}
         getRowId={(r) => r.id}

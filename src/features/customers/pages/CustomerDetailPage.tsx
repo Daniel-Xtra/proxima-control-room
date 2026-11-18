@@ -100,7 +100,10 @@ function CustomerDetail({ customer }: { customer: Customer }) {
         title={customer.name}
         description={
           customer.reservedAccount
-            ? t("customers.detail.subtitle", { account: customer.reservedAccount.slice(-4) })
+            ? t("customers.detail.subtitle", {
+                bank: customer.reservedBank ?? "–",
+                account: customer.reservedAccount,
+              })
             : undefined
         }
         logo={

@@ -1,8 +1,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ApprovalRulesPage, RoleEditorPage, RolesPage, StaffPage } from "@/features/access";
-import { PlatformConfigPage } from "@/features/platform-config";
-import { AuthProvider, LoginPage, RequirePermission, SecuritySettingsPage } from "@/features/auth";
+import { PlatformConfigPage, ProvidersPage } from "@/features/platform-config";
+import {
+  AuthProvider,
+  AcceptInvitationPage,
+  LoginPage,
+  RequirePermission,
+  SecuritySettingsPage,
+} from "@/features/auth";
 import {
   BroadcastDetailPage,
   BroadcastsPage,
@@ -37,6 +43,7 @@ export function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/accept-invite" element={<AcceptInvitationPage />} />
             <Route element={<AppShell />}>
               <Route index element={<OverviewPage />} />
               <Route
@@ -213,6 +220,14 @@ export function App() {
                 element={
                   <RequirePermission permission="config:view">
                     <PlatformConfigPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="settings/providers"
+                element={
+                  <RequirePermission permission="provider:view">
+                    <ProvidersPage />
                   </RequirePermission>
                 }
               />

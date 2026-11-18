@@ -1,4 +1,4 @@
-import { ApiError, request } from "@/shared/api/client";
+import { ApiError, request, type Page } from "@/shared/api/client";
 
 export type TwoFactorState = "enrolled" | "not-enrolled" | "reset-pending" | "unknown";
 
@@ -10,6 +10,11 @@ export interface StaffMember {
   twoFactor: TwoFactorState;
   active: boolean;
   lastLoginAt: string | null;
+  /** Signed out of the console by too many wrong passwords. */
+  locked: boolean;
+  createdAt: string | null;
+  /** An invitation that has not been accepted yet; the person stays disabled until they accept. */
+  invitation: "pending" | "expired" | null;
 }
 
 export interface RoleSummary {
@@ -60,10 +65,14 @@ interface StaffRow {
   is_enabled: boolean;
   two_factor?: "enrolled" | "not_enrolled" | "reset_pending";
   last_login_at?: string | null;
+  is_locked?: boolean;
+  invitation?: "pending" | "expired" | null;
+  created_at?: string;
 }
 
 interface StaffPage {
   data: StaffRow[];
+  total?: number;
 }
 
 const TWO_FACTOR = {
@@ -72,23 +81,48 @@ const TWO_FACTOR = {
   reset_pending: "reset-pending",
 } as const;
 
+/** One page of staff for the staff table. */
+export async function listStaffPage(
+  page: number,
+  limit: number,
+  search = "",
+): Promise<Page<StaffMember>> {
+  const result = await request<StaffPage>("/admin/staff", {
+    query: { page, limit, search: search.trim() || undefined },
+  });
+  return {
+    items: result.data.map(toStaff),
+    total: result.total ?? result.data.length,
+    page,
+    limit,
+  };
+}
+
+/** Every staff member (up to 100), for counting who holds each role. */
 export async function listStaff(): Promise<StaffMember[]> {
   const page = await request<StaffPage>("/admin/staff", { query: { limit: 100 } });
-  return page.data.map((row) => ({
-    id: row.unique_identifier,
-    name: `${row.first_name} ${row.last_name}`.trim(),
-    email: row.email,
-    roleIds: row.role ? [row.role] : [],
-    twoFactor: row.two_factor ? TWO_FACTOR[row.two_factor] : "unknown",
-    active: row.is_enabled,
-    lastLoginAt: row.last_login_at ?? null,
-  }));
+  return page.data.map(toStaff);
 }
+
+const toStaff = (row: StaffRow): StaffMember => ({
+  id: row.unique_identifier,
+  name: `${row.first_name} ${row.last_name}`.trim(),
+  email: row.email,
+  roleIds: row.role ? [row.role] : [],
+  twoFactor: row.two_factor ? TWO_FACTOR[row.two_factor] : "unknown",
+  active: row.is_enabled,
+  lastLoginAt: row.last_login_at ?? null,
+  locked: row.is_locked ?? false,
+  createdAt: row.created_at ?? null,
+  invitation: row.invitation ?? null,
+});
 
 /** Roles with how many staff hold each, plus every permission a role can be given. */
 export async function listRoleCatalogue(): Promise<RoleCatalogue> {
   const [data, staff] = await Promise.all([
-    request<{ roles: RoleRow[]; permissions: PermissionRow[] }>("/admin/roles"),
+    request<{ roles: RoleRow[]; permissions: PermissionRow[] }>("/admin/roles", {
+      query: { limit: 100 },
+    }),
     listStaff(),
   ]);
   return {
@@ -184,4 +218,63 @@ export async function setStaffActive(staffId: string, active: boolean, reason: s
 /** Ending sessions takes effect straight away, with no second approval. */
 export async function revokeStaffSessions(staffId: string, reason: string) {
   await request(staffPath(staffId, "sessions/revoke"), { method: "POST", body: { reason } });
+}
+
+export interface InviteInput {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  roleCode: string;
+}
+
+/** Creates the account (disabled) and emails a single-use link where the person sets a password. */
+export async function inviteStaff(input: InviteInput) {
+  await request("/admin/staff/invite", {
+    method: "POST",
+    body: {
+      email: input.email.trim(),
+      first_name: input.firstName.trim(),
+      last_name: input.lastName.trim(),
+      phone_number: input.phone.trim(),
+      role_code: input.roleCode,
+    },
+  });
+}
+
+/** A fresh link; the previous one stops working. */
+export async function resendInvitation(staffId: string) {
+  await request(staffPath(staffId, "invitation/resend"), { method: "POST" });
+}
+
+/** Cancels an invitation that has not been accepted; the staff record is removed. */
+export async function revokeInvitation(staffId: string) {
+  await request(staffPath(staffId, "invitation/revoke"), { method: "POST" });
+}
+
+/** One page of roles for the roles table, with how many staff hold each. */
+export async function listRolesPage(
+  page: number,
+  limit: number,
+  search = "",
+): Promise<Page<RoleSummary>> {
+  const [data, staff] = await Promise.all([
+    request<{ roles: RoleRow[]; total?: number }>("/admin/roles", {
+      query: { page, limit, search: search.trim() || undefined },
+    }),
+    listStaff(),
+  ]);
+  return {
+    items: data.roles.map((role) => ({
+      id: role.code,
+      name: role.name,
+      description: role.description ?? "",
+      isSystem: role.is_system,
+      permissionCodes: role.permissions,
+      memberCount: staff.filter((member) => member.roleIds.includes(role.code)).length,
+    })),
+    total: data.total ?? data.roles.length,
+    page,
+    limit,
+  };
 }

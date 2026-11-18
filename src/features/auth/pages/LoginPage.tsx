@@ -79,6 +79,16 @@ export function LoginPage() {
     });
   }
 
+  /** Drops the half-finished sign-in so another account can be used. */
+  function backToSignIn() {
+    setStep("credentials");
+    setMfaToken("");
+    setPassword("");
+    setCode("");
+    setFailures(0);
+    setError(undefined);
+  }
+
   function onCredentials(event: FormEvent) {
     event.preventDefault();
     void run(async () => {
@@ -206,6 +216,18 @@ export function LoginPage() {
               {t("auth.enrol.submit")}
             </Button>
           </div>
+        ) : null}
+
+        {step !== "credentials" ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className="mt-3 self-center"
+            disabled={pending}
+            onClick={backToSignIn}
+          >
+            {t("auth.backToSignIn")}
+          </Button>
         ) : null}
       </Card>
     </main>

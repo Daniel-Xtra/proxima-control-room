@@ -15,6 +15,9 @@ export interface ApprovalRule {
 
 export interface ApprovalRules {
   rules: ApprovalRule[];
+  total: number;
+  page: number;
+  limit: number;
   minExpiryHours: number;
   maxExpiryHours: number;
 }
@@ -34,12 +37,22 @@ interface RuleRow {
 
 interface RulesResponse {
   data: RuleRow[];
+  total?: number;
   bounds: { min_expiry_hours: number; max_expiry_hours: number };
 }
 
-export async function listApprovalRules(): Promise<ApprovalRules> {
-  const result = await request<RulesResponse>("/admin/approval-rules");
+export async function listApprovalRules(
+  page: number,
+  limit: number,
+  search = "",
+): Promise<ApprovalRules> {
+  const result = await request<RulesResponse>("/admin/approval-rules", {
+    query: { page, limit, search: search.trim() || undefined },
+  });
   return {
+    total: result.total ?? result.data.length,
+    page,
+    limit,
     rules: result.data.map((row) => ({
       type: row.type,
       targetType: row.target_type,

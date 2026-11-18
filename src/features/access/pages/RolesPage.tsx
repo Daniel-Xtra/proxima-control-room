@@ -5,18 +5,21 @@ import { useNavigate } from "react-router-dom";
 import { useCan } from "@/features/auth";
 import { ActionDialog } from "@/shared/components/ActionDialog";
 import { AsyncBody } from "@/shared/components/AsyncBody";
+import { FilterBar } from "@/shared/components/FilterBar";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
-import { SimpleTable } from "@/shared/components/SimpleTable";
+import { DataTable } from "@/shared/components/DataTable";
 import { Button } from "@/shared/components/ui/Button";
+import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
 import { retireRole } from "../api/accessApi";
-import { accessKeys, useRoles } from "../api/queries";
+import { accessKeys, useRolesPage } from "../api/queries";
 
 export function RolesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const roles = useRoles();
+  const [filters, setFilter] = useUrlFilters({ q: "", page: "1", limit: "10" });
+  const roles = useRolesPage(Number(filters.page), Number(filters.limit), filters.q);
   const canManage = useCan()("roles:manage");
   const [retiring, setRetiring] = useState<{ id: string; name: string } | null>(null);
 
@@ -35,12 +38,28 @@ export function RolesPage() {
           ) : null
         }
       />
+      <FilterBar
+        onClear={() => setFilter("q", "")}
+        dirty={filters.q !== ""}
+        search={{
+          value: filters.q,
+          onChange: (v) => setFilter("q", v),
+          placeholder: t("roles.search"),
+          label: t("roles.searchLabel"),
+        }}
+      />
       <SectionCard flush>
-        <AsyncBody query={roles}>
-          {(rows) => (
-            <SimpleTable
+        <AsyncBody query={roles} isEmpty={(data) => data.total === 0}>
+          {(data) => (
+            <DataTable
+              page={data.page}
+              limit={data.limit}
+              total={data.total}
+              onPageChange={(page) => setFilter("page", String(page))}
+              onLimitChange={(limit) => setFilter("limit", String(limit))}
+              storageKey="roles"
               caption={t("roles.title")}
-              rows={rows}
+              rows={data.items}
               getRowId={(r) => r.id}
               columns={[
                 {

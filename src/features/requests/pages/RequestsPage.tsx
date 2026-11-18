@@ -24,6 +24,7 @@ const KIND_TABS: RequestKind[] = [
   "reversal",
   "refund",
   "staff",
+  "other",
 ];
 
 export function RequestsPage() {

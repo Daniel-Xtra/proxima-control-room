@@ -57,6 +57,7 @@ export function BannersPage() {
         >
           {(rows) => (
             <SimpleTable<Banner>
+              storageKey="banners"
               caption={t("banners.title")}
               rows={rows}
               getRowId={(r) => r.id}

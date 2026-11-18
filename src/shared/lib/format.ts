@@ -83,3 +83,8 @@ export function formatBytes(n: number): string {
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
+
+/** Backend codes such as `pending_review` read as plain words: `pending review`. */
+export function humanize(text: string | null | undefined): string {
+  return (text ?? "").replace(/_/g, " ");
+}

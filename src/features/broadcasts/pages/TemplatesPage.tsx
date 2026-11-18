@@ -98,6 +98,7 @@ export function TemplatesPage() {
         >
           {(rows) => (
             <SimpleTable<BroadcastTemplate>
+              storageKey="templates"
               caption={t("templates.title")}
               rows={rows}
               getRowId={(r) => r.id}

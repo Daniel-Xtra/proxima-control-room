@@ -1,5 +1,5 @@
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
-import { getRole, listRoleCatalogue, listStaff } from "./accessApi";
+import { getRole, listRoleCatalogue, listRolesPage, listStaffPage } from "./accessApi";
 
 export const accessKeys = {
   roles: ["access", "roles"] as const,
@@ -10,6 +10,21 @@ export const accessKeys = {
 export const useRoleCatalogue = () => useApiQuery(accessKeys.roles, listRoleCatalogue);
 export const useRoles = () =>
   useApiQuery(accessKeys.roles, listRoleCatalogue, { select: (data) => data.roles });
-export const useStaff = () => useApiQuery(accessKeys.staff, listStaff);
+export const useStaff = (page: number, limit: number, search = "") =>
+  useApiQuery(
+    [...accessKeys.staff, page, limit, search],
+    () => listStaffPage(page, limit, search),
+    {
+      placeholderData: (previous) => previous,
+    },
+  );
 export const useRole = (id: string) =>
   useApiQuery(accessKeys.role(id), () => getRole(id), { enabled: id !== "new" });
+export const useRolesPage = (page: number, limit: number, search = "") =>
+  useApiQuery(
+    [...accessKeys.roles, "page", page, limit, search],
+    () => listRolesPage(page, limit, search),
+    {
+      placeholderData: (previous) => previous,
+    },
+  );

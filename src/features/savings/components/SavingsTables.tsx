@@ -7,6 +7,7 @@ import { MoneyText } from "@/shared/components/MoneyText";
 import { SimpleTable } from "@/shared/components/SimpleTable";
 import { Button } from "@/shared/components/ui/Button";
 import { t } from "@/shared/i18n/t";
+import type { SavingsFilters } from "../api/savingsApi";
 import { useFixedDeposits, useTargetSavings } from "../api/queries";
 import type {
   FixedDeposit,
@@ -30,9 +31,15 @@ const TargetBadge = defineStatusBadge<TargetSavingStatus>({
   paid: { tone: "success", label: t("savings.status.paid") },
 });
 
-export function FixedDepositsTable({ customerId }: { customerId?: string }) {
+export function FixedDepositsTable({
+  customerId,
+  filters,
+}: {
+  customerId?: string;
+  filters?: SavingsFilters;
+}) {
   const can = useCan();
-  const result = useFixedDeposits(customerId);
+  const result = useFixedDeposits(customerId, filters);
   const [target, setTarget] = useState<LiquidationTarget | null>(null);
 
   return (
@@ -44,6 +51,7 @@ export function FixedDepositsTable({ customerId }: { customerId?: string }) {
       >
         {(rows) => (
           <SimpleTable<FixedDeposit>
+            storageKey="fixed-deposits"
             caption={t("savings.tab.fixed")}
             rows={rows}
             getRowId={(r) => r.id}
@@ -115,9 +123,15 @@ export function FixedDepositsTable({ customerId }: { customerId?: string }) {
   );
 }
 
-export function TargetSavingsTable({ customerId }: { customerId?: string }) {
+export function TargetSavingsTable({
+  customerId,
+  filters,
+}: {
+  customerId?: string;
+  filters?: SavingsFilters;
+}) {
   const can = useCan();
-  const result = useTargetSavings(customerId);
+  const result = useTargetSavings(customerId, filters);
   const [target, setTarget] = useState<LiquidationTarget | null>(null);
 
   return (
@@ -129,6 +143,7 @@ export function TargetSavingsTable({ customerId }: { customerId?: string }) {
       >
         {(rows) => (
           <SimpleTable<TargetSaving>
+            storageKey="target-savings"
             caption={t("savings.tab.target")}
             rows={rows}
             getRowId={(r) => r.id}

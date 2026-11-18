@@ -1,11 +1,13 @@
 export const savings = {
   "savings.title": "Savings",
   "savings.description": "Fixed deposits and target savings across all customers.",
-  "savings.gap":
-    "The backend only lists savings per customer today. This cross-customer view needs a new endpoint.",
   "savings.tab.fixed": "Fixed deposits",
   "savings.tab.target": "Target savings",
   "savings.empty": "No savings plans",
+  "savings.search": "Search plan or customer",
+  "savings.searchLabel": "Search savings",
+  "savings.filter.status": "Status",
+  "savings.filter.any": "Any status",
   "savings.days": "{count} days",
   "savings.col.customer": "Customer",
   "savings.col.principal": "Principal",

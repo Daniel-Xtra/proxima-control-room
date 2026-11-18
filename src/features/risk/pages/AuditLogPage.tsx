@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { AsyncBody } from "@/shared/components/AsyncBody";
 import { DateText } from "@/shared/components/DateText";
 import { FilterBar } from "@/shared/components/FilterBar";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
-import { SimpleTable } from "@/shared/components/SimpleTable";
+import { DataTable } from "@/shared/components/DataTable";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import {
   Select,
@@ -15,18 +16,25 @@ import {
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
-import { listAuditLog, type AuditEntry } from "../api/riskApi";
+import { listAuditPage, type AuditEntry } from "../api/riskApi";
 
-const DEFAULTS = { q: "", status: "all" };
+import { AuditDetailSheet } from "../components/AuditDetailSheet";
+
+const DEFAULTS = { q: "", status: "all", page: "1", limit: "10" };
 
 export function AuditLogPage() {
   const [filters, setFilter] = useUrlFilters(DEFAULTS);
+  const [selected, setSelected] = useState<AuditEntry | null>(null);
   const query = useApiQuery(
     ["risk", "audit", filters],
-    () => listAuditLog({ search: filters.q, status: filters.status }),
-    {
-      staleTime: 0,
-    },
+    () =>
+      listAuditPage({
+        search: filters.q,
+        status: filters.status,
+        page: Number(filters.page),
+        limit: Number(filters.limit),
+      }),
+    { staleTime: 0, placeholderData: (previous) => previous },
   );
 
   return (
@@ -60,15 +68,18 @@ export function AuditLogPage() {
         </div>
       </FilterBar>
       <SectionCard flush>
-        <AsyncBody
-          query={query}
-          isEmpty={(rows) => rows.length === 0}
-          emptyTitle={t("audit.empty")}
-        >
-          {(rows) => (
-            <SimpleTable<AuditEntry>
+        <AsyncBody query={query} isEmpty={(data) => data.total === 0} emptyTitle={t("audit.empty")}>
+          {(data) => (
+            <DataTable<AuditEntry>
+              page={data.page}
+              limit={data.limit}
+              total={data.total}
+              onPageChange={(page) => setFilter("page", String(page))}
+              onLimitChange={(limit) => setFilter("limit", String(limit))}
+              storageKey="audit-log"
+              onRowOpen={setSelected}
               caption={t("audit.title")}
-              rows={rows}
+              rows={data.items}
               getRowId={(r) => r.id}
               columns={[
                 { key: "at", header: t("audit.col.time"), cell: (r) => <DateText iso={r.at} /> },
@@ -110,6 +121,7 @@ export function AuditLogPage() {
           )}
         </AsyncBody>
       </SectionCard>
+      <AuditDetailSheet entry={selected} onClose={() => setSelected(null)} />
     </>
   );
 }

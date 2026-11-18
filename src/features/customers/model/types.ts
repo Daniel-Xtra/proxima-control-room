@@ -33,9 +33,12 @@ export interface Customer {
   referralCode: string | null;
   joinedAt: string;
   kycLevel: KycLevel;
+  /** Whether the customer has finished KYC (the account tier is separate). */
+  kycCompleted: boolean;
   status: CustomerStatus;
-  /** Not exposed by the admin API yet. */
   reservedAccount: string | null;
+  /** The bank that holds the reserved account. */
+  reservedBank: string | null;
   balanceKobo: number;
   ledgerBalanceKobo: number;
   moneyInKobo: number;

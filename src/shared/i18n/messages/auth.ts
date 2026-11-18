@@ -8,6 +8,25 @@ export const auth = {
   "auth.totp.description":
     "Open your authenticator app. Codes sent by email or SMS are not accepted.",
   "auth.totp.verify": "Verify",
+  "auth.backToSignIn": "Back to sign in",
+  "auth.invite.title": "Set up your account",
+  "auth.invite.welcome":
+    "Welcome, {name}. You have been invited as {role}. Choose a password to finish.",
+  "auth.invite.rules":
+    "8 to 20 characters with upper and lower case letters, a number and a symbol.",
+  "auth.invite.confirm": "Confirm password",
+  "auth.invite.mismatch": "The passwords do not match.",
+  "auth.invite.submit": "Create account",
+  "auth.invite.done":
+    "Your account is ready. Sign in with your new password; you will then set up your authenticator app.",
+  "auth.invite.invalid":
+    "This invitation link is not valid. It may have expired or already been used. Ask an administrator to send a new one.",
+  "auth.invite.rule.short": "Use at least 8 characters.",
+  "auth.invite.rule.long": "Use no more than 20 characters.",
+  "auth.invite.rule.lower": "Add a lower case letter.",
+  "auth.invite.rule.upper": "Add an upper case letter.",
+  "auth.invite.rule.digit": "Add a number.",
+  "auth.invite.rule.symbol": "Add a symbol such as ! or @.",
   "auth.totp.remaining": "{count} attempts left.",
   "auth.totp.locked": "Too many wrong codes. Sign-in is locked for 15 minutes.",
 

@@ -65,6 +65,7 @@ export const common = {
   "upload.remove": "Remove {name}",
 
   "totp.label": "Authenticator code",
+  "totp.digit": "Digit {index}",
   "totp.hint": "Open your authenticator app and enter the 6-digit code.",
   "totp.stepUpLabel": "Confirm with your authenticator",
 
@@ -102,6 +103,7 @@ export const common = {
   "nav.roles": "Roles",
   "nav.approvalRules": "Approval rules",
   "nav.platformConfig": "Configuration",
+  "nav.providers": "Providers",
   "nav.group.customers": "Customer operations",
   "nav.group.content": "Content",
   "nav.group.risk": "Risk and security",

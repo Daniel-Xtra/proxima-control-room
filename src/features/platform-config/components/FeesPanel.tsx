@@ -1,3 +1,4 @@
+import { humanize } from "@/shared/lib/format";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActionDialog } from "@/shared/components/ActionDialog";
@@ -107,6 +108,7 @@ export function FeesPanel({ fees, editable }: Props) {
   return (
     <SectionCard title={t("config.section.fees")} description={t("config.fees.description")} flush>
       <SimpleTable<FeeRule>
+        storageKey="fees"
         caption={t("config.section.fees")}
         rows={fees}
         getRowId={(r) => String(r.id)}
@@ -118,7 +120,7 @@ export function FeesPanel({ fees, editable }: Props) {
             cell: (r) => (
               <div>
                 <p className="font-medium">{r.name}</p>
-                <p className="text-xs text-muted-text">{r.scope || r.code}</p>
+                <p className="text-xs text-muted-text">{humanize(r.scope || r.code)}</p>
               </div>
             ),
           },

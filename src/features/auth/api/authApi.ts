@@ -101,3 +101,34 @@ export async function logout() {
     clearTokens();
   }
 }
+
+export interface InvitationPreview {
+  email: string;
+  firstName: string;
+  lastName: string;
+  roleCode: string;
+}
+
+/** The emailed link is the credential: it is valid once and expires. */
+export async function previewInvitation(token: string): Promise<InvitationPreview> {
+  const data = await request<{
+    email: string;
+    first_name: string;
+    last_name: string;
+    role_code: string;
+  }>("/admin/auth/invitation/preview", { query: { token }, auth: false });
+  return {
+    email: data.email,
+    firstName: data.first_name,
+    lastName: data.last_name,
+    roleCode: data.role_code,
+  };
+}
+
+export async function acceptInvitation(token: string, password: string) {
+  await request("/admin/auth/invitation/accept", {
+    method: "POST",
+    body: { token, password },
+    auth: false,
+  });
+}

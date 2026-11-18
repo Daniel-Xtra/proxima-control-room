@@ -1,7 +1,15 @@
 import type { Permission } from "@/features/auth";
 
 export type RequestKind =
-  "freeze" | "unfreeze" | "limit" | "unlock" | "password_reset" | "reversal" | "refund" | "staff";
+  | "freeze"
+  | "unfreeze"
+  | "limit"
+  | "unlock"
+  | "password_reset"
+  | "reversal"
+  | "refund"
+  | "staff"
+  | "other";
 export type StaffAction = "disable" | "enable" | "role" | "mfa_reset";
 export type RequestStatus =
   "pending" | "approved" | "rejected" | "cancelled" | "expired" | "failed";
@@ -17,6 +25,10 @@ export interface LimitDiff {
 export interface AccountRequest {
   id: string;
   kind: RequestKind;
+  /** The approval type code, such as CUSTOMER_FREEZE. */
+  type: string;
+  /** What the request carries, as `field: value` lines (for types the UI has no screen for). */
+  payloadSummary: string[];
   /** The customer, or the staff member for staff changes. */
   customerId: string;
   /** Set for staff changes: what is being asked. */
@@ -61,6 +73,7 @@ export const APPROVE_PERMISSION: Record<RequestKind, Permission> = {
   reversal: "reversal_request:approve",
   refund: "refund_request:approve",
   staff: "staff_change:approve",
+  other: "request:view_all",
 };
 
 export const INITIATE_PERMISSION: Record<RequestKind, Permission> = {
@@ -72,4 +85,5 @@ export const INITIATE_PERMISSION: Record<RequestKind, Permission> = {
   reversal: "transaction:reverse",
   refund: "transaction:refund",
   staff: "staff:manage",
+  other: "request:view_all",
 };

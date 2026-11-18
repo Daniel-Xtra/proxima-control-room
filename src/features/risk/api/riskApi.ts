@@ -1,4 +1,5 @@
-import { request } from "@/shared/api/client";
+import { humanize } from "@/shared/lib/format";
+import { request, type Page } from "@/shared/api/client";
 
 export interface LockPolicy {
   enabled: boolean;
@@ -71,6 +72,13 @@ export interface AuditEntry {
   reason?: string;
   before?: string;
   after?: string;
+  /** The fields below feed the detail view. */
+  actorId: string;
+  actorRole: string;
+  targetType: string;
+  targetId: string;
+  beforeData: Record<string, unknown> | null;
+  afterData: Record<string, unknown> | null;
 }
 
 interface AuditRow {
@@ -78,6 +86,7 @@ interface AuditRow {
   occurred_at: string;
   actor_name: string | null;
   actor_id: string | null;
+  actor_role?: string | null;
   action: string;
   target_type: string | null;
   target_id: string | null;
@@ -90,33 +99,57 @@ interface AuditRow {
 
 const show = (value: Record<string, unknown> | null) => (value ? JSON.stringify(value) : undefined);
 
-export async function listAuditLog(filters: {
+export async function listAuditPage(filters: {
   search: string;
   status: string;
+  page?: number;
+  limit?: number;
   /** Only events about this record, such as one customer. */
   targetId?: string;
-}): Promise<AuditEntry[]> {
-  const result = await request<{ data: AuditRow[] }>("/admin/audit-logs", {
+}): Promise<Page<AuditEntry>> {
+  const page = filters.page ?? 1;
+  const limit = filters.limit ?? 100;
+  const result = await request<{ data: AuditRow[]; total?: number }>("/admin/audit-logs", {
     query: {
       search: filters.search.trim() || undefined,
       target_id: filters.targetId,
-      // The UI groups failures and denied attempts together.
-      status: filters.status === "success" ? "success" : undefined,
-      limit: 100,
+      // "Failed" means the failure outcome; denied attempts show under "any".
+      status:
+        filters.status === "success"
+          ? "success"
+          : filters.status === "failed"
+            ? "failure"
+            : undefined,
+      page,
+      limit,
     },
   });
-  return result.data
-    .filter((row) => filters.status !== "failed" || row.outcome !== "success")
-    .map((row) => ({
-      id: row.id,
-      at: row.occurred_at,
-      actor: row.actor_name ?? row.actor_id ?? "",
-      action: row.action,
-      target: [row.target_type, row.target_id].filter(Boolean).join(" "),
-      status: row.outcome === "success" ? "success" : "failed",
-      ip: row.ip_address ?? "",
-      reason: row.reason ?? undefined,
-      before: show(row.before),
-      after: show(row.after),
-    }));
+  const items: AuditEntry[] = result.data.map((row) => ({
+    id: row.id,
+    at: row.occurred_at,
+    actor: row.actor_name ?? row.actor_id ?? "",
+    action: humanize(row.action),
+    target: [humanize(row.target_type), row.target_id].filter(Boolean).join(" "),
+    status: row.outcome === "success" ? "success" : "failed",
+    ip: row.ip_address ?? "",
+    reason: row.reason ?? undefined,
+    before: show(row.before),
+    after: show(row.after),
+    actorId: row.actor_id ?? "",
+    actorRole: humanize(row.actor_role),
+    targetType: humanize(row.target_type),
+    targetId: row.target_id ?? "",
+    beforeData: row.before,
+    afterData: row.after,
+  }));
+  return { items, total: result.total ?? items.length, page, limit };
+}
+
+/** The latest events, for panels that show a short list. */
+export async function listAuditLog(filters: {
+  search: string;
+  status: string;
+  targetId?: string;
+}): Promise<AuditEntry[]> {
+  return (await listAuditPage({ ...filters, limit: 100 })).items;
 }

@@ -37,11 +37,28 @@ interface TargetRow {
   amount_unit?: string;
 }
 
-const query = (customerId?: string) => ({ customer_id: customerId, limit: 100 });
+export interface SavingsFilters {
+  /** Matches the plan or customer name; the API needs 3 or more characters. */
+  search: string;
+  /** "all", "active", "matured", "paid" or "cancelled". */
+  status: string;
+}
 
-export async function listFixedDeposits(customerId?: string): Promise<FixedDeposit[]> {
+const NO_FILTERS: SavingsFilters = { search: "", status: "all" };
+
+const query = (customerId: string | undefined, filters: SavingsFilters) => ({
+  customer_id: customerId,
+  search: filters.search.trim().length >= 3 ? filters.search.trim() : undefined,
+  status: filters.status === "all" ? undefined : filters.status,
+  limit: 100,
+});
+
+export async function listFixedDeposits(
+  customerId?: string,
+  filters: SavingsFilters = NO_FILTERS,
+): Promise<FixedDeposit[]> {
   const page = await request<{ data: FixedRow[] }>("/admin/savings/fixed-deposits", {
-    query: query(customerId),
+    query: query(customerId, filters),
   });
   return page.data.map((row) => ({
     id: row.id,
@@ -58,9 +75,12 @@ export async function listFixedDeposits(customerId?: string): Promise<FixedDepos
   }));
 }
 
-export async function listTargetSavings(customerId?: string): Promise<TargetSaving[]> {
+export async function listTargetSavings(
+  customerId?: string,
+  filters: SavingsFilters = NO_FILTERS,
+): Promise<TargetSaving[]> {
   const page = await request<{ data: TargetRow[] }>("/admin/savings/target-savings", {
-    query: query(customerId),
+    query: query(customerId, filters),
   });
   return page.data.map((row) => ({
     id: row.id,

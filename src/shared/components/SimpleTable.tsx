@@ -1,6 +1,8 @@
 import { ArrowSquareOut, CaretDown, CaretUp, CaretUpDown } from "@phosphor-icons/react";
 import { useMemo, useState, type ReactNode } from "react";
+import { useColumnVisibility } from "../hooks/useColumnVisibility";
 import { t } from "../i18n/t";
+import { ColumnPicker } from "./ColumnPicker";
 import { cn } from "../lib/cn";
 import { Button } from "./ui/Button";
 import { compareValues, nextSort, type SortState } from "./tableSort";
@@ -30,6 +32,8 @@ interface SimpleTableProps<T> {
   sort?: SortState | null;
   onSortChange?: (next: SortState | null) => void;
   hiddenKeys?: ReadonlySet<string>;
+  /** Shows a Columns menu above the table and remembers the choice under this key. */
+  storageKey?: string;
 }
 
 export function SimpleTable<T>({
@@ -41,12 +45,15 @@ export function SimpleTable<T>({
   sort,
   onSortChange,
   hiddenKeys,
+  storageKey,
 }: SimpleTableProps<T>) {
   const controlled = onSortChange !== undefined;
   const [localSort, setLocalSort] = useState<SortState | null>(null);
   const active = controlled ? (sort ?? null) : localSort;
 
-  const visible = columns.filter((col) => !hiddenKeys?.has(col.key));
+  const saved = useColumnVisibility(storageKey ?? "");
+  const hidden = storageKey ? saved.hidden : hiddenKeys;
+  const visible = columns.filter((col) => !hidden?.has(col.key));
   const sortId = (col: Column<T>) => (controlled ? (col.sortKey ?? col.key) : col.key);
   const isSortable = (col: Column<T>) => (controlled ? col.sortKey !== undefined : !!col.sortValue);
 
@@ -65,7 +72,7 @@ export function SimpleTable<T>({
     else setLocalSort(next);
   }
 
-  return (
+  const table = (
     // The wrapper scrolls sideways only, so the table never grows its own vertical scrollbar.
     <div className="relative w-full overflow-x-auto overflow-y-hidden">
       <Table container={false}>
@@ -161,6 +168,21 @@ export function SimpleTable<T>({
           ))}
         </TableBody>
       </Table>
+    </div>
+  );
+
+  if (!storageKey) return table;
+  return (
+    <div>
+      <div className="flex justify-end border-b border-border-soft px-4 py-2">
+        <ColumnPicker
+          columns={columns}
+          hidden={saved.hidden}
+          onToggle={saved.toggle}
+          onReset={saved.reset}
+        />
+      </div>
+      {table}
     </div>
   );
 }

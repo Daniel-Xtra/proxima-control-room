@@ -80,6 +80,13 @@ export function ReviewDrawer({ request, onClose }: Props) {
               ]}
             />
             {request.limits ? <LimitDiffTable limits={request.limits} /> : null}
+            {request.kind === "other" && request.payloadSummary.length > 0 ? (
+              <ul className="m-0 list-disc pl-5 text-sm text-ink">
+                {request.payloadSummary.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            ) : null}
             {request.decidedBy ? (
               <KeyValueList
                 columns={1}

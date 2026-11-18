@@ -115,6 +115,7 @@ export function BankOneRepairPage() {
             flush
           >
             <SimpleTable<RepairResult>
+              storageKey="bankone-results"
               caption={t("bankone.results.title")}
               rows={results}
               getRowId={(r) => r.customerId}
@@ -153,6 +154,7 @@ export function BankOneRepairPage() {
           >
             {(rows) => (
               <SimpleTable<MissingAccount>
+                storageKey="bankone-missing"
                 caption={t("bankone.missing.title")}
                 rows={rows}
                 getRowId={(r) => r.customerId}

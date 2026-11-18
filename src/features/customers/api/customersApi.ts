@@ -99,7 +99,12 @@ interface Overview {
     referral_code: string | null;
     kyc_level: 1 | 2;
     reserved_account_number: string | null;
+    reserved_account_bank?: string | null;
     amount_unit?: string;
+  };
+  identity?: {
+    bvn: { number: string | null; status: string } | null;
+    nin: { number: string | null; status: string } | null;
   };
   onboarding: {
     is_kyc_completed: boolean;
@@ -156,7 +161,13 @@ function toCustomer(o: Overview): Customer {
         id: `${o.profile.unique_identifier}-${index}`,
         type,
         status: COMPLIANCE_STATUSES.includes(status) ? status : ("pending" as const),
-        value: "",
+        // BVN and NIN arrive masked to their last four digits.
+        value:
+          (type === "BVN"
+            ? o.identity?.bvn?.number
+            : type === "NIN"
+              ? o.identity?.nin?.number
+              : null) ?? "",
         approvedAt: v.approved_at,
         documents: v.document_name ? [v.document_name] : [],
       },
@@ -185,8 +196,10 @@ function toCustomer(o: Overview): Customer {
     referralCode: o.profile.referral_code,
     joinedAt: o.profile.created_at,
     kycLevel: o.profile.kyc_level,
+    kycCompleted: o.onboarding.is_kyc_completed,
     status,
     reservedAccount: o.profile.reserved_account_number,
+    reservedBank: o.profile.reserved_account_bank ?? null,
     balanceKobo: fromApiAmount(o.wallet?.balance, unit),
     ledgerBalanceKobo: fromApiAmount(o.wallet?.ledger_balance, unit),
     moneyInKobo: fromApiAmount(o.wallet?.money_in, unit),

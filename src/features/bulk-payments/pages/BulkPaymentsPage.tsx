@@ -83,6 +83,7 @@ export function BulkPaymentsPage() {
         >
           {(rows) => (
             <SimpleTable<BatchRow>
+              storageKey="bulk-batches"
               caption={t("bulk.title")}
               rows={rows}
               getRowId={(r) => r.id}

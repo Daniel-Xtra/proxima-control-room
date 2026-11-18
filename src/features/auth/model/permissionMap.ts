@@ -48,9 +48,11 @@ export const PERMISSION_SOURCES: Record<Permission, readonly string[]> = {
   "refund_request:approve": ["txn.refund.approve"],
   "transaction:retry": ["txn.retry"],
 
-  "kyc:review": ["kyb.document.review", "kyc.retail.review"],
-  "kyc:approve": ["kyb.upgrade_l3.approve"],
-  "kyc:reject": [],
+  "kyc:view": ["kyc.retail.view"],
+  "kyc:view_documents": ["kyc.retail.document.view"],
+  "kyc:review": ["kyc.retail.review"],
+  "kyc:approve": ["kyc.retail.review"],
+  "kyc:reject": ["kyc.retail.review"],
   "kyc:override": [],
 
   "savings:view": ["savings.view"],
@@ -96,6 +98,9 @@ export const PERMISSION_SOURCES: Record<Permission, readonly string[]> = {
   "staff:view": ["staff.view"],
   // Raising a role, access or authenticator change; another admin approves it.
   "staff:manage": ["staff.change.request"],
+  "staff:invite": ["staff.invite"],
+  "provider:view": ["provider.view"],
+  "provider:manage": ["provider.config.change.request"],
   "staff_change:approve": ["staff.change_role", "staff.mfa_reset", "staff.disable"],
   "staff:revoke_sessions": ["staff.session.revoke"],
   "roles:manage": ["role.manage"],

@@ -1,13 +1,16 @@
 import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { humanize } from "@/shared/lib/format";
 import { Can, useCan } from "@/features/auth";
 import { ActionDialog } from "@/shared/components/ActionDialog";
 import { AsyncBody } from "@/shared/components/AsyncBody";
 import { DateText } from "@/shared/components/DateText";
+import { FilterBar } from "@/shared/components/FilterBar";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
-import { SimpleTable } from "@/shared/components/SimpleTable";
+import { DataTable } from "@/shared/components/DataTable";
+import type { Column } from "@/shared/components/SimpleTable";
 import { StatCard } from "@/shared/components/StatCard";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { Input } from "@/shared/components/ui/Input";
@@ -15,6 +18,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { Label } from "@/shared/components/ui/Label";
 import { Switch } from "@/shared/components/ui/Switch";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
+import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
 import {
   addWhitelistEntry,
@@ -73,7 +77,12 @@ function status(entry: WhitelistEntry) {
 export function WebhookWhitelistPage() {
   const queryClient = useQueryClient();
   const can = useCan();
-  const query = useApiQuery(KEY, listWhitelist, { staleTime: 0 });
+  const [filters, setFilter] = useUrlFilters({ q: "", page: "1", limit: "10" });
+  const query = useApiQuery(
+    [...KEY, filters.page, filters.limit, filters.q],
+    () => listWhitelist(Number(filters.page), Number(filters.limit), filters.q),
+    { staleTime: 0, placeholderData: (previous) => previous },
+  );
   const stats = useApiQuery([...KEY, "stats"], whitelistStatistics, { staleTime: 0 });
   // `null` means the form is closed; an entry means editing it; "new" means adding.
   const [editing, setEditing] = useState<WhitelistEntry | "new" | null>(null);
@@ -96,6 +105,80 @@ export function WebhookWhitelistPage() {
     setEditing(target);
   }
 
+  const columns: Column<WhitelistEntry>[] = [
+    {
+      key: "service",
+      header: t("whitelist.col.service"),
+      sortValue: (r: { service: string }) => r.service,
+      cell: (r) => humanize(r.service),
+    },
+    {
+      key: "ip",
+      header: t("audit.ip"),
+      sortValue: (r: { ip: string }) => r.ip,
+      cell: (r) => <span className="tabular">{r.ip}</span>,
+    },
+    { key: "note", header: t("whitelist.col.note"), cell: (r) => humanize(r.note) },
+    {
+      key: "priority",
+      header: t("whitelist.col.priority"),
+      align: "right",
+      sortValue: (r: { priority: number }) => r.priority,
+      cell: (r) => r.priority,
+    },
+    {
+      key: "status",
+      header: t("whitelist.col.status"),
+      cell: (r) => {
+        const state = status(r);
+        return (
+          <StatusBadge
+            tone={state === "active" ? "success" : state === "expired" ? "danger" : "neutral"}
+            label={t(`whitelist.status.${state}`)}
+          />
+        );
+      },
+    },
+    {
+      key: "expires",
+      header: t("whitelist.col.expires"),
+      cell: (r) => (r.expiresAt ? <DateText iso={r.expiresAt} /> : t("whitelist.never")),
+    },
+    { key: "by", header: t("whitelist.col.addedBy"), cell: (r) => r.addedBy },
+    {
+      key: "at",
+      header: t("whitelist.col.addedAt"),
+      sortValue: (r: { addedAt: string }) => r.addedAt,
+      cell: (r) => <DateText iso={r.addedAt} dateOnly />,
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      cell: (r) =>
+        can("integrations:manage") ? (
+          <span className="inline-flex gap-1">
+            <Button
+              variant="ghost"
+              size="icon-lg"
+              aria-label={t("whitelist.editNamed", { ip: r.ip })}
+              onClick={() => open(r)}
+            >
+              <PencilSimple aria-hidden="true" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-lg"
+              aria-label={t("whitelist.removeNamed", { ip: r.ip })}
+              onClick={() => setRemoving(r)}
+            >
+              <Trash aria-hidden="true" />
+            </Button>
+          </span>
+        ) : null,
+    },
+  ];
+
   return (
     <>
       <PageHeader
@@ -111,12 +194,22 @@ export function WebhookWhitelistPage() {
           </Can>
         }
       />
+      <FilterBar
+        onClear={() => setFilter("q", "")}
+        dirty={filters.q !== ""}
+        search={{
+          value: filters.q,
+          onChange: (v) => setFilter("q", v),
+          placeholder: t("whitelist.search"),
+          label: t("whitelist.searchLabel"),
+        }}
+      />
       <AsyncBody
         query={query}
-        isEmpty={(rows) => rows.length === 0}
+        isEmpty={(data) => data.total === 0}
         emptyTitle={t("whitelist.empty")}
       >
-        {(rows) => (
+        {(data) => (
           <div className="flex flex-col gap-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard
@@ -125,100 +218,18 @@ export function WebhookWhitelistPage() {
               />
               <StatCard label={t("whitelist.stats.services")} value={stats.data?.length ?? "–"} />
             </div>
-            {stats.data && stats.data.length > 0 ? (
-              <ul className="m-0 flex list-none flex-wrap gap-2 p-0 text-xs text-muted-text">
-                {stats.data.map((item) => (
-                  <li key={item.service} className="rounded-full border border-border px-3 py-1">
-                    {item.service} · {item.count}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
             <SectionCard flush>
-              <SimpleTable<WhitelistEntry>
+              <DataTable<WhitelistEntry>
+                page={data.page}
+                limit={data.limit}
+                total={data.total}
+                onPageChange={(page) => setFilter("page", String(page))}
+                onLimitChange={(limit) => setFilter("limit", String(limit))}
+                storageKey="whitelist"
                 caption={t("whitelist.title")}
-                rows={rows}
+                rows={data.items}
                 getRowId={(r) => r.id}
-                columns={[
-                  {
-                    key: "service",
-                    header: t("whitelist.col.service"),
-                    sortValue: (r: { service: string }) => r.service,
-                    cell: (r) => r.service,
-                  },
-                  {
-                    key: "ip",
-                    header: t("audit.ip"),
-                    sortValue: (r: { ip: string }) => r.ip,
-                    cell: (r) => <span className="tabular">{r.ip}</span>,
-                  },
-                  { key: "note", header: t("whitelist.col.note"), cell: (r) => r.note },
-                  {
-                    key: "priority",
-                    header: t("whitelist.col.priority"),
-                    align: "right",
-                    sortValue: (r: { priority: number }) => r.priority,
-                    cell: (r) => r.priority,
-                  },
-                  {
-                    key: "status",
-                    header: t("whitelist.col.status"),
-                    cell: (r) => {
-                      const state = status(r);
-                      return (
-                        <StatusBadge
-                          tone={
-                            state === "active"
-                              ? "success"
-                              : state === "expired"
-                                ? "danger"
-                                : "neutral"
-                          }
-                          label={t(`whitelist.status.${state}`)}
-                        />
-                      );
-                    },
-                  },
-                  {
-                    key: "expires",
-                    header: t("whitelist.col.expires"),
-                    cell: (r) =>
-                      r.expiresAt ? <DateText iso={r.expiresAt} /> : t("whitelist.never"),
-                  },
-                  { key: "by", header: t("whitelist.col.addedBy"), cell: (r) => r.addedBy },
-                  {
-                    key: "at",
-                    header: t("whitelist.col.addedAt"),
-                    sortValue: (r: { addedAt: string }) => r.addedAt,
-                    cell: (r) => <DateText iso={r.addedAt} dateOnly />,
-                  },
-                  {
-                    key: "actions",
-                    header: "",
-                    align: "right",
-                    cell: (r) =>
-                      can("integrations:manage") ? (
-                        <span className="inline-flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon-lg"
-                            aria-label={t("whitelist.editNamed", { ip: r.ip })}
-                            onClick={() => open(r)}
-                          >
-                            <PencilSimple aria-hidden="true" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-lg"
-                            aria-label={t("whitelist.removeNamed", { ip: r.ip })}
-                            onClick={() => setRemoving(r)}
-                          >
-                            <Trash aria-hidden="true" />
-                          </Button>
-                        </span>
-                      ) : null,
-                  },
-                ]}
+                columns={columns}
               />
             </SectionCard>
           </div>
@@ -230,7 +241,7 @@ export function WebhookWhitelistPage() {
         onOpenChange={(next) => !next && setEditing(null)}
         title={editing === "new" ? t("whitelist.add") : t("whitelist.edit")}
         description={
-          editing && editing !== "new" ? `${editing.service} · ${editing.ip}` : undefined
+          editing && editing !== "new" ? `${humanize(editing.service)} · ${editing.ip}` : undefined
         }
         impact={editing === "new" ? t("whitelist.addImpact") : t("whitelist.editImpact")}
         confirmLabel={editing === "new" ? t("whitelist.add") : t("common.save")}
@@ -303,7 +314,7 @@ export function WebhookWhitelistPage() {
         open={removing !== null}
         onOpenChange={(open) => !open && setRemoving(null)}
         title={t("whitelist.remove")}
-        description={removing ? `${removing.service} · ${removing.ip}` : undefined}
+        description={removing ? `${humanize(removing.service)} · ${removing.ip}` : undefined}
         impact={t("whitelist.removeImpact")}
         confirmLabel={t("whitelist.remove")}
         typedConfirmation

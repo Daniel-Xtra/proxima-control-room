@@ -55,6 +55,12 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
     setProblems(found);
   }
 
+  const FILTERS = [
+    { id: "all", label: "bulk.filter.all", count: totals.count },
+    { id: "fix", label: "bulk.filter.fix", count: totals.invalid },
+    { id: "valid", label: "bulk.filter.valid", count: totals.valid },
+  ] as const;
+
   const shown = payees.filter((p) =>
     filter === "all" ? true : filter === "fix" ? p.errors.length > 0 : p.errors.length === 0,
   );
@@ -129,23 +135,34 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
           <p className="m-0 p-6 text-center text-sm text-muted-text">{t("bulk.nothingYet")}</p>
         ) : (
           <>
-            <Tabs
-              value={filter}
-              onValueChange={(value) => setFilter(value as Filter)}
-              className="mt-0 gap-0"
-            >
-              <TabsList className="px-4">
-                <TabsTrigger value="all">
-                  {t("bulk.filter.all", { count: totals.count })}
-                </TabsTrigger>
-                <TabsTrigger value="fix">
-                  {t("bulk.filter.fix", { count: totals.invalid })}
-                </TabsTrigger>
-                <TabsTrigger value="valid">
-                  {t("bulk.filter.valid", { count: totals.valid })}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-soft px-4 py-3">
+              <Tabs
+                value={filter}
+                onValueChange={(value) => setFilter(value as Filter)}
+                className="mt-0 gap-0"
+              >
+                <TabsList className="w-auto gap-1 rounded-lg border border-border bg-surface-muted p-1">
+                  {FILTERS.map(({ id, label, count }) => (
+                    <TabsTrigger
+                      key={id}
+                      value={id}
+                      className="mb-0 gap-2 rounded-md border-b-0 px-3 py-1.5 text-muted-text data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-sm"
+                    >
+                      {t(label)}
+                      <span
+                        className={
+                          id === "fix" && count > 0
+                            ? "tabular rounded-full bg-danger-bg px-1.5 text-xs text-danger-text"
+                            : "tabular rounded-full bg-surface-muted px-1.5 text-xs text-muted-text"
+                        }
+                      >
+                        {count}
+                      </span>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            </div>
             <SimpleTable<PayeeDraft>
               caption={t("bulk.section.review")}
               rows={shown}

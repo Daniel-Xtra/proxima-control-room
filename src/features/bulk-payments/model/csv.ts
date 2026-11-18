@@ -98,11 +98,25 @@ function amount(cell: Cell): string {
   return typeof cell === "number" ? cell.toFixed(2) : text(cell);
 }
 
+const HEADER_WORDS = new Set([
+  "account_name",
+  "account_type",
+  "name",
+  "beneficiary",
+  "account_number",
+  "account_no",
+  "bank",
+  "bank_name",
+  "amount",
+  "narration",
+]);
+
+/** A header row names its columns: two or more cells are known column names. */
 function isHeader(row: Cell[]): boolean {
-  const first = text(row[0])
-    .toLowerCase()
-    .replace(/[\s_]+/g, "_");
-  return first === CSV_HEADERS[0];
+  const matches = row.filter((cell) =>
+    HEADER_WORDS.has(text(cell).toLowerCase().replace(/[s_]+/g, "_")),
+  );
+  return matches.length >= 2;
 }
 
 /** Turns sheet rows (from CSV or Excel) into payee drafts. A header row is skipped when present. */

@@ -112,6 +112,7 @@ export function BroadcastsPage() {
         >
           {(rows) => (
             <SimpleTable<BroadcastRow>
+              storageKey="broadcasts"
               caption={t("broadcasts.title")}
               rows={rows}
               getRowId={(r) => r.id}

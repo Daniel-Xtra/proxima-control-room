@@ -5,13 +5,15 @@ import { ActionDialog } from "@/shared/components/ActionDialog";
 import { AsyncBody } from "@/shared/components/AsyncBody";
 import { BooleanBadge } from "@/shared/components/BooleanBadge";
 import { DateText } from "@/shared/components/DateText";
+import { FilterBar } from "@/shared/components/FilterBar";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
-import { SimpleTable } from "@/shared/components/SimpleTable";
+import { DataTable } from "@/shared/components/DataTable";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
 import { Label } from "@/shared/components/ui/Label";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
+import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { messages } from "@/shared/i18n/messages";
 import { t, type MessageKey } from "@/shared/i18n/t";
 import { listApprovalRules, setApprovalExpiry, type ApprovalRule } from "../api/approvalRulesApi";
@@ -28,7 +30,12 @@ export function ApprovalRulesPage() {
   const queryClient = useQueryClient();
   const can = useCan();
   const editable = can("approval_rules:manage");
-  const query = useApiQuery(RULES_KEY, listApprovalRules, { staleTime: 0 });
+  const [filters, setFilter] = useUrlFilters({ q: "", page: "1", limit: "10" });
+  const query = useApiQuery(
+    [...RULES_KEY, filters.page, filters.limit, filters.q],
+    () => listApprovalRules(Number(filters.page), Number(filters.limit), filters.q),
+    { staleTime: 0, placeholderData: (previous) => previous },
+  );
   const [editing, setEditing] = useState<ApprovalRule | null>(null);
   const [hours, setHours] = useState("");
 
@@ -47,10 +54,26 @@ export function ApprovalRulesPage() {
         crumbs={[{ label: t("nav.group.settings") }, { label: t("approvalRules.title") }]}
         description={t("approvalRules.description")}
       />
+      <FilterBar
+        onClear={() => setFilter("q", "")}
+        dirty={filters.q !== ""}
+        search={{
+          value: filters.q,
+          onChange: (v) => setFilter("q", v),
+          placeholder: t("approvalRules.search"),
+          label: t("approvalRules.searchLabel"),
+        }}
+      />
       <SectionCard flush>
-        <AsyncBody query={query} isEmpty={(data) => data.rules.length === 0}>
+        <AsyncBody query={query} isEmpty={(data) => data.total === 0}>
           {(data) => (
-            <SimpleTable<ApprovalRule>
+            <DataTable<ApprovalRule>
+              page={data.page}
+              limit={data.limit}
+              total={data.total}
+              onPageChange={(page) => setFilter("page", String(page))}
+              onLimitChange={(limit) => setFilter("limit", String(limit))}
+              storageKey="approval-rules"
               caption={t("approvalRules.title")}
               rows={data.rules}
               getRowId={(r) => r.type}

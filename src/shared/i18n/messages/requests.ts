@@ -5,6 +5,7 @@ export const requests = {
   "requests.tab.unfreeze": "Unfreeze",
   "requests.tab.limit": "Limit changes",
   "requests.tab.staff": "Staff changes",
+  "requests.tab.other": "Other approvals",
   "requests.tab.unlock": "Unlock",
   "requests.tab.password_reset": "Password reset",
   "requests.tab.reversal": "Reversals",
@@ -14,6 +15,7 @@ export const requests = {
   "requests.kind.unfreeze": "Unfreeze account",
   "requests.kind.limit": "Limit change",
   "requests.kind.staff": "Staff change",
+  "requests.kind.other": "Other approval",
   "requests.kind.unlock": "Unlock customer login",
   "requests.kind.password_reset": "Reset customer password",
   "requests.kind.reversal": "Reverse transaction",
@@ -78,6 +80,7 @@ export const requests = {
   "requests.approve.impact.reversal":
     "Transaction {name} is reversed and the customer is credited.",
   "requests.approve.impact.refund": "Transaction {name} is refunded to the customer.",
+  "requests.approve.impact.other": "The change is applied straight away.",
   "requests.approve.impact.staff":
     "The change is applied to this staff member ({name}) straight away.",
   "requests.approve.impact.limit": "{name}'s limits change to the requested values straight away.",
@@ -85,6 +88,7 @@ export const requests = {
 
   "requests.customer.title": "Requests for this customer",
   "requests.customer.freezeHistory": "Freeze history",
+  "requests.customer.noFreezeHistoryTitle": "No freeze history",
   "requests.customer.noFreezeHistory": "This account has never been frozen.",
   "requests.customer.frozen": "Account frozen",
   "requests.customer.unfrozen": "Account unfrozen",

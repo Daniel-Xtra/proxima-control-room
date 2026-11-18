@@ -1,3 +1,4 @@
+import { humanize } from "@/shared/lib/format";
 import { request, requestFile, type Page } from "@/shared/api/client";
 import { fromApiAmount, toApiAmount } from "@/shared/api/money";
 import type {
@@ -114,11 +115,11 @@ function toProvider(row: ProviderRow): ProviderRecord {
   add("accountNumber", row.account_number);
   add("externalReference", row.external_reference);
   add("sessionId", row.session_id);
-  add("billType", row.bill_type);
+  add("billType", humanize(row.bill_type));
   add("billCustomer", row.customer);
   return {
     kind: row.kind,
-    processor: row.processor,
+    processor: humanize(row.processor),
     status: row.status,
     message: row.message ?? null,
     details,

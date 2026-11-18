@@ -14,7 +14,7 @@ export function DirectionChip({ direction }: { direction: TransactionDirection }
   const Glyph = credit ? ArrowDownLeft : ArrowUpRight;
   return (
     <span
-      className={`inline-flex items-center gap-1 text-sm font-medium ${credit ? "text-success" : "text-ink"}`}
+      className={`inline-flex items-center gap-1 text-sm font-medium ${credit ? "text-success" : "text-warning-text"}`}
     >
       <Glyph aria-hidden="true" className="size-3.5" />
       {credit ? t("transactions.credit") : t("transactions.debit")}

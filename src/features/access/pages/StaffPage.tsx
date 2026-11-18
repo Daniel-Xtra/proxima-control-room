@@ -1,4 +1,4 @@
-import { DotsThree } from "@phosphor-icons/react";
+import { DotsThree, Plus } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useCan, useCurrentUser } from "@/features/auth";
@@ -8,7 +8,8 @@ import { DateText } from "@/shared/components/DateText";
 import { defineStatusBadge } from "@/shared/components/defineStatusBadge";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
-import { SimpleTable } from "@/shared/components/SimpleTable";
+import { FilterBar } from "@/shared/components/FilterBar";
+import { DataTable } from "@/shared/components/DataTable";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { Button } from "@/shared/components/ui/Button";
 import {
@@ -17,6 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/DropdownMenu";
+import { Input } from "@/shared/components/ui/Input";
 import { Label } from "@/shared/components/ui/Label";
 import {
   Select,
@@ -25,9 +27,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/components/ui/Select";
+import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
 import {
   assignRole,
+  inviteStaff,
   resetTwoFactor,
   revokeStaffSessions,
   setStaffActive,
@@ -35,6 +39,7 @@ import {
   type TwoFactorState,
 } from "../api/accessApi";
 import { accessKeys, useRoles, useStaff } from "../api/queries";
+import { InvitationDialog } from "../components/InvitationDialog";
 
 const TwoFactorBadge = defineStatusBadge<TwoFactorState>({
   enrolled: { tone: "success", label: t("staff.2fa.enrolled") },
@@ -43,16 +48,33 @@ const TwoFactorBadge = defineStatusBadge<TwoFactorState>({
   unknown: { tone: "neutral", label: t("common.notAvailable") },
 });
 
-type Dialog = { kind: "role" | "2fa" | "toggle" | "sessions"; member: StaffMember } | null;
+type Dialog = {
+  kind: "role" | "2fa" | "toggle" | "sessions" | "resend" | "revoke-invite";
+  member: StaffMember;
+} | null;
+
+const BLANK_INVITE = { email: "", firstName: "", lastName: "", phone: "", roleCode: "" };
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function StaffPage() {
   const queryClient = useQueryClient();
   const user = useCurrentUser();
   const can = useCan();
-  const staff = useStaff();
+  const [filters, setFilter] = useUrlFilters({ q: "", page: "1", limit: "10" });
+  const staff = useStaff(Number(filters.page), Number(filters.limit), filters.q);
   const roles = useRoles();
   const [dialog, setDialog] = useState<Dialog>(null);
   const [roleId, setRoleId] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const [invite, setInvite] = useState(BLANK_INVITE);
+  const setField = (patch: Partial<typeof BLANK_INVITE>) =>
+    setInvite((current) => ({ ...current, ...patch }));
+  const inviteValid =
+    EMAIL.test(invite.email.trim()) &&
+    invite.firstName.trim() !== "" &&
+    invite.lastName.trim() !== "" &&
+    invite.phone.trim().length >= 7 &&
+    invite.roleCode !== "";
   const refresh = () => queryClient.invalidateQueries({ queryKey: accessKeys.staff });
   // Staff changes become approval requests, so the pending count and requests list change too.
   const refreshRequests = () => queryClient.invalidateQueries({ queryKey: ["requests"] });
@@ -62,6 +84,7 @@ export function StaffPage() {
   // Changes go through a request that another admin approves; ending sessions is immediate.
   const canRequest = can("staff:manage");
   const canRevoke = can("staff:revoke_sessions");
+  const canInvite = can("staff:invite");
 
   return (
     <>
@@ -69,17 +92,47 @@ export function StaffPage() {
         title={t("staff.title")}
         crumbs={[{ label: t("nav.group.settings") }, { label: t("staff.title") }]}
         description={t("staff.description")}
+        actions={
+          canInvite ? (
+            <Button
+              onClick={() => {
+                setInvite(BLANK_INVITE);
+                setInviting(true);
+              }}
+            >
+              <Plus aria-hidden="true" />
+              {t("staff.invite")}
+            </Button>
+          ) : undefined
+        }
+      />
+      {!canRequest && !canRevoke ? (
+        <output className="mb-3 block rounded-md bg-warning-bg p-3 text-sm text-warning-text">
+          {t("staff.noAccess")}
+        </output>
+      ) : null}
+      <FilterBar
+        onClear={() => setFilter("q", "")}
+        dirty={filters.q !== ""}
+        search={{
+          value: filters.q,
+          onChange: (v) => setFilter("q", v),
+          placeholder: t("staff.search"),
+          label: t("staff.searchLabel"),
+        }}
       />
       <SectionCard flush>
-        <AsyncBody
-          query={staff}
-          isEmpty={(rows) => rows.length === 0}
-          emptyTitle={t("staff.empty")}
-        >
-          {(rows) => (
-            <SimpleTable<StaffMember>
+        <AsyncBody query={staff} isEmpty={(data) => data.total === 0} emptyTitle={t("staff.empty")}>
+          {(data) => (
+            <DataTable<StaffMember>
+              page={data.page}
+              limit={data.limit}
+              total={data.total}
+              onPageChange={(page) => setFilter("page", String(page))}
+              onLimitChange={(limit) => setFilter("limit", String(limit))}
+              storageKey="staff"
               caption={t("staff.title")}
-              rows={rows}
+              rows={data.items}
               getRowId={(r) => r.id}
               columns={[
                 {
@@ -108,12 +161,22 @@ export function StaffPage() {
                   key: "status",
                   header: t("staff.col.status"),
                   sortValue: (r: { active: boolean }) => String(r.active),
-                  cell: (r) => (
-                    <StatusBadge
-                      tone={r.active ? "success" : "neutral"}
-                      label={r.active ? t("staff.active") : t("staff.disabled")}
-                    />
-                  ),
+                  cell: (r) =>
+                    r.invitation ? (
+                      <StatusBadge
+                        tone={r.invitation === "pending" ? "info" : "warning"}
+                        label={
+                          r.invitation === "pending" ? t("staff.invited") : t("staff.inviteExpired")
+                        }
+                      />
+                    ) : r.locked ? (
+                      <StatusBadge tone="danger" label={t("staff.locked")} />
+                    ) : (
+                      <StatusBadge
+                        tone={r.active ? "success" : "neutral"}
+                        label={r.active ? t("staff.active") : t("staff.disabled")}
+                      />
+                    ),
                 },
                 {
                   key: "login",
@@ -123,11 +186,28 @@ export function StaffPage() {
                     r.lastLoginAt ? <DateText iso={r.lastLoginAt} /> : t("staff.never"),
                 },
                 {
+                  key: "created",
+                  header: t("staff.col.created"),
+                  sortValue: (r: { createdAt: string | null }) => r.createdAt ?? "",
+                  cell: (r) => (r.createdAt ? <DateText iso={r.createdAt} dateOnly /> : "–"),
+                },
+                {
                   key: "actions",
-                  header: "",
+                  header: t("staff.col.actions"),
+                  alwaysVisible: true,
                   align: "right",
                   cell: (r) =>
-                    r.id === user.id || !(canRequest || canRevoke) ? null : (
+                    r.id === user.id ? (
+                      <Button
+                        variant="ghost"
+                        size="icon-lg"
+                        disabled
+                        title={t("staff.self")}
+                        aria-label={t("staff.self")}
+                      >
+                        <DotsThree aria-hidden="true" weight="bold" />
+                      </Button>
+                    ) : (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -139,37 +219,52 @@ export function StaffPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          {canRequest ? (
-                            <DropdownMenuItem
-                              onSelect={() => {
-                                setRoleId(r.roleIds[0] ?? "");
-                                setDialog({ kind: "role", member: r });
-                              }}
-                            >
-                              {t("staff.changeRole")}
-                            </DropdownMenuItem>
-                          ) : null}
-                          {canRequest ? (
-                            <DropdownMenuItem
-                              onSelect={() => setDialog({ kind: "2fa", member: r })}
-                            >
-                              {t("staff.reset2fa")}
-                            </DropdownMenuItem>
-                          ) : null}
-                          {canRequest ? (
-                            <DropdownMenuItem
-                              onSelect={() => setDialog({ kind: "toggle", member: r })}
-                            >
-                              {r.active ? t("staff.disable") : t("staff.enable")}
-                            </DropdownMenuItem>
-                          ) : null}
-                          {canRevoke ? (
-                            <DropdownMenuItem
-                              onSelect={() => setDialog({ kind: "sessions", member: r })}
-                            >
-                              {t("staff.revokeSessions")}
-                            </DropdownMenuItem>
-                          ) : null}
+                          {r.invitation ? (
+                            <>
+                              <DropdownMenuItem
+                                disabled={!canInvite}
+                                onSelect={() => setDialog({ kind: "resend", member: r })}
+                              >
+                                {t("staff.invite.resend")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={!canInvite}
+                                onSelect={() => setDialog({ kind: "revoke-invite", member: r })}
+                              >
+                                {t("staff.invite.revoke")}
+                              </DropdownMenuItem>
+                            </>
+                          ) : (
+                            <>
+                              <DropdownMenuItem
+                                disabled={!canRequest}
+                                onSelect={() => {
+                                  setRoleId(r.roleIds[0] ?? "");
+                                  setDialog({ kind: "role", member: r });
+                                }}
+                              >
+                                {t("staff.changeRole")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={!canRequest}
+                                onSelect={() => setDialog({ kind: "2fa", member: r })}
+                              >
+                                {t("staff.reset2fa")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={!canRequest}
+                                onSelect={() => setDialog({ kind: "toggle", member: r })}
+                              >
+                                {r.active ? t("staff.disable") : t("staff.enable")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={!canRevoke}
+                                onSelect={() => setDialog({ kind: "sessions", member: r })}
+                              >
+                                {t("staff.revokeSessions")}
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     ),
@@ -254,6 +349,83 @@ export function StaffPage() {
           await refresh();
           return t("staff.revokeSessions.done");
         }}
+      />
+
+      <ActionDialog
+        open={inviting}
+        onOpenChange={(open) => !open && setInviting(false)}
+        title={t("staff.invite")}
+        impact={t("staff.invite.impact")}
+        confirmLabel={t("staff.invite.send")}
+        requireReason={false}
+        blocked={!inviteValid}
+        onConfirm={async () => {
+          await inviteStaff(invite);
+          await refresh();
+          return t("staff.invite.done", { email: invite.email.trim() });
+        }}
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="invite-first">{t("staff.invite.firstName")}</Label>
+            <Input
+              id="invite-first"
+              value={invite.firstName}
+              onChange={(e) => setField({ firstName: e.target.value })}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="invite-last">{t("staff.invite.lastName")}</Label>
+            <Input
+              id="invite-last"
+              value={invite.lastName}
+              onChange={(e) => setField({ lastName: e.target.value })}
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="invite-email">{t("auth.email")}</Label>
+          <Input
+            id="invite-email"
+            type="email"
+            value={invite.email}
+            onChange={(e) => setField({ email: e.target.value })}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="invite-phone">{t("staff.invite.phone")}</Label>
+          <Input
+            id="invite-phone"
+            type="tel"
+            value={invite.phone}
+            onChange={(e) => setField({ phone: e.target.value })}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="invite-role">{t("staff.col.roles")}</Label>
+          <Select value={invite.roleCode} onValueChange={(v) => setField({ roleCode: v })}>
+            <SelectTrigger id="invite-role">
+              <SelectValue placeholder={t("staff.invite.pickRole")} />
+            </SelectTrigger>
+            <SelectContent>
+              {(roles.data ?? []).map((role) => (
+                <SelectItem key={role.id} value={role.id}>
+                  {role.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </ActionDialog>
+
+      <InvitationDialog
+        mode={
+          dialog?.kind === "resend" ? "resend" : dialog?.kind === "revoke-invite" ? "revoke" : null
+        }
+        member={dialog?.member ?? null}
+        roleName={dialog?.member ? dialog.member.roleIds.map(roleName).join(", ") : ""}
+        onClose={() => setDialog(null)}
+        onDone={refresh}
       />
     </>
   );

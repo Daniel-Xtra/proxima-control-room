@@ -1,5 +1,4 @@
 import { ApiError, request } from "@/shared/api/client";
-import { fromApiAmount } from "@/shared/api/money";
 import type {
   BatchFilters,
   BatchRow,
@@ -11,6 +10,9 @@ import type {
   SourceAccount,
   SourceBalances,
 } from "../model/types";
+
+/** Bulk payments are the one place the API really does work in naira (payees are entered in naira). */
+const nairaToKobo = (naira: number) => Math.round(naira * 100);
 
 interface BatchView {
   id: string;
@@ -72,8 +74,8 @@ export async function listBatches(filters: BatchFilters): Promise<BatchRow[]> {
     .map((view) => ({
       ...toBatch(view),
       itemCount: view.item_count,
-      totalKobo: fromApiAmount(view.total_amount, view.amount_unit),
-      feeKobo: fromApiAmount(view.fee_amount, view.amount_unit),
+      totalKobo: nairaToKobo(view.total_amount),
+      feeKobo: nairaToKobo(view.fee_amount),
       // The list does not count outcomes per batch; the detail page does.
       successCount: 0,
       failedCount: 0,
@@ -93,7 +95,7 @@ export async function getBatch(id: string): Promise<BulkBatch> {
     accountName: item.payee_name,
     accountNumber: item.account_number,
     bank: item.bank_name ?? item.bank_code,
-    amountKobo: fromApiAmount(item.amount, view.amount_unit),
+    amountKobo: nairaToKobo(item.amount),
     narration: "",
     status: item.status,
     ...(item.error ? { failureReason: item.error } : {}),
@@ -137,8 +139,7 @@ export async function getSourceBalances(): Promise<SourceBalances> {
   return result.data.map((row) => ({
     id: row.id,
     name: row.name,
-    balanceKobo:
-      row.available_balance === null ? null : fromApiAmount(row.available_balance, row.amount_unit),
+    balanceKobo: row.available_balance === null ? null : nairaToKobo(row.available_balance),
     error: row.error,
   }));
 }

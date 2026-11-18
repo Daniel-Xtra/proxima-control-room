@@ -9,6 +9,7 @@ import {
   Lock,
   Megaphone,
   Notepad,
+  Plugs,
   UsersThree,
   PiggyBank,
   ShieldCheck,
@@ -109,6 +110,7 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: ChartBar,
         label: "nav.approvalRules",
       },
+      { id: "providers", to: "/settings/providers", icon: Plugs, label: "nav.providers" },
       {
         id: "platform-config",
         to: "/settings/platform-config",

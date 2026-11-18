@@ -71,6 +71,7 @@ export function SegmentsPage() {
         >
           {(rows) => (
             <SimpleTable<AudienceSegment>
+              storageKey="segments"
               caption={t("segments.title")}
               rows={rows}
               getRowId={(r) => r.id}

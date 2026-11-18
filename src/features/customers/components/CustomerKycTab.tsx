@@ -8,6 +8,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { t } from "@/shared/i18n/t";
 import type { Customer } from "../model/types";
 import { UploadDocumentDialog } from "./CustomerActionDialogs";
+import { CustomerKycReview } from "./CustomerKycReview";
 import { ComplianceStatusBadge, KycLevelBadge } from "./CustomerStatusBadges";
 
 export function CustomerKycTab({ customer }: { customer: Customer }) {
@@ -61,10 +62,12 @@ export function CustomerKycTab({ customer }: { customer: Customer }) {
             },
           ]}
         />
-        <p className="border-t border-border px-4 py-3 text-sm text-muted-text">
-          {t("kyc.reviewGap")}
-        </p>
       </SectionCard>
+      <Can permission="kyc:view">
+        <div className="mt-4 flex flex-col gap-4">
+          <CustomerKycReview customerId={customer.id} />
+        </div>
+      </Can>
       <UploadDocumentDialog open={uploadOpen} onOpenChange={setUploadOpen} customer={customer} />
     </>
   );

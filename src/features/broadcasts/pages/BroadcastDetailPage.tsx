@@ -140,6 +140,7 @@ function Detail({ broadcast }: { broadcast: Broadcast }) {
             >
               {sent ? (
                 <SimpleTable<DeliveryRecord>
+                  storageKey="broadcast-deliveries"
                   caption={t("broadcasts.section.deliveryLog")}
                   rows={broadcast.log}
                   getRowId={(r) => r.id}

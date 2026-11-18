@@ -31,6 +31,7 @@ export function RequestsTable({
       >
         {(rows) => (
           <SimpleTable<AccountRequest>
+            storageKey="requests"
             caption={t("requests.title")}
             rows={rows}
             getRowId={(r) => r.id}
