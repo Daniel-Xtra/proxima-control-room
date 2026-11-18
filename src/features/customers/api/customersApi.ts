@@ -108,6 +108,7 @@ interface Overview {
   };
   onboarding: {
     is_kyc_completed: boolean;
+    is_compliance_doc_set?: boolean;
     is_transaction_pin_set: boolean;
     is_address_set: boolean;
     verifications: {
@@ -197,6 +198,7 @@ function toCustomer(o: Overview): Customer {
     joinedAt: o.profile.created_at,
     kycLevel: o.profile.kyc_level,
     kycCompleted: o.onboarding.is_kyc_completed,
+    complianceDocsSet: o.onboarding.is_compliance_doc_set ?? false,
     status,
     reservedAccount: o.profile.reserved_account_number,
     reservedBank: o.profile.reserved_account_bank ?? null,

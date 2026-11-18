@@ -35,6 +35,8 @@ export interface Customer {
   kycLevel: KycLevel;
   /** Whether the customer has finished KYC (the account tier is separate). */
   kycCompleted: boolean;
+  /** The customer's compliance documents have been approved. */
+  complianceDocsSet: boolean;
   status: CustomerStatus;
   reservedAccount: string | null;
   /** The bank that holds the reserved account. */

@@ -69,8 +69,8 @@ export const transactions = {
   "purpose.data_payment": "Data",
   "purpose.reserved_account_funding": "Account funding",
   "purpose.reversal": "Reversal",
-  "purpose.fixed_deposit": "Fixed deposit",
-  "purpose.target_savings": "Target savings",
+  "purpose.fixed_deposit*": "Fixed deposit",
+  "purpose.target_saving*": "Target savings",
 
   "statement.title": "Export account statement",
   "statement.start": "From",

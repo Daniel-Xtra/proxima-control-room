@@ -46,7 +46,7 @@ export const auth = {
   "auth.idle.message":
     "You have been inactive, so we will sign you out to keep your account safe. Anything you have typed is kept if you stay.",
 
-  "security.title": "Security settings",
+  "security.title": "Profile",
   "security.description": "Your sign-in, authenticator and active sessions.",
   "security.profile": "Profile",
   "security.name": "Name",

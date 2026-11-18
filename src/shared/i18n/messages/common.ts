@@ -78,7 +78,7 @@ export const common = {
   "shell.theme.light": "Light",
   "shell.theme.dark": "Dark",
   "shell.pendingCount": "{count} pending",
-  "shell.security": "Security settings",
+  "shell.security": "Profile",
   "nav.collapse": "Collapse sidebar",
   "nav.expand": "Expand sidebar",
   "shell.signOut": "Sign out",

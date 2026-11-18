@@ -8,8 +8,8 @@ export const TRANSACTION_PURPOSES = [
   "data_payment",
   "reserved_account_funding",
   "reversal",
-  "fixed_deposit",
-  "target_savings",
+  "fixed_deposit*",
+  "target_saving*",
 ] as const;
 export type KnownPurpose = (typeof TRANSACTION_PURPOSES)[number];
 

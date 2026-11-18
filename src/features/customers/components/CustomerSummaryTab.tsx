@@ -153,10 +153,7 @@ export function CustomerSummaryTab({ customer }: { customer: Customer }) {
               [t("customers.verify.kyc"), customer.kycCompleted],
               [t("customers.verify.pin"), customer.pinSet],
               [t("customers.verify.address"), customer.addressSet],
-              [
-                t("customers.verify.docs"),
-                customer.compliances.some((c) => c.documents.length > 0),
-              ],
+              [t("customers.verify.docs"), customer.complianceDocsSet],
             ] as [string, boolean][]
           ).map(([label, ok]) => (
             <li key={label} className="flex items-center gap-2 text-base">
