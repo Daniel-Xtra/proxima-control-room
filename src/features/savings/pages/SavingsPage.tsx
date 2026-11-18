@@ -58,10 +58,10 @@ export function SavingsPage() {
         </TabsList>
         <SectionCard flush className="mt-4">
           <TabsContent value="fixed" className="pt-0">
-            <FixedDepositsTable filters={query} />
+            <FixedDepositsTable key={JSON.stringify(query)} filters={query} />
           </TabsContent>
           <TabsContent value="target" className="pt-0">
-            <TargetSavingsTable filters={query} />
+            <TargetSavingsTable key={JSON.stringify(query)} filters={query} />
           </TabsContent>
         </SectionCard>
       </Tabs>

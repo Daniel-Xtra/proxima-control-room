@@ -1,9 +1,12 @@
-import { request } from "@/shared/api/client";
+import { request, type Page } from "@/shared/api/client";
 import { fromApiAmount } from "@/shared/api/money";
 import { unavailable } from "@/shared/api/unavailable";
 import type {
   BreakagePreview,
   FixedDeposit,
+  PlanInterest,
+  PlanTransaction,
+  SavingsKind,
   FixedDepositStatus,
   Frequency,
   TargetSaving,
@@ -12,6 +15,8 @@ import type {
 
 interface FixedRow {
   id: string;
+  name?: string | null;
+  reference?: string | null;
   customer_id: string | null;
   customer_name: string | null;
   principal: number;
@@ -26,6 +31,7 @@ interface FixedRow {
 
 interface TargetRow {
   id: string;
+  reference?: string | null;
   customer_id: string | null;
   customer_name: string | null;
   name: string;
@@ -46,22 +52,33 @@ export interface SavingsFilters {
 
 const NO_FILTERS: SavingsFilters = { search: "", status: "all" };
 
-const query = (customerId: string | undefined, filters: SavingsFilters) => ({
+const query = (
+  customerId: string | undefined,
+  filters: SavingsFilters,
+  page: number,
+  limit: number,
+) => ({
   customer_id: customerId,
+  page,
   search: filters.search.trim().length >= 3 ? filters.search.trim() : undefined,
   status: filters.status === "all" ? undefined : filters.status,
-  limit: 100,
+  limit,
 });
 
 export async function listFixedDeposits(
   customerId?: string,
   filters: SavingsFilters = NO_FILTERS,
-): Promise<FixedDeposit[]> {
-  const page = await request<{ data: FixedRow[] }>("/admin/savings/fixed-deposits", {
-    query: query(customerId, filters),
-  });
-  return page.data.map((row) => ({
+  page = 1,
+  limit = 10,
+): Promise<Page<FixedDeposit>> {
+  const result = await request<{ data: FixedRow[]; total?: number }>(
+    "/admin/savings/fixed-deposits",
+    { query: query(customerId, filters, page, limit) },
+  );
+  const items = result.data.map((row) => ({
     id: row.id,
+    name: row.name ?? "",
+    reference: row.reference ?? "",
     customerId: row.customer_id ?? "",
     customerName: row.customer_name ?? "",
     principalKobo: fromApiAmount(row.principal, row.amount_unit),
@@ -73,17 +90,22 @@ export async function listFixedDeposits(
     locked: row.locked,
     status: row.status,
   }));
+  return { items, total: result.total ?? items.length, page, limit };
 }
 
 export async function listTargetSavings(
   customerId?: string,
   filters: SavingsFilters = NO_FILTERS,
-): Promise<TargetSaving[]> {
-  const page = await request<{ data: TargetRow[] }>("/admin/savings/target-savings", {
-    query: query(customerId, filters),
-  });
-  return page.data.map((row) => ({
+  page = 1,
+  limit = 10,
+): Promise<Page<TargetSaving>> {
+  const result = await request<{ data: TargetRow[]; total?: number }>(
+    "/admin/savings/target-savings",
+    { query: query(customerId, filters, page, limit) },
+  );
+  const items = result.data.map((row) => ({
     id: row.id,
+    reference: row.reference ?? "",
     customerId: row.customer_id ?? "",
     customerName: row.customer_name ?? "",
     name: row.name,
@@ -93,6 +115,7 @@ export async function listTargetSavings(
     startedAt: row.start_date,
     status: row.status,
   }));
+  return { items, total: result.total ?? items.length, page, limit };
 }
 
 export async function previewBreakage(id: string): Promise<BreakagePreview> {
@@ -118,4 +141,66 @@ export function liquidateFixedDeposit(_id: string, _reason: string): Promise<voi
 
 export function liquidateTargetSaving(_id: string, _reason: string): Promise<void> {
   return unavailable();
+}
+
+const PLAN_PATH = { fixed: "fixed-deposits", target: "target-savings" } as const;
+
+/** Money in and out of one plan, newest first. */
+export async function listPlanTransactions(
+  kind: SavingsKind,
+  id: string,
+  page: number,
+  limit: number,
+): Promise<Page<PlanTransaction>> {
+  const result = await request<{
+    data: {
+      reference: string;
+      type: "inflow" | "outflow";
+      purpose: string;
+      channel: string;
+      amount: number;
+      description: string;
+      created_at: string;
+      amount_unit?: string;
+    }[];
+    total?: number;
+  }>(`/admin/savings/${PLAN_PATH[kind]}/${encodeURIComponent(id)}/transactions`, {
+    query: { page, limit },
+  });
+  const items = result.data.map((row) => ({
+    reference: row.reference,
+    direction: row.type,
+    purpose: row.purpose,
+    channel: row.channel,
+    amountKobo: fromApiAmount(row.amount, row.amount_unit),
+    description: row.description,
+    at: row.created_at,
+  }));
+  return { items, total: result.total ?? items.length, page, limit };
+}
+
+/** The recurring interest added to one plan, newest first. */
+export async function listPlanInterest(
+  kind: SavingsKind,
+  id: string,
+  page: number,
+  limit: number,
+): Promise<Page<PlanInterest>> {
+  const result = await request<{
+    data: {
+      interest_date: string;
+      amount: number;
+      processed_at: string | null;
+      amount_unit?: string;
+    }[];
+    total?: number;
+  }>(`/admin/savings/${PLAN_PATH[kind]}/${encodeURIComponent(id)}/interest`, {
+    query: { page, limit },
+  });
+  const items = result.data.map((row) => ({
+    date: row.interest_date,
+    amountKobo: fromApiAmount(row.amount, row.amount_unit),
+    creditedAt: row.processed_at,
+  }));
+  return { items, total: result.total ?? items.length, page, limit };
 }

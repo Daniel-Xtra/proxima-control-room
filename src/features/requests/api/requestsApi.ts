@@ -1,4 +1,3 @@
-import { humanize } from "@/shared/lib/format";
 import { request } from "@/shared/api/client";
 import { fromApiAmount, toApiAmount } from "@/shared/api/money";
 import type {
@@ -25,7 +24,12 @@ interface Approval {
   id: string;
   type: string;
   target_id: string;
-  payload: { daily_limit?: number; transaction_limit?: number; role_code?: string };
+  payload: {
+    daily_limit?: number;
+    transaction_limit?: number;
+    role_code?: string;
+    [key: string]: unknown;
+  };
   reason: string;
   status: ApprovalStatus;
   maker_unique_identifier: string;
@@ -109,10 +113,7 @@ function toRequest(a: Approval): AccountRequest {
     id: a.id,
     kind,
     type: a.type,
-    payloadSummary: Object.entries(a.payload ?? {}).map(
-      ([key, value]) =>
-        `${humanize(key)}: ${typeof value === "string" ? humanize(value) : String(value)}`,
-    ),
+    payload: a.payload ?? {},
     customerId: a.target_id,
     customerName: a.customer_name ?? short(a.target_id),
     ...(STAFF_ACTION[a.type] ? { staffAction: STAFF_ACTION[a.type] } : {}),

@@ -27,8 +27,8 @@ export interface AccountRequest {
   kind: RequestKind;
   /** The approval type code, such as CUSTOMER_FREEZE. */
   type: string;
-  /** What the request carries, as `field: value` lines (for types the UI has no screen for). */
-  payloadSummary: string[];
+  /** What the request carries, as the API sent it. */
+  payload: Record<string, unknown>;
   /** The customer, or the staff member for staff changes. */
   customerId: string;
   /** Set for staff changes: what is being asked. */

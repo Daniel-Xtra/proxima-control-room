@@ -77,7 +77,9 @@ export function DataTable<T>({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-text">{t("table.showing", { from, to, total })}</span>
-          <span className="text-xs text-muted-text">{t("table.page", { page, pages })}</span>
+          {pages > 1 ? (
+            <span className="text-xs text-muted-text">{t("table.page", { page, pages })}</span>
+          ) : null}
           <Button
             variant="outline"
             size="sm"

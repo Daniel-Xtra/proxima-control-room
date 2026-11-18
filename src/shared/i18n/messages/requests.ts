@@ -92,4 +92,7 @@ export const requests = {
   "requests.customer.noFreezeHistory": "This account has never been frozen.",
   "requests.customer.frozen": "Account frozen",
   "requests.customer.unfrozen": "Account unfrozen",
+  "requests.details.title": "Request details",
+  "requests.details.yes": "Yes",
+  "requests.details.no": "No",
 } as const;

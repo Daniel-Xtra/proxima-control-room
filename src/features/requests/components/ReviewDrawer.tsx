@@ -11,6 +11,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { t } from "@/shared/i18n/t";
 import { decideRequest } from "../api/requestsApi";
 import { APPROVE_PERMISSION, type AccountRequest } from "../model/types";
+import { PayloadDetails } from "./PayloadDetails";
 import { requestLabel } from "./requestLabel";
 import { RequestStatusBadge } from "./RequestStatusBadge";
 
@@ -80,13 +81,7 @@ export function ReviewDrawer({ request, onClose }: Props) {
               ]}
             />
             {request.limits ? <LimitDiffTable limits={request.limits} /> : null}
-            {request.kind === "other" && request.payloadSummary.length > 0 ? (
-              <ul className="m-0 list-disc pl-5 text-sm text-ink">
-                {request.payloadSummary.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            ) : null}
+            {request.kind === "other" ? <PayloadDetails payload={request.payload} /> : null}
             {request.decidedBy ? (
               <KeyValueList
                 columns={1}

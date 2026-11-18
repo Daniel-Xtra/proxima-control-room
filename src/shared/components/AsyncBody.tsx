@@ -12,6 +12,9 @@ type QueryLike<T> = Pick<
   "data" | "isLoading" | "isError" | "error" | "refetch"
 >;
 
+/** Status 0 is a request that got no response; 502 to 504 are gateways that could not reach the server. */
+const NO_RESPONSE = new Set([0, 502, 503, 504]);
+
 interface AsyncBodyProps<T> {
   query: QueryLike<T>;
   children: (data: T) => ReactNode;
@@ -56,6 +59,21 @@ export function AsyncBody<T>({
           icon={Prohibit}
           title={t("state.unavailable.title")}
           description={t("api.unavailable")}
+        />
+      );
+    }
+    // No response at all (server down or unreachable, or a gateway that cannot reach it): there is
+    // no data to show, so use the empty state, with a way to try again.
+    if (NO_RESPONSE.has(query.error?.status ?? 0)) {
+      return (
+        <EmptyState
+          title={emptyTitle}
+          description={emptyDescription}
+          action={
+            <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
+              {t("common.retry")}
+            </Button>
+          }
         />
       );
     }
