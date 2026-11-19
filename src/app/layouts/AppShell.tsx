@@ -21,6 +21,7 @@ import {
 } from "@/shared/components/ui/DropdownMenu";
 import { t } from "@/shared/i18n/t";
 import { initials } from "@/shared/lib/format";
+import { CrumbSlotContext } from "@/shared/lib/crumbSlot";
 import { useTheme } from "@/shared/lib/theme";
 import { Sidebar } from "./Sidebar";
 
@@ -29,6 +30,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const [navOpen, setNavOpen] = useState(false);
+  const [crumbSlot, setCrumbSlot] = useState<HTMLElement | null>(null);
   const { theme, next: nextTheme } = useTheme();
   const ThemeGlyph = theme === "dark" ? Moon : theme === "light" ? Sun : Monitor;
 
@@ -56,13 +58,14 @@ export function AppShell() {
               >
                 <List size={18} aria-hidden="true" />
               </button>
-              <span className="hidden items-center gap-1.5 rounded-pill border border-blue-border bg-blue-tint px-3 py-1 text-xs font-medium text-ink sm:inline-flex">
-                <Buildings size={12} aria-hidden="true" />
-                {t("shell.environment")}
-              </span>
+              <div ref={setCrumbSlot} className="min-w-0" />
             </div>
 
             <div className="flex shrink-0 items-center gap-1 sm:gap-3">
+              <span className="hidden items-center gap-1.5 rounded-pill border border-blue-border bg-blue-tint px-3 py-1 text-xs font-medium text-ink lg:inline-flex">
+                <Buildings size={12} aria-hidden="true" />
+                {t("shell.environment")}
+              </span>
               <button
                 type="button"
                 aria-label={`${t("shell.theme")}: ${t(`shell.theme.${theme}`)}`}
@@ -124,7 +127,9 @@ export function AppShell() {
           </header>
 
           <main id="main" tabIndex={-1} className="flex-1 px-4 py-6 md:px-6">
-            <Outlet />
+            <CrumbSlotContext.Provider value={crumbSlot}>
+              <Outlet />
+            </CrumbSlotContext.Provider>
           </main>
         </div>
       </div>

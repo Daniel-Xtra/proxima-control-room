@@ -1,5 +1,8 @@
-import type { ReactNode } from "react";
+import { CaretRight } from "@phosphor-icons/react";
+import { useContext, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
+import { CrumbSlotContext } from "../lib/crumbSlot";
 
 export interface Crumb {
   label: string;
@@ -18,35 +21,53 @@ interface PageHeaderProps {
   meta?: ReactNode;
 }
 
+/** Group › page. In the shell this sits in the top bar, where the last item is the page being viewed. */
+function Breadcrumbs({ crumbs, label }: { crumbs: Crumb[]; label: string }) {
+  return (
+    <nav aria-label={label} className="min-w-0">
+      <ol className="m-0 flex min-w-0 list-none items-center gap-1 p-0 text-sm">
+        {crumbs.map((crumb, index) => {
+          const last = index === crumbs.length - 1;
+          return (
+            <li
+              key={`${index}-${crumb.label}`}
+              className={`min-w-0 items-center gap-1 ${last ? "flex" : "hidden sm:flex"}`}
+            >
+              {crumb.to && !last ? (
+                <Link
+                  to={crumb.to}
+                  className="truncate text-muted-text hover:text-ink hover:underline"
+                >
+                  {crumb.label}
+                </Link>
+              ) : (
+                <span
+                  aria-current={last ? "page" : undefined}
+                  className={`truncate ${last ? "font-medium text-ink" : "text-muted-text"}`}
+                >
+                  {crumb.label}
+                </span>
+              )}
+              {last ? null : (
+                <CaretRight aria-hidden="true" className="size-3 shrink-0 text-muted-text" />
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
 export function PageHeader({ title, description, actions, crumbs, logo, meta }: PageHeaderProps) {
+  const slot = useContext(CrumbSlotContext);
+  const trail = crumbs?.length ? <Breadcrumbs crumbs={crumbs} label={title} /> : null;
+
   return (
     <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+      {slot && trail ? createPortal(trail, slot) : null}
       <div className="min-w-0">
-        {crumbs?.length ? (
-          <nav aria-label={title} className="mb-1">
-            <ol className="m-0 flex list-none flex-wrap items-center gap-1 p-0 text-xs">
-              {crumbs.map((crumb, index) => (
-                <li key={`${index}-${crumb.label}`} className="flex items-center gap-1">
-                  {crumb.to ? (
-                    <Link
-                      to={crumb.to}
-                      className="inline-block py-1.5 text-blue-strong hover:underline sm:py-0"
-                    >
-                      {crumb.label}
-                    </Link>
-                  ) : (
-                    <span className="text-muted-text">{crumb.label}</span>
-                  )}
-                  {index < crumbs.length - 1 ? (
-                    <span aria-hidden="true" className="text-muted-text">
-                      ›
-                    </span>
-                  ) : null}
-                </li>
-              ))}
-            </ol>
-          </nav>
-        ) : null}
+        {slot ? null : trail ? <div className="mb-1">{trail}</div> : null}
         <div className="flex items-center gap-4">
           {logo}
           <div className="min-w-0">
