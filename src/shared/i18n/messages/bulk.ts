@@ -5,7 +5,7 @@ export const bulk = {
   "bulk.new": "New bulk transfer",
   "bulk.new.description":
     "Set up the batch, upload your payees, check them, then submit for approval.",
-  "bulk.search": "Search batch name or creator",
+  "bulk.search": "Search batch name",
   "bulk.searchLabel": "Search bulk transfer batches",
   "bulk.filter.status": "Status",
   "bulk.filter.any": "Any status",

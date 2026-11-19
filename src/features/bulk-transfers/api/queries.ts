@@ -1,6 +1,6 @@
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
-import type { BatchStatus, PayeeDraft } from "../model/types";
+import type { BatchFilters, BatchStatus, PayeeDraft } from "../model/types";
 import {
   estimateBulkFee,
   getBatch,
@@ -13,8 +13,7 @@ import {
 
 export const bulkKeys = {
   all: ["bulk-transfers"] as const,
-  list: (filters: { search: string; status: string }) =>
-    ["bulk-transfers", "list", filters] as const,
+  list: (filters: BatchFilters) => ["bulk-transfers", "list", filters] as const,
   detail: (id: string) => ["bulk-transfers", "detail", id] as const,
   balances: ["bulk-transfers", "balances"] as const,
   wallets: ["bulk-transfers", "wallets"] as const,
@@ -25,7 +24,7 @@ export const bulkKeys = {
 export const useSourceBalances = () =>
   useApiQuery(bulkKeys.balances, getSourceBalances, { refetchInterval: 60_000 });
 
-export const useBatches = (filters: { search: string; status: string }) =>
+export const useBatches = (filters: BatchFilters) =>
   useApiQuery(bulkKeys.list(filters), () => listBatches(filters));
 
 /** A batch in one of these states is still moving: the processor picks it up within a minute and sends it payee by payee. */

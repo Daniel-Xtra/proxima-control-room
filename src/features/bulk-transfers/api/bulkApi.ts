@@ -77,16 +77,24 @@ function toBatch(view: BatchView, itemCounts: Record<string, number> = {}): Bulk
   };
 }
 
-export async function listBatches(filters: BatchFilters): Promise<BatchRow[]> {
-  const page = await request<{ data: BatchView[] }>("/admin/bulk-transfers", {
-    query: { status: filters.status === "all" ? undefined : filters.status, limit: 100 },
-  });
-  const needle = filters.search.trim().toLowerCase();
-  return page.data
-    .map((view) => toBatch(view))
-    .filter(
-      (batch) => !needle || `${batch.name} ${batch.createdBy}`.toLowerCase().includes(needle),
-    );
+export async function listBatches(filters: BatchFilters): Promise<Page<BatchRow>> {
+  const page = await request<{ data: BatchView[]; total: number; page: number; limit: number }>(
+    "/admin/bulk-transfers",
+    {
+      query: {
+        status: filters.status === "all" ? undefined : filters.status,
+        search: filters.search.trim() || undefined,
+        page: filters.page,
+        limit: filters.limit,
+      },
+    },
+  );
+  return {
+    items: page.data.map((view) => toBatch(view)),
+    total: page.total,
+    page: page.page,
+    limit: page.limit,
+  };
 }
 
 /** The batch itself. Its payees are read a page at a time with getBatchItems. */

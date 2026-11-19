@@ -121,6 +121,8 @@ export interface PayeeDraft {
 export interface BatchFilters {
   search: string;
   status: string;
+  page: number;
+  limit: number;
 }
 
 /** A platform wallet bulk transfers can pay from. */

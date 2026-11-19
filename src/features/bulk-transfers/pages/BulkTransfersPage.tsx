@@ -7,7 +7,7 @@ import { FilterBar } from "@/shared/components/FilterBar";
 import { MoneyText } from "@/shared/components/MoneyText";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
-import { SimpleTable } from "@/shared/components/SimpleTable";
+import { DataTable } from "@/shared/components/DataTable";
 import { Button } from "@/shared/components/ui/Button";
 import {
   Select,
@@ -23,12 +23,17 @@ import { useBatches } from "../api/queries";
 import { BatchStatusBadge } from "../components/BulkBadges";
 import type { BatchRow } from "../model/types";
 
-const DEFAULTS = { q: "", status: "all" };
+const DEFAULTS = { q: "", status: "all", page: "1", limit: "10" };
 
 export function BulkTransfersPage() {
   const navigate = useNavigate();
   const [filters, setFilter] = useUrlFilters(DEFAULTS);
-  const result = useBatches({ search: filters.q, status: filters.status });
+  const result = useBatches({
+    search: filters.q,
+    status: filters.status,
+    page: Number(filters.page),
+    limit: Number(filters.limit),
+  });
 
   return (
     <>
@@ -77,15 +82,20 @@ export function BulkTransfersPage() {
       <SectionCard flush>
         <AsyncBody
           query={result}
-          isEmpty={(rows) => rows.length === 0}
+          isEmpty={(data) => data.total === 0}
           emptyTitle={t("bulk.empty.title")}
           emptyDescription={t("bulk.empty.description")}
         >
-          {(rows) => (
-            <SimpleTable<BatchRow>
+          {(data) => (
+            <DataTable<BatchRow>
               storageKey="bulk-batches"
               caption={t("bulk.title")}
-              rows={rows}
+              rows={data.items}
+              page={data.page}
+              limit={data.limit}
+              total={data.total}
+              onPageChange={(page) => setFilter("page", String(page))}
+              onLimitChange={(limit) => setFilter("limit", String(limit))}
               getRowId={(r) => r.id}
               onRowOpen={(row) => navigate(`/bulk-transfers/${row.id}`)}
               columns={[

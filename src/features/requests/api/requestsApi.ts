@@ -133,8 +133,23 @@ function toRequest(a: Approval): AccountRequest {
   };
 }
 
-function fetchScope(scope: Exclude<RequestScope, "customer">, type?: string) {
-  return request<ApprovalPage>("/admin/approvals", { query: { scope, type, limit: 100 } });
+const PAGE_SIZE = 100;
+const MAX_PAGES = 10;
+
+/** Every request in the scope, a page at a time. Status, staff and customer filters apply to the whole set afterwards. */
+async function fetchScope(scope: Exclude<RequestScope, "customer">, type?: string) {
+  const first = await request<ApprovalPage>("/admin/approvals", {
+    query: { scope, type, limit: PAGE_SIZE, page: 1 },
+  });
+  const last = Math.min(MAX_PAGES, Math.ceil(first.total / PAGE_SIZE));
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(0, last - 1) }, (_, i) =>
+      request<ApprovalPage>("/admin/approvals", {
+        query: { scope, type, limit: PAGE_SIZE, page: i + 2 },
+      }),
+    ),
+  );
+  return { ...first, data: [first, ...rest].flatMap((page) => page.data) };
 }
 
 export async function listRequests(filters: RequestFilters): Promise<AccountRequest[]> {
