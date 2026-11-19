@@ -7,12 +7,10 @@ import { isNoResponse } from "@/shared/api/client";
 import { AsyncBody } from "@/shared/components/AsyncBody";
 import { BarList } from "@/shared/components/BarList";
 import { MoneyText } from "@/shared/components/MoneyText";
-import { EmptyState } from "@/shared/components/EmptyState";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
 import { SimpleTable } from "@/shared/components/SimpleTable";
 import { StatCard } from "@/shared/components/StatCard";
-import { StatusBadge } from "@/shared/components/StatusBadge";
 import { TrendChart } from "@/shared/components/TrendChart";
 import { RangeFilter } from "@/shared/components/RangeFilter";
 import { Button } from "@/shared/components/ui/Button";
@@ -21,7 +19,6 @@ import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
 import { formatCompactKobo, formatCount, formatLagos } from "@/shared/lib/format";
 import { parseCustomRange } from "@/shared/lib/dateRange";
-import { purposeLabel } from "@/shared/lib/purposeLabel";
 import { emptyOverview, getOverview, type Overview } from "../api/overviewApi";
 
 const DEFAULTS = { range: "30d" };
@@ -142,54 +139,7 @@ function OverviewBody({ data }: { data: Overview }) {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <TrendCard data={data} />
-        <SectionCard
-          title={t("overview.recent.title")}
-          actions={
-            <Link
-              to="/transactions"
-              className="inline-block py-1.5 text-xs text-blue-strong hover:underline sm:py-0"
-            >
-              {t("overview.recent.open")}
-            </Link>
-          }
-        >
-          {data.recent.length === 0 ? (
-            <EmptyState
-              icon={Swap}
-              title={t("overview.recent.empty.title")}
-              description={t("overview.recent.empty.description")}
-            />
-          ) : (
-            <ul className="m-0 flex list-none flex-col gap-3 p-0">
-              {data.recent.map((row) => (
-                <li key={row.id} className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="m-0 truncate text-sm font-medium text-ink">{row.name}</p>
-                    <p className="m-0 truncate text-xs text-muted-text">
-                      {purposeLabel(row.purpose)}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1">
-                    <MoneyText kobo={row.amountKobo} className="text-sm font-medium text-ink" />
-                    <StatusBadge
-                      tone={
-                        row.status === "success"
-                          ? "success"
-                          : row.status === "pending"
-                            ? "warning"
-                            : "danger"
-                      }
-                      label={t(`transactions.status.${row.status}`)}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </SectionCard>
-      </div>
+      <TrendCard data={data} />
 
       <div className="grid gap-4 md:grid-cols-3">
         <SectionCard
@@ -342,7 +292,6 @@ function TrendCard({ data }: { data: Overview }) {
   return (
     <SectionCard
       title={t("overview.trend.title")}
-      className="md:col-span-2"
       actions={
         <div className="flex gap-1">
           {(["value", "volume"] as const).map((id) => (

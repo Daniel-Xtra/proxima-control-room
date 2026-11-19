@@ -16,11 +16,6 @@ export const operations = {
   "overview.trend.average": "Average",
   "overview.trend.peak": "Peak",
   "overview.trend.summary": "Line chart of daily successful transfers over the period",
-  "overview.recent.title": "Recent transactions",
-  "overview.recent.open": "Open transactions",
-  "overview.recent.empty.title": "No transactions yet",
-  "overview.recent.empty.description":
-    "Transactions appear here as customers start sending and paying.",
   "overview.attention.approvals": "Requests waiting for a decision",
   "overview.kpi.transactions": "Transactions",
   "overview.kpi.fixedDeposits": "Fixed deposits",
