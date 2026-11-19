@@ -173,12 +173,8 @@ function RoleEditor({
                         disabled={locked}
                         onChange={(event) => toggle(permission.code, event.target.checked)}
                       />
-                      <Label
-                        htmlFor={`perm-${permission.code}`}
-                        className="font-normal"
-                        title={permission.description}
-                      >
-                        {permission.displayName}
+                      <Label htmlFor={`perm-${permission.code}`} className="font-normal">
+                        {permission.description || permission.displayName}
                       </Label>
                     </li>
                   ))}

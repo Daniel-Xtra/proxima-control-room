@@ -75,7 +75,7 @@ export const bulk = {
   "bulk.review.note": "A second person must approve this batch before anything is paid.",
   "bulk.review.large": "This batch is above ₦10,000,000, so you will be asked to type CONFIRM.",
   "bulk.section.payees": "Payees",
-  "bulk.section.payeesHint": "Upload a CSV or Excel file. Excel files use their first sheet.",
+  "bulk.section.payeesHint": "Upload an Excel (.xlsx) file. Only its first sheet is read.",
   "bulk.section.review": "Review",
   "bulk.section.summary": "Summary",
   "bulk.section.activity": "Activity",

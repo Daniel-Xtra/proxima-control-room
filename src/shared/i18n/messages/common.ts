@@ -60,6 +60,7 @@ export const common = {
   "action.audit.reason": "Reason",
 
   "upload.drop": "Drop files here or",
+  "upload.dropOne": "Drop a file here or",
   "upload.browse": "browse",
   "upload.limits": "PDF, PNG, JPG, CSV or XLSX up to 10 MB.",
   "upload.badType": "That file type is not allowed.",

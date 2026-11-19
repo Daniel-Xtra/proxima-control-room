@@ -100,6 +100,14 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
   }
 
   function onFiles(files: EvidenceFile[]) {
+    // The file was removed from the list, so the payees it brought in go with it.
+    if (files.length === 0 && read.current.size > 0) {
+      read.current.clear();
+      onPayeesChange(() => []);
+      setProblems([]);
+      setVerifyNote(null);
+      return;
+    }
     const found: string[] = [];
     for (const item of files) {
       const file = item.file;
@@ -110,7 +118,7 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
         continue;
       }
       readPayeeFile(file).then(
-        (added) => onPayeesChange((previous) => renumber([...previous, ...added])),
+        (added) => onPayeesChange(() => renumber(added)),
         () => setProblems((prev) => [...prev, t("bulk.upload.readError", { name: file.name })]),
       );
     }
@@ -141,6 +149,7 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
               help={t("bulk.upload.help")}
               onChange={onFiles}
               accept=".xlsx"
+              single
               allowed={/\.xlsx$/i}
               badType={t("bulk.upload.onlyXlsx")}
             />

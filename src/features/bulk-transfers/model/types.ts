@@ -104,7 +104,7 @@ export interface PayeeCheck {
   accountType?: "platform" | "collection" | "external";
 }
 
-/** A payee row from the CSV or the paste box, before it is submitted. */
+/** A payee row from the uploaded Excel file, before it is submitted. */
 export interface PayeeDraft {
   row: number;
   accountName: string;

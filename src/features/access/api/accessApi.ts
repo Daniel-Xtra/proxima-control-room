@@ -28,6 +28,14 @@ export interface RoleSummary {
   memberCount: number;
 }
 
+/** Seeded permissions get a generic description that quotes the permission key. Keys are not shown to people, so it counts as none. */
+const GENERIC_DESCRIPTION = /^Grants the ".*" action/i;
+
+function readableDescription(description: string | null): string {
+  const text = description?.trim() ?? "";
+  return GENERIC_DESCRIPTION.test(text) ? "" : text;
+}
+
 export interface PermissionDef {
   code: string;
   displayName: string;
@@ -139,7 +147,7 @@ export async function listRoleCatalogue(): Promise<RoleCatalogue> {
       .map((permission) => ({
         code: permission.code,
         displayName: permission.display_name,
-        description: permission.description ?? "",
+        description: readableDescription(permission.description),
         module: permission.module,
       })),
   };
