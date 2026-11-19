@@ -1,33 +1,34 @@
-import { PiggyBank, Swap, Vault, Wallet } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useCan, useCurrentUser } from "@/features/auth";
 import { usePendingRequestCount } from "@/features/requests";
 import { isNoResponse } from "@/shared/api/client";
 import { AsyncBody } from "@/shared/components/AsyncBody";
-import { BarList } from "@/shared/components/BarList";
 import { MoneyText } from "@/shared/components/MoneyText";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
-import { SimpleTable } from "@/shared/components/SimpleTable";
-import { StatCard } from "@/shared/components/StatCard";
 import { TrendChart } from "@/shared/components/TrendChart";
 import { RangeFilter } from "@/shared/components/RangeFilter";
 import { Button } from "@/shared/components/ui/Button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/Select";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
+import { useFilterOptions } from "@/shared/hooks/useFilterOptions";
 import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
-import { formatCompactKobo, formatCount, formatLagos } from "@/shared/lib/format";
+import { formatCompactKobo, formatCount, formatKobo, formatLagos } from "@/shared/lib/format";
 import { parseCustomRange } from "@/shared/lib/dateRange";
+import { purposeLabel } from "@/shared/lib/purposeLabel";
 import { emptyOverview, getOverview, type Overview } from "../api/overviewApi";
+import { Delta, KpiStrip, SubStats } from "@/shared/components/KpiStrip";
+import { StatusCard } from "../components/StatusCard";
 
 const DEFAULTS = { range: "30d" };
-
-function deltaText(pct: number): string {
-  return pct >= 0
-    ? t("overview.delta.up", { pct })
-    : t("overview.delta.down", { pct: Math.abs(pct) });
-}
 
 export function OverviewPage() {
   const user = useCurrentUser();
@@ -51,22 +52,23 @@ export function OverviewPage() {
       <PageHeader
         title={t("overview.title")}
         crumbs={[{ label: t("overview.crumb") }, { label: t("overview.title") }]}
-        description={`${t("overview.greeting", { name: user.name.split(" ")[0] ?? user.name })} ${period}`}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <RangeFilter
-              label={t("overview.range")}
-              value={filters.range}
-              onChange={(v) => setFilter("range", v)}
-              options={[
-                ["7d", t("range.7d")],
-                ["30d", t("range.30d")],
-                ["90d", t("range.90d")],
-              ]}
-            />
-          </div>
-        }
+        description={t("overview.greeting", { name: user.name.split(" ")[0] ?? user.name })}
       />
+
+      <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-text">
+        <span>{t("overview.showing")}</span>
+        <RangeFilter
+          label={t("overview.range")}
+          value={filters.range}
+          onChange={(v) => setFilter("range", v)}
+          options={[
+            ["7d", t("range.7d")],
+            ["30d", t("range.30d")],
+            ["90d", t("range.90d")],
+          ]}
+        />
+        <span className="text-xs">{period}</span>
+      </div>
 
       {can("request:view_all") ? (
         <Link
@@ -101,259 +103,218 @@ export function OverviewPage() {
 
 function OverviewBody({ data }: { data: Overview }) {
   const { transfers: tr, bills, customers, savings } = data;
-  // No transfers in the period means there is no rate to show, not a division by zero.
-  const rate =
-    tr.total.count > 0 ? Math.round((tr.successful.count / tr.total.count) * 1000) / 10 : 0;
+  const billCount =
+    bills.airtime.count + bills.data.count + bills.billers.reduce((sum, b) => sum + b.count, 0);
+  const billFailures =
+    bills.airtime.failures +
+    bills.data.failures +
+    bills.billers.reduce((sum, b) => sum + b.failures, 0);
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
-        <StatCard
-          label={t("overview.kpi.transactions")}
-          value={formatCount(data.kpis.transactions.total)}
-          hint={deltaText(data.deltas.transactions)}
-          icon={<Swap size={16} />}
-          tone="info"
-        />
-        <StatCard
-          label={t("overview.kpi.value")}
-          value={formatCompactKobo(data.valueKobo)}
-          hint={deltaText(data.deltas.value)}
-          icon={<Wallet size={16} />}
-          tone="success"
-          accent
-        />
-        <StatCard
-          label={t("overview.kpi.fixedDeposits")}
-          value={formatCount(data.kpis.fixedDeposits.total)}
-          hint={deltaText(data.deltas.fixedDeposits)}
-          icon={<Vault size={16} />}
-          tone="warning"
-        />
-        <StatCard
-          label={t("overview.kpi.targetSavings")}
-          value={formatCount(data.kpis.targetSavings.total)}
-          hint={deltaText(data.deltas.targetSavings)}
-          icon={<PiggyBank size={16} />}
-          tone="info"
-        />
-      </div>
+      <KpiStrip
+        columns={4}
+        cells={[
+          {
+            label: t("overview.kpi.transactions"),
+            value: formatCount(data.kpis.transactions.total),
+            sub: <Delta pct={data.deltas.transactions} />,
+          },
+          {
+            label: t("overview.kpi.value"),
+            value: formatCompactKobo(data.valueKobo),
+            sub: <Delta pct={data.deltas.value} />,
+          },
+          {
+            label: t("overview.kpi.fixedDeposits"),
+            value: formatCount(data.kpis.fixedDeposits.total),
+            sub: <Delta pct={data.deltas.fixedDeposits} />,
+          },
+          {
+            label: t("overview.kpi.targetSavings"),
+            value: formatCount(data.kpis.targetSavings.total),
+            sub: <Delta pct={data.deltas.targetSavings} />,
+          },
+        ]}
+      />
 
-      <TrendCard data={data} />
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <SectionCard
-          title={t("overview.transfers.title")}
-          className="md:col-span-2"
-          description={t("overview.transfers.rate", { rate })}
-        >
-          <div className="grid gap-4 sm:grid-cols-4">
-            <Metric label={t("overview.transfers.total")} bucket={tr.total} />
-            <Metric label={t("overview.transfers.successful")} bucket={tr.successful} />
-            <Metric label={t("overview.transfers.failed")} bucket={tr.failed} tone="danger" />
-            <Metric label={t("overview.transfers.pending")} bucket={tr.pending} tone="warning" />
-          </div>
-          <div className="mt-5 grid gap-6 md:grid-cols-2">
-            <div>
-              <h3 className="mb-2 text-sm font-semibold">{t("overview.transfers.split")}</h3>
-              <BarList
+      <KpiStrip
+        columns={3}
+        cells={[
+          {
+            label: t("overview.transfers.title"),
+            value: formatCount(tr.total.count),
+            sub: (
+              <SubStats
                 items={[
                   {
-                    label: t("overview.transfers.wallet"),
-                    value: tr.wallet.count,
-                    display: formatCount(tr.wallet.count),
+                    label: t("overview.transfers.successful"),
+                    value: formatCount(tr.successful.count),
                   },
-                  {
-                    label: t("overview.transfers.otherBank"),
-                    value: tr.otherBank.count,
-                    display: formatCount(tr.otherBank.count),
-                  },
+                  { label: t("overview.transfers.failed"), value: formatCount(tr.failed.count) },
+                  { label: t("overview.transfers.pending"), value: formatCount(tr.pending.count) },
                 ]}
               />
-            </div>
-            <div>
-              <h3 className="mb-2 text-sm font-semibold">{t("overview.transfers.weekday")}</h3>
-              <BarList
-                items={tr.weekday.map((d) => ({
-                  label: d.label,
-                  value: d.count,
-                  display: formatCount(d.count),
-                }))}
+            ),
+          },
+          {
+            label: t("overview.bills.title"),
+            value: formatCount(billCount),
+            sub: (
+              <SubStats
+                items={[
+                  { label: t("overview.bills.airtime"), value: formatCount(bills.airtime.count) },
+                  { label: t("overview.bills.data"), value: formatCount(bills.data.count) },
+                  { label: t("overview.bills.failures"), value: formatCount(billFailures) },
+                ]}
               />
-            </div>
-          </div>
-        </SectionCard>
-
-        <SectionCard title={t("overview.customers.title")}>
-          <p className="m-0 text-2xl font-semibold text-ink">{formatCount(customers.signUps)}</p>
-          <p className="mb-4 mt-0 text-sm text-muted-text">{t("overview.customers.signUps")}</p>
-          <BarList
-            tone="success"
-            items={[
-              {
-                label: t("gender.male"),
-                value: customers.male,
-                display: formatCount(customers.male),
-              },
-              {
-                label: t("gender.female"),
-                value: customers.female,
-                display: formatCount(customers.female),
-              },
-              {
-                label: t("gender.unspecified"),
-                value: customers.unspecified,
-                display: formatCount(customers.unspecified),
-              },
-            ]}
-          />
-        </SectionCard>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <SectionCard title={t("overview.bills.title")} flush className="md:col-span-2">
-          <SimpleTable
-            caption={t("overview.bills.title")}
-            rows={[
-              {
-                name: t("overview.bills.airtime"),
-                count: bills.airtime.count,
-                amountKobo: bills.airtime.amountKobo,
-                failures: bills.airtime.failures,
-              },
-              {
-                name: t("overview.bills.data"),
-                count: bills.data.count,
-                amountKobo: bills.data.amountKobo,
-                failures: bills.data.failures,
-              },
-              ...bills.billers,
-            ]}
-            getRowId={(row) => row.name}
-            columns={[
-              { key: "name", header: t("overview.bills.category"), cell: (r) => r.name },
-              {
-                key: "count",
-                header: t("overview.bills.count"),
-                align: "right",
-                cell: (r) => formatCount(r.count),
-              },
-              {
-                key: "amount",
-                header: t("overview.bills.amount"),
-                align: "right",
-                cell: (r) => <MoneyText kobo={r.amountKobo} />,
-              },
-              {
-                key: "failures",
-                header: t("overview.bills.failures"),
-                align: "right",
-                cell: (r) => formatCount(r.failures),
-              },
-            ]}
-          />
-        </SectionCard>
-
-        <SectionCard title={t("overview.savings.title")}>
-          <dl className="m-0 flex flex-col gap-4">
-            <div>
-              <dt className="text-sm text-muted-text">
-                {t("overview.savings.fixed", { count: formatCount(savings.fixedCount) })}
-              </dt>
-              <dd className="m-0 text-xl font-semibold text-ink">
-                <MoneyText kobo={savings.fixedTotalKobo} />
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm text-muted-text">
-                {t("overview.savings.target", { count: formatCount(savings.targetCount) })}
-              </dt>
-              <dd className="m-0 text-xl font-semibold text-ink">
-                <MoneyText kobo={savings.targetTotalKobo} />
-              </dd>
-            </div>
-          </dl>
-        </SectionCard>
-      </div>
-    </div>
-  );
-}
-
-function TrendCard({ data }: { data: Overview }) {
-  const [metric, setMetric] = useState<"value" | "volume">("value");
-  const values = metric === "value" ? data.series.valueKobo : data.series.volume;
-  const format = metric === "value" ? formatCompactKobo : formatCount;
-  const total = values.reduce((sum, v) => sum + v, 0);
-  const average = total / values.length;
-  const peak = Math.max(...values);
-  const full = (n: number) =>
-    metric === "value" ? <MoneyText kobo={Math.round(n)} /> : formatCount(Math.round(n));
-
-  return (
-    <SectionCard
-      title={t("overview.trend.title")}
-      actions={
-        <div className="flex gap-1">
-          {(["value", "volume"] as const).map((id) => (
-            <Button
-              key={id}
-              size="sm"
-              variant={metric === id ? "primary" : "secondary"}
-              aria-pressed={metric === id}
-              onClick={() => setMetric(id)}
-            >
-              {t(`overview.trend.${id}`)}
-            </Button>
-          ))}
-        </div>
-      }
-    >
-      <dl className="m-0 mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
-        {(
-          [
-            ["total", total],
-            ["average", average],
-            ["peak", peak],
-          ] as const
-        ).map(([id, n]) => (
-          <div key={id} className="flex items-baseline justify-between gap-3 sm:block">
-            <dt className="text-xs text-muted-text">{t(`overview.trend.${id}`)}</dt>
-            <dd className="m-0 text-base font-semibold text-ink">{full(n)}</dd>
-          </div>
-        ))}
-      </dl>
-      <TrendChart
-        values={values}
-        labels={data.series.labels}
-        format={format}
-        averageLabel={t("overview.trend.average")}
-        summary={t("overview.trend.summary")}
+            ),
+          },
+          {
+            label: t("overview.customers.signUps"),
+            value: formatCount(customers.signUps),
+            sub: (
+              <SubStats
+                items={[
+                  { label: t("gender.male"), value: formatCount(customers.male) },
+                  { label: t("gender.female"), value: formatCount(customers.female) },
+                ]}
+              />
+            ),
+          },
+        ]}
       />
-    </SectionCard>
+
+      <TrendCard />
+
+      <div className="grid items-start gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <StatusCard data={data} />
+        </div>
+        <div className="flex flex-col gap-4">
+          <SectionCard title={t("overview.savings.title")}>
+            <dl className="m-0 flex flex-col gap-4">
+              <div>
+                <dt className="text-sm text-muted-text">
+                  {t("overview.savings.fixed", { count: formatCount(savings.fixedCount) })}
+                </dt>
+                <dd className="m-0 text-xl font-semibold text-ink">
+                  <MoneyText kobo={savings.fixedTotalKobo} />
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-text">
+                  {t("overview.savings.target", { count: formatCount(savings.targetCount) })}
+                </dt>
+                <dd className="m-0 text-xl font-semibold text-ink">
+                  <MoneyText kobo={savings.targetTotalKobo} />
+                </dd>
+              </div>
+            </dl>
+          </SectionCard>
+        </div>
+      </div>
+    </div>
   );
 }
 
-function Metric({
-  label,
-  bucket,
-  tone,
-}: {
-  label: string;
-  bucket: { count: number; amountKobo: number };
-  tone?: "danger" | "warning";
-}) {
+const TREND_RANGES = ["7d", "30d", "90d"] as const;
+
+/** The chart has its own period, so changing it does not move the figures above it. */
+function TrendCard() {
+  const [range, setRange] = useState<(typeof TREND_RANGES)[number]>("30d");
+  const [type, setType] = useState("all");
+  const [metric, setMetric] = useState<"value" | "volume">("value");
+  const query = useApiQuery(["overview", range], () => getOverview(range), {
+    refetchInterval: 60_000,
+  });
+  // The server lists every kind of transaction, including ones with no activity in the period, which chart as a flat line.
+  const served = useFilterOptions("transaction_purposes");
+  const series = query.data?.series;
+  const kinds = served.length
+    ? served
+    : (series?.byPurpose ?? []).map((entry) => ({
+        value: entry.purpose,
+        label: purposeLabel(entry.purpose),
+      }));
+  const chosen = kinds.find((kind) => kind.value === type);
+  const format = metric === "value" ? formatCompactKobo : formatCount;
+  const formatFull = metric === "value" ? (n: number) => formatKobo(Math.round(n)) : format;
+
   return (
-    <div>
-      <p className="m-0 text-xs text-muted-text">{label}</p>
-      <p
-        className={`m-0 text-xl font-semibold ${tone === "danger" ? "text-danger-text" : tone === "warning" ? "text-warning-text" : "text-ink"}`}
-      >
-        {formatCount(bucket.count)}
-      </p>
-      <p className="m-0 text-xs text-muted-text">
-        <MoneyText kobo={bucket.amountKobo} />
-      </p>
-    </div>
+    <SectionCard title={t("overview.trend.title")}>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <span className="flex items-center gap-2 text-xs text-muted-text">
+          <span aria-hidden="true" className="size-2.5 rounded-full bg-chart-1" />
+          {chosen ? chosen.label : t("overview.trend.all")}
+        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          {kinds.length > 0 ? (
+            <div className="w-44">
+              <Select value={chosen ? type : "all"} onValueChange={setType}>
+                <SelectTrigger aria-label={t("overview.trend.type")}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("overview.trend.all")}</SelectItem>
+                  {kinds.map((kind) => (
+                    <SelectItem key={kind.value} value={kind.value}>
+                      {kind.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+          <div className="w-40">
+            <Select
+              value={range}
+              onValueChange={(next) => setRange(next as (typeof TREND_RANGES)[number])}
+            >
+              <SelectTrigger aria-label={t("overview.trend.period")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TREND_RANGES.map((id) => (
+                  <SelectItem key={id} value={id}>
+                    {t(`range.${id}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-28">
+            <Select value={metric} onValueChange={(next) => setMetric(next as "value" | "volume")}>
+              <SelectTrigger aria-label={t("overview.trend.metric")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="value">{t("overview.trend.value")}</SelectItem>
+                <SelectItem value="volume">{t("overview.trend.volume")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+      <AsyncBody query={query} skeletonRows={6}>
+        {(data) => {
+          const zeros = data.series.dates.map(() => 0);
+          const source =
+            (chosen && data.series.byPurpose.find((entry) => entry.purpose === chosen.value)) ||
+            (chosen ? { valueKobo: zeros, volume: zeros } : data.series);
+          return (
+            <TrendChart
+              values={metric === "value" ? source.valueKobo : source.volume}
+              labels={data.series.labels}
+              format={format}
+              formatFull={formatFull}
+              averageLabel={t("overview.trend.average")}
+              summary={t("overview.trend.summary")}
+            />
+          );
+        }}
+      </AsyncBody>
+    </SectionCard>
   );
 }
 

@@ -1,6 +1,7 @@
 import { parseCustomRange } from "@/shared/lib/dateRange";
 import { purposeLabel } from "@/shared/lib/purposeLabel";
 import { request } from "@/shared/api/client";
+import { dayLabel } from "@/shared/lib/dayLabel";
 import { fromApiAmount } from "@/shared/api/money";
 
 export interface Bucket {
@@ -21,7 +22,15 @@ export interface Overview {
   /** Percent change against the previous period of the same length. */
   deltas: { transactions: number; value: number; fixedDeposits: number; targetSavings: number };
   valueKobo: number;
-  series: { labels: string[]; valueKobo: number[]; volume: number[] };
+  series: {
+    /** Calendar days, oldest first, one per point. */
+    dates: string[];
+    labels: string[];
+    valueKobo: number[];
+    volume: number[];
+    /** The same series split by what the money was for. Empty when the server does not send it. */
+    byPurpose: { purpose: string; valueKobo: number[]; volume: number[] }[];
+  };
   recent: RecentTransaction[];
   kpis: {
     transactions: { total: number; trend: number[] };
@@ -74,7 +83,9 @@ interface BillType {
 
 interface OverviewResponse {
   amount_unit?: string;
-  transactions: Series;
+  transactions: Series & {
+    by_purpose?: { purpose: string; volume: number; trend: Series["trend"] }[];
+  };
   fixed_deposits: Series & { active: { count: number } };
   target_savings: Series & { active: { count: number } };
   transfers: {
@@ -107,9 +118,6 @@ interface OverviewResponse {
   }[];
 }
 
-const dayLabel = (iso: string) =>
-  new Date(`${iso}T12:00:00`).toLocaleDateString("en-NG", { day: "numeric", month: "short" });
-
 export async function getOverview(range: string): Promise<Overview> {
   // A custom range is sent as its first and last day; the server compares it with the period just before.
   const custom = parseCustomRange(range);
@@ -138,9 +146,15 @@ export async function getOverview(range: string): Promise<Overview> {
     },
     valueKobo: money(r.transactions.value),
     series: {
+      dates: r.transactions.trend.map((point) => point.date),
       labels: r.transactions.trend.map((point) => dayLabel(point.date)),
       valueKobo: r.transactions.trend.map((point) => money(point.value)),
       volume: r.transactions.trend.map((point) => point.volume),
+      byPurpose: (r.transactions.by_purpose ?? []).map((entry) => ({
+        purpose: entry.purpose,
+        valueKobo: entry.trend.map((point) => money(point.value)),
+        volume: entry.trend.map((point) => point.volume),
+      })),
     },
     recent: r.recent_transactions.map((row) => ({
       id: row.reference,
@@ -211,7 +225,7 @@ export function emptyOverview(days: number): Overview {
   return {
     deltas: { transactions: 0, value: 0, fixedDeposits: 0, targetSavings: 0 },
     valueKobo: 0,
-    series: { labels: dates.map(dayLabel), valueKobo: zeros, volume: zeros },
+    series: { dates, labels: dates.map(dayLabel), valueKobo: zeros, volume: zeros, byPurpose: [] },
     recent: [],
     kpis: {
       transactions: { total: 0, trend: zeros },
