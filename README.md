@@ -1,6 +1,6 @@
 # Proxima Control Room
 
-Back-office admin console for the Proxima fintech platform. Staff use it to manage customers, transactions, account requests, savings, bulk payments, broadcasts, platform configuration, and risk controls.
+Back-office admin console for the Proxima fintech platform. Staff use it to manage customers, transactions, account requests, savings, bulk transfers, broadcasts, platform configuration, and risk controls.
 
 > **Status:** front-end only. There is no backend yet; every API call is a simulated mock (see [Mock API layer](#mock-api-layer)).
 
@@ -44,7 +44,7 @@ src/
   shared/     api/ (client, audit, events, fixtures), components/, hooks/, i18n/, lib/
 ```
 
-Features: `access`, `auth`, `broadcasts`, `bulk-payments`, `content`, `customers`, `overview`, `platform-config`, `requests`, `risk`, `savings`, `system-health`, `transactions`.
+Features: `access`, `auth`, `broadcasts`, `bulk-transfers`, `content`, `customers`, `overview`, `platform-config`, `requests`, `risk`, `savings`, `system-health`, `transactions`.
 
 ## Architecture
 
@@ -59,7 +59,7 @@ Features: `access`, `auth`, `broadcasts`, `bulk-payments`, `content`, `customers
 - Permissions are `resource:action` strings grouped by module in `features/auth/model/permissions.ts`; roles are bundles of permissions (`roleTemplates.ts`).
 - Routes are guarded with `<RequirePermission>` in `App.tsx`; in-page gating uses `<Can>`. Sidebar visibility comes from `navAccess.ts`.
 - **Segregation of duties** is enforced through the `CONFLICTS` list: a role cannot hold both initiate and approve for the same flow, or both `roles:manage` and `staff:manage`.
-- Maker-checker flows apply to requests, bulk payments and config changes.
+- Maker-checker flows apply to requests, bulk transfers and config changes.
 - The session lives in `sessionStorage`. `IdleGuard` handles inactivity warnings, and sign-in includes a TOTP step.
 
 ### Audit trail

@@ -3,15 +3,19 @@ import { KeyValueList } from "@/shared/components/KeyValueList";
 import { MoneyText } from "@/shared/components/MoneyText";
 import { SectionCard } from "@/shared/components/SectionCard";
 import { SimpleTable } from "@/shared/components/SimpleTable";
+import { Button } from "@/shared/components/ui/Button";
 import { t } from "@/shared/i18n/t";
 import { formatCount, formatKobo, formatLagos } from "@/shared/lib/format";
+import { useBulkFee, useSourceName } from "../api/queries";
 import { draftTotals, scheduledDate, type BatchDraft } from "../model/draft";
 import { LARGE_BATCH_KOBO, type BalanceInfo, type PayeeDraft } from "../model/types";
 
 const PREVIEW_ROWS = 8;
 
 export function ReviewStep({ draft, balance }: { draft: BatchDraft; balance: BalanceInfo }) {
-  const totals = draftTotals(draft.payees);
+  const sourceName = useSourceName(draft.source);
+  const fee = useBulkFee(draft.payees);
+  const totals = draftTotals(draft.payees, fee.feeKobo);
   const shortKobo =
     balance.status === "success" && balance.kobo !== undefined
       ? totals.debitKobo - balance.kobo
@@ -26,20 +30,24 @@ export function ReviewStep({ draft, balance }: { draft: BatchDraft; balance: Bal
         <KeyValueList
           items={[
             { label: t("bulk.field.name"), value: draft.name.trim() },
-            { label: t("bulk.field.source"), value: draft.source },
+            { label: t("bulk.field.source"), value: sourceName },
             {
               label: t("bulk.field.timing"),
               value: when ? formatLagos(when.toISOString()) : t("bulk.timing.onApproval"),
             },
             { label: t("bulk.stat.payees"), value: formatCount(totals.count) },
             { label: t("bulk.stat.total"), value: <MoneyText kobo={totals.totalKobo} /> },
-            { label: t("bulk.stat.fees"), value: <MoneyText kobo={totals.feeKobo} /> },
+            {
+              label: t("bulk.stat.fees"),
+              value: fee.known ? <MoneyText kobo={totals.feeKobo} /> : t("common.notAvailable"),
+            },
           ]}
         />
       </SectionCard>
 
       <SectionCard title={t("bulk.section.payees")} flush>
         <SimpleTable<PayeeDraft>
+          cardsOnSmall={false}
           caption={t("bulk.section.payees")}
           rows={preview}
           getRowId={(d) => String(d.row)}
@@ -65,6 +73,18 @@ export function ReviewStep({ draft, balance }: { draft: BatchDraft; balance: Bal
           </p>
         ) : null}
       </SectionCard>
+
+      {fee.error ? (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 rounded-md border border-danger bg-danger-bg p-3 text-sm text-danger-text"
+        >
+          <p className="m-0">{t("bulk.fee.error", { reason: fee.error.message })}</p>
+          <Button variant="outline" size="sm" onClick={fee.retry}>
+            {t("common.retry")}
+          </Button>
+        </div>
+      ) : null}
 
       {shortKobo > 0 ? (
         <div

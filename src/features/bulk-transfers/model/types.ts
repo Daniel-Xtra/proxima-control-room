@@ -30,8 +30,6 @@ export type SourceBalances = {
   error: string | null;
 }[];
 
-/** Fee charged per payee, in kobo. */
-export const FEE_PER_PAYEE_KOBO = 5_000;
 /** Largest amount one payee may receive in a batch (₦10,000,000), in kobo. */
 export const MAX_PAYEE_KOBO = 1_000_000_000;
 /** Batches above this total ask for a typed confirmation (₦10,000,000), in kobo. */
@@ -76,28 +74,34 @@ export interface BulkBatch {
   decidedBy?: string;
   decidedAt?: string;
   decisionComment?: string;
-  items: BulkItem[];
-}
-
-export interface BatchSummary {
+  /** What the backend priced the batch at, from the fee settings. */
+  feeKobo: number;
   itemCount: number;
   totalKobo: number;
-  feeKobo: number;
-  successCount: number;
-  failedCount: number;
+  /** How many payees are in each state, counted over the whole batch. */
+  counts: Record<ItemStatus, number>;
 }
 
-export type BatchRow = Omit<BulkBatch, "items"> & BatchSummary;
+export type BatchRow = BulkBatch;
 
-export function summarize(items: BulkItem[]): BatchSummary {
-  const totalKobo = items.reduce((sum, item) => sum + item.amountKobo, 0);
-  return {
-    itemCount: items.length,
-    totalKobo,
-    feeKobo: items.length * FEE_PER_PAYEE_KOBO,
-    successCount: items.filter((item) => item.status === "success").length,
-    failedCount: items.filter((item) => item.status === "failed").length,
-  };
+export type VerifyIssue =
+  | "unknown_bank"
+  | "bank_required"
+  | "duplicate"
+  | "account_not_found"
+  | "collection_account"
+  | "recipient_disabled"
+  | "name_mismatch"
+  | "name_partial"
+  | "lookup_failed";
+
+/** What checking a row against the database and the provider found. Rows that cannot be paid are "invalid". */
+export interface PayeeCheck {
+  status: "verified" | "warning" | "invalid";
+  issues: VerifyIssue[];
+  /** The name the account really has, when it was found. */
+  accountName?: string;
+  accountType?: "platform" | "collection" | "external";
 }
 
 /** A payee row from the CSV or the paste box, before it is submitted. */
@@ -110,9 +114,19 @@ export interface PayeeDraft {
   amountKobo: number | null;
   narration: string;
   errors: MessageKey[];
+  /** Set once the row has been verified. */
+  check?: PayeeCheck;
 }
 
 export interface BatchFilters {
   search: string;
   status: string;
+}
+
+/** A platform wallet bulk transfers can pay from. */
+export interface PlatformWallet {
+  id: string;
+  name: string;
+  balanceKobo: number;
+  enabled: boolean;
 }

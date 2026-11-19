@@ -1,7 +1,8 @@
 import { ArrowRight } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
+import { SourceAccountName } from "@/features/bulk-transfers";
 import { t } from "@/shared/i18n/t";
-import { humanize } from "@/shared/lib/format";
+import { formatKobo, humanize } from "@/shared/lib/format";
 
 type Payload = Record<string, unknown>;
 
@@ -48,12 +49,46 @@ interface Row {
   value: ReactNode;
 }
 
+/**
+ * How a bulk transfer request is shown: its total is naira (not kobo) and its source is a wallet id, so both are turned
+ * into what a person reads. Other request types show their fields as they are.
+ */
+function bulkTransferRow(
+  key: string,
+  value: unknown,
+  payload: Payload,
+): { name: string; value: ReactNode } | null {
+  if (key === "item_count") return { name: t("requests.details.payees"), value: plain(value) };
+  if (key === "total_amount" || key === "fee_amount") {
+    const naira = Number(value);
+    return Number.isFinite(naira)
+      ? {
+          name:
+            key === "total_amount" ? t("requests.details.totalAmount") : t("requests.details.fee"),
+          value: formatKobo(Math.round(naira * 100)),
+        }
+      : null;
+  }
+  if (key === "source_account" && typeof value === "string") {
+    // The server sends the wallet's name with the request. When it did not, look it up from the id.
+    const named =
+      typeof payload.source_account_name === "string" ? payload.source_account_name : null;
+    return {
+      name: t("requests.details.payFrom"),
+      value: named ?? <SourceAccountName id={value} />,
+    };
+  }
+  return null;
+}
+
 /** Rows for the card. A `previous` object turns the fields it names into "before → after". */
-function rowsFor(payload: Payload): Row[] {
+function rowsFor(payload: Payload, type: string): Row[] {
   const previous = isObject(payload.previous) ? payload.previous : {};
   return Object.entries(payload)
-    .filter(([key]) => key !== "previous")
+    .filter(([key]) => key !== "previous" && key !== "source_account_name")
     .map(([key, value]) => {
+      const special = type === "BULK_TRANSFER" ? bulkTransferRow(key, value, payload) : null;
+      if (special) return { key, ...special };
       const changed = key in previous;
       return {
         key,
@@ -72,8 +107,8 @@ function rowsFor(payload: Payload): Row[] {
 }
 
 /** What an approval request carries, as a labelled card instead of raw `key: value` lines. */
-export function PayloadDetails({ payload }: { payload: Payload }) {
-  const rows = rowsFor(payload);
+export function PayloadDetails({ payload, type }: { payload: Payload; type: string }) {
+  const rows = rowsFor(payload, type);
   if (rows.length === 0) return null;
   return (
     <section className="flex flex-col gap-2">

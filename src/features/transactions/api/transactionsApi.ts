@@ -1,3 +1,4 @@
+import { customWindow } from "@/shared/lib/dateRange";
 import { humanize } from "@/shared/lib/format";
 import { request, requestFile, type Page } from "@/shared/api/client";
 import { fromApiAmount, toApiAmount } from "@/shared/api/money";
@@ -50,6 +51,8 @@ const SORT_KEYS: Record<string, "created_at" | "amount" | undefined> = {
 
 /** The date window: a customer view may reach further back than the all-customers ledger allows. */
 function windowQuery(range: string) {
+  const custom = customWindow(range);
+  if (custom) return custom;
   const days = RANGE_DAYS[range];
   return days ? { from: new Date(Date.now() - days * 86_400_000).toISOString() } : {};
 }

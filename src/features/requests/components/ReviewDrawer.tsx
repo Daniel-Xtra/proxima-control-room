@@ -81,7 +81,9 @@ export function ReviewDrawer({ request, onClose }: Props) {
               ]}
             />
             {request.limits ? <LimitDiffTable limits={request.limits} /> : null}
-            {request.kind === "other" ? <PayloadDetails payload={request.payload} /> : null}
+            {request.kind === "other" ? (
+              <PayloadDetails payload={request.payload} type={request.type} />
+            ) : null}
             {request.decidedBy ? (
               <KeyValueList
                 columns={1}

@@ -9,7 +9,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { t } from "@/shared/i18n/t";
 import { formatLagos } from "@/shared/lib/format";
 import { createBatch } from "../api/bulkApi";
-import { bulkKeys, useSourceBalances } from "../api/queries";
+import { bulkKeys, useBulkFee, useSourceBalances } from "../api/queries";
 import { BatchSummaryPanel } from "../components/BatchSummaryPanel";
 import { DetailsStep } from "../components/DetailsStep";
 import { PayeesStep } from "../components/PayeesStep";
@@ -26,7 +26,7 @@ import { LARGE_BATCH_KOBO, type BalanceInfo } from "../model/types";
 
 const STEPS = ["details", "payees", "review"] as const;
 
-export function NewBulkPaymentPage() {
+export function NewBulkTransferPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [stored, setDraft] = useState<BatchDraft>(EMPTY_DRAFT);
@@ -48,11 +48,13 @@ export function NewBulkPaymentPage() {
 
   const update = (patch: Partial<BatchDraft>) => setDraft((current) => ({ ...current, ...patch }));
   const stepReady = [detailsComplete(draft, now), payeesComplete(draft), true] as const;
-  const totals = draftTotals(draft.payees);
+  const fee = useBulkFee(draft.payees);
+  const totals = draftTotals(draft.payees, fee.feeKobo);
   const when = scheduledDate(draft);
   const last = step === STEPS.length - 1;
   // A batch the account cannot cover is never submitted; an unknown balance blocks it too.
-  const canAfford = balance.status === "success" && (balance.kobo ?? 0) >= totals.debitKobo;
+  const canAfford =
+    fee.known && balance.status === "success" && (balance.kobo ?? 0) >= totals.debitKobo;
 
   const steps: Step[] = STEPS.map((key, index) => ({
     key,
@@ -67,11 +69,11 @@ export function NewBulkPaymentPage() {
         description={t("bulk.new.description")}
         crumbs={[
           { label: t("nav.group.payments") },
-          { label: t("bulk.title"), to: "/bulk-payments" },
+          { label: t("bulk.title"), to: "/bulk-transfers" },
           { label: t("bulk.new") },
         ]}
         actions={
-          <Button variant="outline" onClick={() => navigate("/bulk-payments")}>
+          <Button variant="outline" onClick={() => navigate("/bulk-transfers")}>
             {t("common.cancel")}
           </Button>
         }
@@ -81,8 +83,8 @@ export function NewBulkPaymentPage() {
         <Stepper steps={steps} label={t("bulk.steps.label")} />
       </div>
 
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="flex min-w-0 flex-col gap-4">
           {step === 0 ? (
             <DetailsStep
               draft={draft}
@@ -133,7 +135,7 @@ export function NewBulkPaymentPage() {
         open={confirmOpen}
         onOpenChange={(open) => {
           setConfirmOpen(open);
-          if (!open && createdId) navigate(`/bulk-payments/${createdId}`);
+          if (!open && createdId) navigate(`/bulk-transfers/${createdId}`);
         }}
         title={t("bulk.submit.title")}
         description={draft.name}

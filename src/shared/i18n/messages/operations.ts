@@ -1,5 +1,7 @@
 export const operations = {
   "overview.title": "Overview",
+  "overview.empty.description":
+    "We couldn't load your figures right now. Please try again in a moment.",
   "overview.greeting": "Welcome back, {name}.",
   "overview.range": "Date range",
   "overview.crumb": "Operations",

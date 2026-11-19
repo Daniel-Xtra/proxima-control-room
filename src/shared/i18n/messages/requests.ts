@@ -95,4 +95,8 @@ export const requests = {
   "requests.details.title": "Request details",
   "requests.details.yes": "Yes",
   "requests.details.no": "No",
+  "requests.details.payees": "Payees",
+  "requests.details.totalAmount": "Total amount",
+  "requests.details.fee": "Fees",
+  "requests.details.payFrom": "Pay from",
 } as const;

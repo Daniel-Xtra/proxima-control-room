@@ -1,7 +1,7 @@
 import { Prohibit, ShieldSlash, WarningCircle } from "@phosphor-icons/react";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import type { ApiError } from "../api/client";
+import { isNoResponse, type ApiError } from "../api/client";
 import { t } from "../i18n/t";
 import { EmptyState } from "./EmptyState";
 import { Button } from "./ui/Button";
@@ -11,9 +11,6 @@ type QueryLike<T> = Pick<
   UseQueryResult<T, ApiError>,
   "data" | "isLoading" | "isError" | "error" | "refetch"
 >;
-
-/** Status 0 is a request that got no response; 502 to 504 are gateways that could not reach the server. */
-const NO_RESPONSE = new Set([0, 502, 503, 504]);
 
 interface AsyncBodyProps<T> {
   query: QueryLike<T>;
@@ -64,7 +61,7 @@ export function AsyncBody<T>({
     }
     // No response at all (server down or unreachable, or a gateway that cannot reach it): there is
     // no data to show, so use the empty state, with a way to try again.
-    if (NO_RESPONSE.has(query.error?.status ?? 0)) {
+    if (isNoResponse(query.error)) {
       return (
         <EmptyState
           title={emptyTitle}

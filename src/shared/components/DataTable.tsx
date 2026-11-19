@@ -24,6 +24,8 @@ interface DataTableProps<T> {
   toolbarExtra?: ReactNode;
   /** Where the hidden-column choice is remembered. */
   storageKey: string;
+  /** Below 1024px rows show as cards. Set false to keep a real table that scrolls sideways. */
+  cardsOnSmall?: boolean;
   /** Leave both out for tables whose API cannot sort. */
   sort?: SortState | null;
   onSortChange?: (next: SortState | null) => void;

@@ -25,7 +25,7 @@ import type { BatchRow } from "../model/types";
 
 const DEFAULTS = { q: "", status: "all" };
 
-export function BulkPaymentsPage() {
+export function BulkTransfersPage() {
   const navigate = useNavigate();
   const [filters, setFilter] = useUrlFilters(DEFAULTS);
   const result = useBatches({ search: filters.q, status: filters.status });
@@ -37,8 +37,8 @@ export function BulkPaymentsPage() {
         description={t("bulk.description")}
         crumbs={[{ label: t("nav.group.payments") }, { label: t("bulk.title") }]}
         actions={
-          <Can permission="bulk_payment:initiate">
-            <Button onClick={() => navigate("/bulk-payments/new")}>
+          <Can permission="bulk_transfer:initiate">
+            <Button onClick={() => navigate("/bulk-transfers/new")}>
               <Plus aria-hidden="true" />
               {t("bulk.new")}
             </Button>
@@ -87,7 +87,7 @@ export function BulkPaymentsPage() {
               caption={t("bulk.title")}
               rows={rows}
               getRowId={(r) => r.id}
-              onRowOpen={(row) => navigate(`/bulk-payments/${row.id}`)}
+              onRowOpen={(row) => navigate(`/bulk-transfers/${row.id}`)}
               columns={[
                 {
                   key: "name",

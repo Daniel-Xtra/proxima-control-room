@@ -1,5 +1,5 @@
 import { ArrowSquareOut, CaretDown, CaretUp, CaretUpDown } from "@phosphor-icons/react";
-import { useMemo, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { useColumnVisibility } from "../hooks/useColumnVisibility";
 import { t } from "../i18n/t";
 import { ColumnPicker } from "./ColumnPicker";
@@ -20,6 +20,8 @@ export interface Column<T> {
   sortKey?: string;
   /** Columns that must stay visible in the column picker. */
   alwaysVisible?: boolean;
+  /** The column that titles a row when the table shows as cards on a phone. Defaults to the first one. */
+  primary?: boolean;
 }
 
 interface SimpleTableProps<T> {
@@ -34,6 +36,8 @@ interface SimpleTableProps<T> {
   hiddenKeys?: ReadonlySet<string>;
   /** Shows a Columns menu above the table and remembers the choice under this key. */
   storageKey?: string;
+  /** Below 1024px rows show as cards. Set false to keep a real table that scrolls sideways (for example a list of payees). */
+  cardsOnSmall?: boolean;
 }
 
 export function SimpleTable<T>({
@@ -46,6 +50,7 @@ export function SimpleTable<T>({
   onSortChange,
   hiddenKeys,
   storageKey,
+  cardsOnSmall = true,
 }: SimpleTableProps<T>) {
   const controlled = onSortChange !== undefined;
   const [localSort, setLocalSort] = useState<SortState | null>(null);
@@ -72,9 +77,67 @@ export function SimpleTable<T>({
     else setLocalSort(next);
   }
 
+  // On a phone a row becomes a card: the first column leads, the rest are label and value pairs, and columns with no header
+  // (row actions) sit at the bottom. This keeps every value readable without scrolling sideways.
+  const labelled = visible.filter((col) => col.header !== "");
+  const actionCols = visible.filter((col) => col.header === "");
+  const lead = labelled.find((col) => col.primary) ?? labelled[0];
+  const rest = labelled.filter((col) => col !== lead);
+  const cards = (
+    <ul aria-label={caption} className="m-0 list-none divide-y divide-border-soft p-0 lg:hidden">
+      {ordered.map((row) => (
+        <li key={getRowId(row)} className="flex flex-col gap-2 px-4 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 break-words font-medium text-ink">{lead?.cell(row)}</div>
+            {onRowOpen ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`${t("table.open")}: ${getRowId(row)}`}
+                title={t("table.open")}
+                onClick={() => onRowOpen(row)}
+              >
+                <ArrowSquareOut size={16} aria-hidden="true" />
+              </Button>
+            ) : null}
+          </div>
+          {rest.length > 0 ? (
+            <dl className="m-0 grid grid-cols-[minmax(0,38%)_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
+              {rest.map((col) => (
+                <Fragment key={col.key}>
+                  <dt className="text-muted-text">{col.header}</dt>
+                  <dd
+                    className={cn(
+                      "m-0 min-w-0 break-words text-ink",
+                      col.align === "right" && "tabular-nums",
+                    )}
+                  >
+                    {col.cell(row)}
+                  </dd>
+                </Fragment>
+              ))}
+            </dl>
+          ) : null}
+          {actionCols.length > 0 ? (
+            <div className="flex items-center justify-end gap-1">
+              {actionCols.map((col) => (
+                <Fragment key={col.key}>{col.cell(row)}</Fragment>
+              ))}
+            </div>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+
   const table = (
     // The wrapper scrolls sideways only, so the table never grows its own vertical scrollbar.
-    <div className="relative w-full overflow-x-auto overflow-y-hidden">
+    <div
+      className={cn(
+        "relative w-full overflow-x-auto overflow-y-hidden",
+        cardsOnSmall && "hidden lg:block",
+      )}
+    >
       <Table container={false}>
         <caption className="sr-only">{caption}</caption>
         <TableHeader>
@@ -171,7 +234,13 @@ export function SimpleTable<T>({
     </div>
   );
 
-  if (!storageKey) return table;
+  const body = (
+    <>
+      {cardsOnSmall ? cards : null}
+      {table}
+    </>
+  );
+  if (!storageKey) return body;
   return (
     <div>
       <div className="flex justify-end border-b border-border-soft px-4 py-2">
@@ -182,7 +251,7 @@ export function SimpleTable<T>({
           onReset={saved.reset}
         />
       </div>
-      {table}
+      {body}
     </div>
   );
 }

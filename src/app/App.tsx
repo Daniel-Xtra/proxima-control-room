@@ -17,10 +17,11 @@ import {
   SegmentsPage,
 } from "@/features/broadcasts";
 import {
-  BulkPaymentDetailPage,
-  BulkPaymentsPage,
-  NewBulkPaymentPage,
-} from "@/features/bulk-payments";
+  BulkTransferDetailPage,
+  BulkTransfersPage,
+  NewBulkTransferPage,
+  PlatformWalletsPage,
+} from "@/features/bulk-transfers";
 import { BannersPage } from "@/features/content";
 import { CustomerDetailPage, CustomersPage } from "@/features/customers";
 import { OverviewPage } from "@/features/overview";
@@ -80,26 +81,34 @@ export function App() {
                 }
               />
               <Route
-                path="bulk-payments"
+                path="bulk-transfers"
                 element={
-                  <RequirePermission permission="bulk_payment:view">
-                    <BulkPaymentsPage />
+                  <RequirePermission permission="bulk_transfer:view">
+                    <BulkTransfersPage />
                   </RequirePermission>
                 }
               />
               <Route
-                path="bulk-payments/new"
+                path="bulk-transfers/new"
                 element={
-                  <RequirePermission permission="bulk_payment:initiate">
-                    <NewBulkPaymentPage />
+                  <RequirePermission permission="bulk_transfer:initiate">
+                    <NewBulkTransferPage />
                   </RequirePermission>
                 }
               />
               <Route
-                path="bulk-payments/:id"
+                path="platform-wallets"
                 element={
-                  <RequirePermission permission="bulk_payment:view">
-                    <BulkPaymentDetailPage />
+                  <RequirePermission permission="platform_wallet:view">
+                    <PlatformWalletsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="bulk-transfers/:id"
+                element={
+                  <RequirePermission permission="bulk_transfer:view">
+                    <BulkTransferDetailPage />
                   </RequirePermission>
                 }
               />

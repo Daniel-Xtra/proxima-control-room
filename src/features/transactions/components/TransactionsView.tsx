@@ -5,6 +5,7 @@ import { AsyncBody } from "@/shared/components/AsyncBody";
 import { DataTable } from "@/shared/components/DataTable";
 import { DateText } from "@/shared/components/DateText";
 import { FilterBar } from "@/shared/components/FilterBar";
+import { RangeFilter } from "@/shared/components/RangeFilter";
 import { MoneyText } from "@/shared/components/MoneyText";
 import { SectionCard } from "@/shared/components/SectionCard";
 import { Button } from "@/shared/components/ui/Button";
@@ -82,7 +83,7 @@ export function TransactionsView({ customerId, filters, defaults, setFilter }: P
           label: t("transactions.searchLabel"),
         }}
       >
-        <Filter
+        <RangeFilter
           label={t("transactions.filter.range")}
           value={filters.range}
           onChange={(v) => setFilter("range", v)}

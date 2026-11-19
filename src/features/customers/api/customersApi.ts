@@ -1,3 +1,4 @@
+import { customWindow } from "@/shared/lib/dateRange";
 import { request, type Page } from "@/shared/api/client";
 import { fromApiAmount } from "@/shared/api/money";
 import type {
@@ -54,7 +55,8 @@ export async function listCustomers(filters: CustomerFilters): Promise<Page<Cust
       locked: filters.status === "locked" ? true : filters.status === "active" ? false : undefined,
       is_kyc_completed: filters.kyc === "yes" ? true : filters.kyc === "no" ? false : undefined,
       kyc_level: filters.kyc === "1" || filters.kyc === "2" ? Number(filters.kyc) : undefined,
-      joined_from: joinedFrom(filters.range),
+      joined_from: customWindow(filters.range)?.from ?? joinedFrom(filters.range),
+      joined_to: customWindow(filters.range)?.to,
       sort: SORT_KEYS[filters.sort],
       dir: SORT_KEYS[filters.sort] ? filters.dir : undefined,
       page: filters.page,

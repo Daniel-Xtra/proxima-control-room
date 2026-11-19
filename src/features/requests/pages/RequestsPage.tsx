@@ -14,7 +14,7 @@ import { t } from "@/shared/i18n/t";
 import { RequestsTable } from "../components/RequestsTable";
 import type { RequestKind } from "../model/types";
 
-const DEFAULTS = { tab: "freeze", status: "pending" };
+const DEFAULTS = { tab: "freeze", status: "all" };
 const KIND_TABS: RequestKind[] = [
   "freeze",
   "unfreeze",
@@ -32,8 +32,9 @@ export function RequestsPage() {
   const [filters, setFilter] = useUrlFilters(DEFAULTS);
   const viewAll = can("request:view_all");
   const canSeeAll = can("audit_log:view");
-  // Pending requests are the ones this admin may decide; decided ones need wider (audit) access.
-  const decidedScope = canSeeAll ? "all" : "mine";
+  // Pending requests are the ones this admin may decide. Decided ones are everyone's with audit access, otherwise the ones
+  // this admin decided or raised themselves.
+  const decidedScope = canSeeAll ? "all" : "handled";
   const tab = viewAll ? filters.tab : "mine";
 
   return (

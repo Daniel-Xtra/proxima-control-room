@@ -208,3 +208,8 @@ export function saveFile({ blob, filename }: DownloadedFile) {
   link.remove();
   URL.revokeObjectURL(url);
 }
+
+/** Status 0 is a request that got no response; 502 to 504 are gateways that could not reach the server. */
+export function isNoResponse(error: { status?: number } | null | undefined): boolean {
+  return [0, 502, 503, 504].includes(error?.status ?? 0);
+}

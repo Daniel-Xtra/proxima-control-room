@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useCan, useCurrentUser } from "@/features/auth";
 import { usePendingRequestCount } from "@/features/requests";
+import { isNoResponse } from "@/shared/api/client";
 import { AsyncBody } from "@/shared/components/AsyncBody";
 import { BarList } from "@/shared/components/BarList";
 import { MoneyText } from "@/shared/components/MoneyText";
@@ -13,20 +14,15 @@ import { SimpleTable } from "@/shared/components/SimpleTable";
 import { StatCard } from "@/shared/components/StatCard";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { TrendChart } from "@/shared/components/TrendChart";
+import { RangeFilter } from "@/shared/components/RangeFilter";
 import { Button } from "@/shared/components/ui/Button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/components/ui/Select";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
 import { formatCompactKobo, formatCount, formatLagos } from "@/shared/lib/format";
+import { parseCustomRange } from "@/shared/lib/dateRange";
 import { purposeLabel } from "@/shared/lib/purposeLabel";
-import { getOverview, type Overview } from "../api/overviewApi";
+import { emptyOverview, getOverview, type Overview } from "../api/overviewApi";
 
 const DEFAULTS = { range: "30d" };
 
@@ -44,10 +40,13 @@ export function OverviewPage() {
     refetchInterval: 60_000,
   });
   const pending = usePendingRequestCount(can("request:view_all"));
-  const days = Number(filters.range.replace("d", "")) || 30;
+  const custom = parseCustomRange(filters.range);
+  const days = custom
+    ? Math.round((Date.parse(custom.to) - Date.parse(custom.from)) / 86_400_000) + 1
+    : Number(filters.range.replace("d", "")) || 30;
   const period = t("overview.period", {
-    from: formatLagos(isoDaysAgo(days), true),
-    to: formatLagos(isoDaysAgo(0), true),
+    from: formatLagos(custom ? custom.from : isoDaysAgo(days), true),
+    to: formatLagos(custom ? custom.to : isoDaysAgo(0), true),
   });
 
   return (
@@ -57,17 +56,17 @@ export function OverviewPage() {
         crumbs={[{ label: t("overview.crumb") }, { label: t("overview.title") }]}
         description={`${t("overview.greeting", { name: user.name.split(" ")[0] ?? user.name })} ${period}`}
         actions={
-          <div className="w-48">
-            <Select value={filters.range} onValueChange={(v) => setFilter("range", v)}>
-              <SelectTrigger aria-label={t("overview.range")} className="h-11">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7d">{t("range.7d")}</SelectItem>
-                <SelectItem value="30d">{t("range.30d")}</SelectItem>
-                <SelectItem value="90d">{t("range.90d")}</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap items-center gap-2">
+            <RangeFilter
+              label={t("overview.range")}
+              value={filters.range}
+              onChange={(v) => setFilter("range", v)}
+              options={[
+                ["7d", t("range.7d")],
+                ["30d", t("range.30d")],
+                ["90d", t("range.90d")],
+              ]}
+            />
           </div>
         }
       />
@@ -84,9 +83,21 @@ export function OverviewPage() {
         </Link>
       ) : null}
 
-      <AsyncBody query={query} skeletonRows={10}>
-        {(data) => <OverviewBody data={data} />}
-      </AsyncBody>
+      {query.isError && isNoResponse(query.error) ? (
+        <>
+          <div className="card mb-4 flex items-center justify-between gap-3 px-4 py-3 text-sm text-muted-text">
+            <span>{t("overview.empty.description")}</span>
+            <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
+              {t("common.retry")}
+            </Button>
+          </div>
+          <OverviewBody data={emptyOverview(days)} />
+        </>
+      ) : (
+        <AsyncBody query={query} skeletonRows={10}>
+          {(data) => <OverviewBody data={data} />}
+        </AsyncBody>
+      )}
 
       <SectionCard
         title={t("overview.gap.title")}

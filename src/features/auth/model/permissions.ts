@@ -43,7 +43,14 @@ export const PERMISSIONS_BY_MODULE = {
     "kyc:override",
   ],
   savings: ["savings:view", "savings:liquidate"],
-  bulk: ["bulk_payment:view", "bulk_payment:initiate", "bulk_payment:approve"],
+  bulk: [
+    "bulk_transfer:view",
+    "bulk_transfer:initiate",
+    "bulk_transfer:approve",
+    "platform_wallet:view",
+    "platform_wallet:topup_request",
+    "platform_wallet:topup_approve",
+  ],
   compliance: ["compliance:view_alerts", "compliance:manage_cases", "compliance:manage_blocklist"],
   config: [
     "config:view",
@@ -96,7 +103,12 @@ export const CONFLICTS: { a: Permission; b: Permission; reason: MessageKey }[] =
   { a: "freeze_request:initiate", b: "freeze_request:approve", reason: "conflict.sameRequest" },
   { a: "unfreeze_request:initiate", b: "unfreeze_request:approve", reason: "conflict.sameRequest" },
   { a: "limit_request:initiate", b: "limit_request:approve", reason: "conflict.sameRequest" },
-  { a: "bulk_payment:initiate", b: "bulk_payment:approve", reason: "conflict.sameRequest" },
+  { a: "bulk_transfer:initiate", b: "bulk_transfer:approve", reason: "conflict.sameRequest" },
+  {
+    a: "platform_wallet:topup_request",
+    b: "platform_wallet:topup_approve",
+    reason: "conflict.sameRequest",
+  },
   { a: "roles:manage", b: "staff:manage", reason: "conflict.selfAssign" },
   { a: "config:edit", b: "config:approve", reason: "conflict.sameConfig" },
 ];

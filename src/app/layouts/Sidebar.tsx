@@ -138,7 +138,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     <>
       <aside
         className={cn(
-          "sticky top-0 z-40 hidden h-screen shrink-0 self-start border-r border-border bg-surface transition-[width] duration-200 md:block",
+          "sticky top-0 z-40 hidden h-screen shrink-0 self-start border-r border-border bg-surface transition-[width] duration-200 lg:block",
           collapsed ? "w-[76px]" : "w-60",
         )}
       >
@@ -160,7 +160,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       </aside>
 
       {open ? (
-        <div className="md:hidden">
+        <div className="lg:hidden">
           <button
             type="button"
             aria-label={t("common.close")}

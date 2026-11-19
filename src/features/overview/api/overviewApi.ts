@@ -1,3 +1,4 @@
+import { parseCustomRange } from "@/shared/lib/dateRange";
 import { request } from "@/shared/api/client";
 import { fromApiAmount } from "@/shared/api/money";
 
@@ -109,7 +110,11 @@ const dayLabel = (iso: string) =>
   new Date(`${iso}T12:00:00`).toLocaleDateString("en-NG", { day: "numeric", month: "short" });
 
 export async function getOverview(range: string): Promise<Overview> {
-  const r = await request<OverviewResponse>("/admin/overview", { query: { range } });
+  // A custom range is sent as its first and last day; the server compares it with the period just before.
+  const custom = parseCustomRange(range);
+  const r = await request<OverviewResponse>("/admin/overview", {
+    query: custom ? { from: custom.from, to: custom.to } : { range },
+  });
   const money = (amount: number) => fromApiAmount(amount, r.amount_unit);
   // No period to compare with means no change to report.
   const delta = (pct: number | null) => pct ?? 0;
@@ -189,5 +194,43 @@ export async function getOverview(range: string): Promise<Overview> {
       targetTotalKobo: money(r.savings.target_savings_balance),
       targetCount: r.target_savings.active.count,
     },
+  };
+}
+
+const NONE: Bucket = { count: 0, amountKobo: 0 };
+const NO_BILLS = { ...NONE, successes: 0, failures: 0, pending: 0 };
+
+/** The overview with nothing in it, so each section can show its own empty state. */
+export function emptyOverview(days: number): Overview {
+  const dates = Array.from({ length: Math.max(days, 2) }, (_, i) => {
+    const date = new Date(Date.now() - (days - 1 - i) * 86_400_000);
+    return date.toISOString().slice(0, 10);
+  });
+  const zeros = dates.map(() => 0);
+  return {
+    deltas: { transactions: 0, value: 0, fixedDeposits: 0, targetSavings: 0 },
+    valueKobo: 0,
+    series: { labels: dates.map(dayLabel), valueKobo: zeros, volume: zeros },
+    recent: [],
+    kpis: {
+      transactions: { total: 0, trend: zeros },
+      fixedDeposits: { total: 0, trend: zeros },
+      targetSavings: { total: 0, trend: zeros },
+    },
+    transfers: {
+      total: NONE,
+      successful: NONE,
+      failed: NONE,
+      pending: NONE,
+      wallet: NONE,
+      otherBank: NONE,
+      weekday: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label) => ({
+        label,
+        count: 0,
+      })),
+    },
+    bills: { airtime: NO_BILLS, data: NO_BILLS, billers: [] },
+    customers: { signUps: 0, trend: zeros, male: 0, female: 0, unspecified: 0 },
+    savings: { fixedTotalKobo: 0, fixedCount: 0, targetTotalKobo: 0, targetCount: 0 },
   };
 }

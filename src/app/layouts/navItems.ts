@@ -6,6 +6,7 @@ import {
   Image,
   IdentificationBadge,
   ListChecks,
+  Vault,
   Lock,
   Megaphone,
   Notepad,
@@ -57,10 +58,16 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "nav.group.payments",
     items: [
       {
-        id: "bulk-payments",
-        to: "/bulk-payments",
+        id: "bulk-transfers",
+        to: "/bulk-transfers",
         icon: ListChecks,
-        label: "nav.bulkPayments",
+        label: "nav.bulkTransfers",
+      },
+      {
+        id: "platform-wallets",
+        to: "/platform-wallets",
+        icon: Vault,
+        label: "nav.platformWallets",
       },
     ],
   },

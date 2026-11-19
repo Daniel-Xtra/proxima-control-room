@@ -50,7 +50,7 @@ export function AppShell() {
             <div className="flex min-w-0 items-center gap-2">
               <button
                 type="button"
-                className="inline-flex size-11 cursor-pointer items-center justify-center rounded-md text-ink hover:bg-surface-muted md:hidden"
+                className="inline-flex size-11 cursor-pointer items-center justify-center rounded-md text-ink hover:bg-surface-muted lg:hidden"
                 aria-label={t("shell.openMenu")}
                 onClick={() => setNavOpen(true)}
               >

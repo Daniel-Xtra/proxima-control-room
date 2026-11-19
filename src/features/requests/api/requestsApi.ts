@@ -96,7 +96,7 @@ const STATUS: Record<ApprovalStatus, RequestStatus> = {
 const short = (id: string) => id.slice(0, 8);
 
 function toRequest(a: Approval): AccountRequest {
-  // Types the UI has no dedicated screen for (fees, tier limits, bulk payments, broadcasts) still show up.
+  // Types the UI has no dedicated screen for (fees, tier limits, bulk transfers, broadcasts) still show up.
   const kind = TYPE_TO_KIND[a.type] ?? "other";
   const limits: LimitDiff | undefined =
     kind === "limit" && a.payload.daily_limit !== undefined

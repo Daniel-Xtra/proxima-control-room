@@ -55,7 +55,7 @@ export interface AccountRequest {
  * - `all`: every request the admin may see (needs audit access)
  * - `customer`: assigned and mine together, narrowed to `customerId`
  */
-export type RequestScope = "assigned" | "mine" | "all" | "customer";
+export type RequestScope = "assigned" | "mine" | "handled" | "all" | "customer";
 
 export interface RequestFilters {
   kind?: RequestKind;

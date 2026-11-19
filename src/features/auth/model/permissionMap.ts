@@ -58,9 +58,12 @@ export const PERMISSION_SOURCES: Record<Permission, readonly string[]> = {
   "savings:view": ["savings.view"],
   "savings:liquidate": [],
 
-  "bulk_payment:view": ["bulk_payment.view"],
-  "bulk_payment:initiate": ["bulk_payment.initiate"],
-  "bulk_payment:approve": ["bulk_payment.approve"],
+  "bulk_transfer:view": ["bulk_transfer.view"],
+  "bulk_transfer:initiate": ["bulk_transfer.initiate"],
+  "bulk_transfer:approve": ["bulk_transfer.approve"],
+  "platform_wallet:view": ["platform_wallet.view"],
+  "platform_wallet:topup_request": ["platform_wallet.topup.request"],
+  "platform_wallet:topup_approve": ["platform_wallet.topup.approve"],
 
   "compliance:view_alerts": ["risk.alert.view"],
   "compliance:manage_cases": ["risk.case.manage"],

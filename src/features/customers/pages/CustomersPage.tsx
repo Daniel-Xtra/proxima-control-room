@@ -3,6 +3,7 @@ import { AsyncBody } from "@/shared/components/AsyncBody";
 import { DataTable } from "@/shared/components/DataTable";
 import { DateText } from "@/shared/components/DateText";
 import { FilterBar } from "@/shared/components/FilterBar";
+import { RangeFilter } from "@/shared/components/RangeFilter";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
 import {
@@ -70,7 +71,7 @@ export function CustomersPage() {
           label: t("customers.searchLabel"),
         }}
       >
-        <FilterSelect
+        <RangeFilter
           label={t("customers.filter.range")}
           value={filters.range}
           onChange={(v) => setFilter("range", v)}

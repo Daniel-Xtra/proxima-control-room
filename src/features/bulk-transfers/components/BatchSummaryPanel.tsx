@@ -3,6 +3,7 @@ import { MoneyText } from "@/shared/components/MoneyText";
 import { SectionCard } from "@/shared/components/SectionCard";
 import { t } from "@/shared/i18n/t";
 import { formatCount, formatLagos } from "@/shared/lib/format";
+import { useBulkFee, useSourceName } from "../api/queries";
 import { draftTotals, scheduledDate, type BatchDraft } from "../model/draft";
 import type { BalanceInfo } from "../model/types";
 
@@ -17,7 +18,9 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 
 /** Live summary that stays beside the steps, so the totals are always in view. */
 export function BatchSummaryPanel({ draft, balance }: { draft: BatchDraft; balance: BalanceInfo }) {
-  const totals = draftTotals(draft.payees);
+  const fee = useBulkFee(draft.payees);
+  const totals = draftTotals(draft.payees, fee.feeKobo);
+  const sourceName = useSourceName(draft.source);
   const when = scheduledDate(draft);
 
   return (
@@ -33,7 +36,7 @@ export function BatchSummaryPanel({ draft, balance }: { draft: BatchDraft; balan
             )
           }
         />
-        <Row label={t("bulk.field.source")} value={draft.source} />
+        <Row label={t("bulk.field.source")} value={sourceName} />
         <Row
           label={t("bulk.field.timing")}
           value={when ? formatLagos(when.toISOString()) : t("bulk.timing.onApproval")}
@@ -42,7 +45,10 @@ export function BatchSummaryPanel({ draft, balance }: { draft: BatchDraft; balan
       <dl className="m-0 mt-2 divide-y divide-border-soft border-t border-border-soft pt-2">
         <Row label={t("bulk.stat.payees")} value={formatCount(totals.count)} />
         <Row label={t("bulk.stat.total")} value={<MoneyText kobo={totals.totalKobo} />} />
-        <Row label={t("bulk.stat.fees")} value={<MoneyText kobo={totals.feeKobo} />} />
+        <Row
+          label={t("bulk.stat.fees")}
+          value={fee.known ? <MoneyText kobo={totals.feeKobo} /> : t("common.notAvailable")}
+        />
       </dl>
       <div className="mt-3 rounded-md bg-surface-muted p-3">
         <p className="m-0 text-xs text-muted-text">{t("bulk.stat.debit")}</p>

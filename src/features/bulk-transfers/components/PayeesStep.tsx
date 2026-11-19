@@ -1,17 +1,22 @@
-import { DownloadSimple, Trash } from "@phosphor-icons/react";
+import { DownloadSimple, SealCheck, Trash } from "@phosphor-icons/react";
 import { useRef, useState } from "react";
 import { FileUpload, type EvidenceFile } from "@/shared/components/FileUpload";
 import { MoneyText } from "@/shared/components/MoneyText";
 import { SectionCard } from "@/shared/components/SectionCard";
-import { SimpleTable } from "@/shared/components/SimpleTable";
+import { DataTable } from "@/shared/components/DataTable";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { Button } from "@/shared/components/ui/Button";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/Tabs";
 import { t } from "@/shared/i18n/t";
-import { CSV_HEADERS, csvTemplate } from "../model/csv";
-import { draftTotals, renumber } from "../model/draft";
-import { payeeFileKind, readPayeeFile } from "../model/readPayeeFile";
-import { FEE_PER_PAYEE_KOBO, MAX_PAYEE_KOBO, type PayeeDraft } from "../model/types";
+import { ApiError } from "@/shared/api/client";
+import { listBanks, listTemplatePayees, verifyPayees } from "../api/bulkApi";
+import { useBulkFee } from "../api/queries";
+import { PayeeCheckCell } from "./PayeeCheckCell";
+import { PAYEE_COLUMNS, TEMPLATE_WIDTHS, templateRows } from "../model/payeeRows";
+import { draftTotals, needsFixing, renumber, unverifiedCount } from "../model/draft";
+import { isPayeeFile, readPayeeFile } from "../model/readPayeeFile";
+import { buildXlsx } from "../model/xlsx";
+import { MAX_PAYEE_KOBO, type PayeeDraft } from "../model/types";
 
 interface Props {
   payees: PayeeDraft[];
@@ -21,11 +26,36 @@ interface Props {
 
 type Filter = "all" | "fix" | "valid";
 
-function downloadTemplate() {
-  const url = URL.createObjectURL(new Blob([csvTemplate()], { type: "text/csv" }));
+/** Bank names as the API lists them, so the sample rows are accepted when the batch is created. */
+async function templateBanks(): Promise<string[] | undefined> {
+  try {
+    const names = (await listBanks()).map((bank) => bank.name);
+    const common = names.filter((name) =>
+      /access|guaranty|first bank|united bank|zenith|wema|sterling/i.test(name),
+    );
+    const pick = (common.length >= 3 ? common : names).slice(0, 10);
+    return pick.length > 0 ? pick : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The bank names and the real platform customers the template is filled with. Either is left out if it cannot be read. */
+async function templateParts() {
+  const [banks, internal] = await Promise.all([
+    templateBanks(),
+    listTemplatePayees().catch(() => []),
+  ]);
+  return [banks, internal] as const;
+}
+
+async function downloadTemplate() {
+  const url = URL.createObjectURL(
+    buildXlsx(templateRows(...(await templateParts())), TEMPLATE_WIDTHS),
+  );
   const link = document.createElement("a");
   link.href = url;
-  link.download = "bulk-payment-template.csv";
+  link.download = "bulk-transfer-template.xlsx";
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -34,7 +64,40 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
   const [problems, setProblems] = useState<string[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const read = useRef(new Set<File>());
-  const totals = draftTotals(payees);
+  const totals = draftTotals(payees, useBulkFee(payees).feeKobo);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyNote, setVerifyNote] = useState<string | null>(null);
+  const unverified = unverifiedCount(payees);
+  const [paging, setPaging] = useState({ page: 1, limit: 10 });
+
+  async function verify() {
+    setVerifying(true);
+    setVerifyNote(null);
+    try {
+      const results = await verifyPayees(payees);
+      onPayeesChange((previous) =>
+        previous.map((p) => {
+          const check = results.get(p.row);
+          return check ? { ...p, check } : p;
+        }),
+      );
+      const all = [...results.values()];
+      setVerifyNote(
+        t("bulk.verify.done", {
+          verified: all.filter((c) => c.status === "verified").length,
+          warning: all.filter((c) => c.status === "warning").length,
+          invalid: all.filter((c) => c.status === "invalid").length,
+        }),
+      );
+    } catch (error) {
+      // Say why when the server did: for example "Too many requests. Please try again in 34 seconds."
+      setVerifyNote(
+        error instanceof ApiError && error.status === 429 ? error.message : t("bulk.verify.error"),
+      );
+    } finally {
+      setVerifying(false);
+    }
+  }
 
   function onFiles(files: EvidenceFile[]) {
     const found: string[] = [];
@@ -42,12 +105,11 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
       const file = item.file;
       if (!file || read.current.has(file)) continue;
       read.current.add(file);
-      const kind = payeeFileKind(file);
-      if (!kind) {
+      if (!isPayeeFile(file)) {
         found.push(t("bulk.upload.badType", { name: file.name }));
         continue;
       }
-      readPayeeFile(file, kind).then(
+      readPayeeFile(file).then(
         (added) => onPayeesChange((previous) => renumber([...previous, ...added])),
         () => setProblems((prev) => [...prev, t("bulk.upload.readError", { name: file.name })]),
       );
@@ -62,8 +124,12 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
   ] as const;
 
   const shown = payees.filter((p) =>
-    filter === "all" ? true : filter === "fix" ? p.errors.length > 0 : p.errors.length === 0,
+    filter === "all" ? true : filter === "fix" ? needsFixing(p) : !needsFixing(p),
   );
+  // The list shrinks when rows are removed, so stay on the last page that still exists.
+  const lastPage = Math.max(1, Math.ceil(shown.length / paging.limit));
+  const page = Math.min(paging.page, lastPage);
+  const pageRows = shown.slice((page - 1) * paging.limit, page * paging.limit);
 
   return (
     <div className="flex flex-col gap-4">
@@ -74,6 +140,9 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
               label={t("bulk.upload.label")}
               help={t("bulk.upload.help")}
               onChange={onFiles}
+              accept=".xlsx"
+              allowed={/\.xlsx$/i}
+              badType={t("bulk.upload.onlyXlsx")}
             />
             {problems.length > 0 ? (
               <ul role="alert" className="m-0 mt-2 list-none p-0 text-xs text-danger-text">
@@ -87,17 +156,22 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
             <h3 className="m-0 text-sm font-semibold text-ink">{t("bulk.format.title")}</h3>
             <p className="m-0 mt-2 text-xs text-muted-text">{t("bulk.format.columns")}</p>
             <ul className="m-0 mt-1 list-none space-y-0.5 p-0 font-mono text-xs text-ink">
-              {CSV_HEADERS.map((header) => (
+              {PAYEE_COLUMNS.map((header) => (
                 <li key={header}>{header}</li>
               ))}
             </ul>
+            <p className="m-0 mt-2 text-xs text-muted-text">{t("bulk.format.bankOptional")}</p>
             <p className="m-0 mt-3 text-xs text-muted-text">
               {t("bulk.format.limits", {
                 max: (MAX_PAYEE_KOBO / 100).toLocaleString("en-NG"),
-                fee: FEE_PER_PAYEE_KOBO / 100,
               })}
             </p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={downloadTemplate}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => void downloadTemplate()}
+            >
               <DownloadSimple aria-hidden="true" />
               {t("bulk.template")}
             </Button>
@@ -116,9 +190,7 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
                   variant="outline"
                   size="sm"
                   onClick={() =>
-                    onPayeesChange((previous) =>
-                      renumber(previous.filter((p) => p.errors.length === 0)),
-                    )
+                    onPayeesChange((previous) => renumber(previous.filter((p) => !needsFixing(p))))
                   }
                 >
                   {t("bulk.removeInvalid")}
@@ -131,6 +203,11 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
           ) : null
         }
       >
+        {verifyNote ? (
+          <output className="block border-b border-border-soft px-4 py-3 text-sm text-muted-text">
+            {verifyNote}
+          </output>
+        ) : null}
         {payees.length === 0 ? (
           <p className="m-0 p-6 text-center text-sm text-muted-text">{t("bulk.nothingYet")}</p>
         ) : (
@@ -138,7 +215,10 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-soft px-4 py-3">
               <Tabs
                 value={filter}
-                onValueChange={(value) => setFilter(value as Filter)}
+                onValueChange={(value) => {
+                  setFilter(value as Filter);
+                  setPaging((current) => ({ ...current, page: 1 }));
+                }}
                 className="mt-0 gap-0"
               >
                 <TabsList className="w-auto gap-1 rounded-lg border border-border bg-surface-muted p-1">
@@ -163,19 +243,26 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
                 </TabsList>
               </Tabs>
             </div>
-            <SimpleTable<PayeeDraft>
+            <DataTable<PayeeDraft>
+              storageKey="bulk-review"
+              cardsOnSmall={false}
               caption={t("bulk.section.review")}
-              rows={shown}
+              rows={pageRows}
               getRowId={(d) => String(d.row)}
+              page={page}
+              limit={paging.limit}
+              total={shown.length}
+              onPageChange={(next) => setPaging((current) => ({ ...current, page: next }))}
+              onLimitChange={(limit) => setPaging({ page: 1, limit })}
               columns={[
                 {
                   key: "row",
                   header: t("bulk.col.row"),
-                  sortValue: (d) => d.row,
                   cell: (d) => d.row,
                 },
                 {
                   key: "name",
+                  primary: true,
                   header: t("bulk.col.accountName"),
                   cell: (d) => d.accountName || "–",
                 },
@@ -189,7 +276,6 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
                   key: "amount",
                   header: t("bulk.col.amount"),
                   align: "right",
-                  sortValue: (d) => d.amountKobo ?? 0,
                   cell: (d) => (d.amountKobo === null ? "–" : <MoneyText kobo={d.amountKobo} />),
                 },
                 {
@@ -197,7 +283,11 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
                   header: t("bulk.col.check"),
                   cell: (d) =>
                     d.errors.length === 0 ? (
-                      <StatusBadge tone="success" label={t("bulk.valid")} />
+                      d.check ? (
+                        <PayeeCheckCell check={d.check} />
+                      ) : (
+                        <StatusBadge tone="neutral" label={t("bulk.notChecked")} />
+                      )
                     ) : (
                       <span className="whitespace-normal text-xs text-danger-text">
                         {d.errors.map((key) => t(key)).join(" ")}
@@ -207,6 +297,7 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
                 {
                   key: "remove",
                   header: "",
+                  alwaysVisible: true,
                   align: "right",
                   cell: (d) => (
                     <Button
@@ -228,6 +319,18 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
           </>
         )}
       </SectionCard>
+
+      {unverified > 0 ? (
+        <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3 shadow-lg">
+          <p className="m-0 min-w-0 text-sm text-ink">
+            {t("bulk.verify.required", { count: unverified })}
+          </p>
+          <Button disabled={verifying} onClick={() => void verify()}>
+            <SealCheck aria-hidden="true" />
+            {verifying ? t("bulk.verify.running") : t("bulk.verify.button")}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

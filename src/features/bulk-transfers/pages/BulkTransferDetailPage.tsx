@@ -4,22 +4,20 @@ import { useParams } from "react-router-dom";
 import { useCan, useCurrentUser } from "@/features/auth";
 import { ActionDialog } from "@/shared/components/ActionDialog";
 import { AsyncBody } from "@/shared/components/AsyncBody";
-import { KeyValueList } from "@/shared/components/KeyValueList";
-import { MoneyText } from "@/shared/components/MoneyText";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
-import { SimpleTable } from "@/shared/components/SimpleTable";
-import { StatCard } from "@/shared/components/StatCard";
 import { Timeline, type TimelineEntry } from "@/shared/components/Timeline";
 import { Button } from "@/shared/components/ui/Button";
 import { t } from "@/shared/i18n/t";
-import { formatCount, formatLagos } from "@/shared/lib/format";
+import { formatLagos } from "@/shared/lib/format";
 import { decideBatch, retryFailed } from "../api/bulkApi";
-import { bulkKeys, useBatch } from "../api/queries";
-import { BatchStatusBadge, ItemStatusBadge } from "../components/BulkBadges";
-import { summarize, type BulkBatch, type BulkItem } from "../model/types";
+import { bulkKeys, useBatch, useSourceName } from "../api/queries";
+import { BatchOverview } from "../components/BatchOverview";
+import { BatchPayeesTable } from "../components/BatchPayeesTable";
+import { BatchStatusBadge } from "../components/BulkBadges";
+import type { BulkBatch } from "../model/types";
 
-export function BulkPaymentDetailPage() {
+export function BulkTransferDetailPage() {
   const { id = "" } = useParams();
   const query = useBatch(id);
   return <AsyncBody query={query}>{(batch) => <BatchDetail batch={batch} />}</AsyncBody>;
@@ -31,8 +29,8 @@ function BatchDetail({ batch }: { batch: BulkBatch }) {
   const can = useCan();
   const [dialog, setDialog] = useState<"approved" | "rejected" | "retry" | null>(null);
   const [openedAt] = useState(() => Date.now());
-  const summary = summarize(batch.items);
-  const debitKobo = summary.totalKobo + summary.feeKobo;
+  const sourceName = useSourceName(batch.sourceAccount);
+  const debitKobo = batch.totalKobo + batch.feeKobo;
 
   const isOwn = batch.createdBy === user.name;
   const overCeiling = debitKobo > user.approvalCeilingKobo;
@@ -42,8 +40,8 @@ function BatchDetail({ batch }: { batch: BulkBatch }) {
       ? t("bulk.detail.ceilingBlocked")
       : undefined;
   const pending = batch.status === "pending_approval";
-  const canDecide = pending && can("bulk_payment:approve");
-  const canRetry = batch.status === "partially_failed" && can("bulk_payment:approve");
+  const canDecide = pending && can("bulk_transfer:approve");
+  const canRetry = batch.status === "partially_failed" && can("bulk_transfer:approve");
   const refresh = () => queryClient.invalidateQueries({ queryKey: bulkKeys.all });
 
   const activity: TimelineEntry[] = [
@@ -74,10 +72,13 @@ function BatchDetail({ batch }: { batch: BulkBatch }) {
     <>
       <PageHeader
         title={batch.name}
-        description={t("bulk.detail.subtitle", { source: batch.sourceAccount })}
+        description={t("bulk.detail.subtitle", {
+          source: sourceName,
+          when: batch.scheduledFor ? formatLagos(batch.scheduledFor) : t("bulk.timing.onApproval"),
+        })}
         crumbs={[
           { label: t("nav.group.payments") },
-          { label: t("bulk.title"), to: "/bulk-payments" },
+          { label: t("bulk.title"), to: "/bulk-transfers" },
           { label: batch.name },
         ]}
         meta={<BatchStatusBadge status={batch.status} />}
@@ -111,93 +112,14 @@ function BatchDetail({ batch }: { batch: BulkBatch }) {
       ) : null}
 
       <div className="flex flex-col gap-4">
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          <StatCard label={t("bulk.stat.payees")} value={formatCount(summary.itemCount)} />
-          <StatCard label={t("bulk.stat.total")} value={<MoneyText kobo={summary.totalKobo} />} />
-          <StatCard label={t("bulk.stat.fees")} value={<MoneyText kobo={summary.feeKobo} />} />
-          <StatCard
-            label={t("bulk.stat.succeeded")}
-            value={formatCount(summary.successCount)}
-            tone="success"
-          />
-          <StatCard
-            label={t("bulk.stat.failed")}
-            value={formatCount(summary.failedCount)}
-            tone={summary.failedCount > 0 ? "danger" : "default"}
-          />
-        </div>
+        <BatchOverview batch={batch} />
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          <SectionCard title={t("bulk.section.payees")} flush className="lg:col-span-2">
-            <SimpleTable<BulkItem>
-              storageKey="bulk-items"
-              caption={t("bulk.section.payees")}
-              rows={batch.items}
-              getRowId={(item) => item.id}
-              columns={[
-                {
-                  key: "row",
-                  header: t("bulk.col.row"),
-                  sortValue: (i) => i.row,
-                  cell: (i) => i.row,
-                },
-                {
-                  key: "name",
-                  header: t("bulk.col.accountName"),
-                  sortValue: (i) => i.accountName,
-                  cell: (i) => i.accountName,
-                },
-                {
-                  key: "account",
-                  header: t("bulk.col.accountNumber"),
-                  cell: (i) => <span className="tabular-nums">{i.accountNumber}</span>,
-                },
-                {
-                  key: "bank",
-                  header: t("bulk.col.bank"),
-                  sortValue: (i) => i.bank,
-                  cell: (i) => i.bank,
-                },
-                {
-                  key: "amount",
-                  header: t("bulk.col.amount"),
-                  align: "right",
-                  sortValue: (i) => i.amountKobo,
-                  cell: (i) => <MoneyText kobo={i.amountKobo} />,
-                },
-                {
-                  key: "status",
-                  header: t("bulk.col.status"),
-                  sortValue: (i) => i.status,
-                  cell: (i) => <ItemStatusBadge status={i.status} />,
-                },
-                {
-                  key: "reason",
-                  header: t("bulk.col.failure"),
-                  cell: (i) => i.failureReason ?? t("common.notAvailable"),
-                },
-              ]}
-            />
-          </SectionCard>
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
+          <div className="min-w-0 lg:col-span-2">
+            <BatchPayeesTable batch={batch} />
+          </div>
 
-          <div className="flex flex-col gap-4">
-            <SectionCard title={t("bulk.section.summary")}>
-              <KeyValueList
-                columns={1}
-                items={[
-                  { label: t("bulk.field.source"), value: batch.sourceAccount },
-                  { label: t("bulk.stat.debit"), value: <MoneyText kobo={debitKobo} /> },
-                  {
-                    label: t("bulk.field.timing"),
-                    value: batch.scheduledFor
-                      ? formatLagos(batch.scheduledFor)
-                      : t("bulk.timing.onApproval"),
-                  },
-                  { label: t("bulk.col.createdBy"), value: batch.createdBy },
-                  { label: t("bulk.col.created"), value: formatLagos(batch.createdAt) },
-                ]}
-              />
-            </SectionCard>
+          <div className="flex min-w-0 flex-col gap-4">
             <SectionCard title={t("bulk.section.activity")}>
               <Timeline entries={activity} />
             </SectionCard>
@@ -214,10 +136,10 @@ function BatchDetail({ batch }: { batch: BulkBatch }) {
           dialog === "approved"
             ? batch.scheduledFor && new Date(batch.scheduledFor).getTime() > openedAt
               ? t("bulk.approve.impactScheduled", {
-                  count: summary.itemCount,
+                  count: batch.itemCount,
                   when: formatLagos(batch.scheduledFor),
                 })
-              : t("bulk.approve.impact", { count: summary.itemCount })
+              : t("bulk.approve.impact", { count: batch.itemCount })
             : t("bulk.reject.impact")
         }
         confirmLabel={dialog === "approved" ? t("bulk.approve") : t("bulk.reject")}
@@ -237,7 +159,7 @@ function BatchDetail({ batch }: { batch: BulkBatch }) {
         onOpenChange={(open) => !open && setDialog(null)}
         title={t("bulk.retry")}
         description={batch.name}
-        impact={t("bulk.retry.impact", { count: summary.failedCount })}
+        impact={t("bulk.retry.impact", { count: batch.counts.failed })}
         confirmLabel={t("bulk.retry")}
         onConfirm={async ({ reason }) => {
           await retryFailed(batch.id, reason);

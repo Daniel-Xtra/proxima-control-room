@@ -20,10 +20,19 @@ export function FileUpload({
   label,
   help,
   onChange,
+  accept,
+  allowed = ALLOWED,
+  badType,
 }: {
   label: string;
   help?: string;
   onChange?: (files: EvidenceFile[]) => void;
+  /** The `accept` attribute of the file picker, for example ".xlsx". */
+  accept?: string;
+  /** File names that are allowed. Defaults to documents and images. */
+  allowed?: RegExp;
+  /** What to say about a file that is not allowed. */
+  badType?: string;
 }) {
   const id = useId();
   const [items, setItems] = useState<Item[]>([]);
@@ -43,8 +52,8 @@ export function FileUpload({
 
   function add(files: File[]) {
     const fresh: Item[] = files.map((f) => {
-      const error = !ALLOWED.test(f.name)
-        ? t("upload.badType")
+      const error = !allowed.test(f.name)
+        ? (badType ?? t("upload.badType"))
         : f.size > MAX_UPLOAD_BYTES
           ? t("upload.tooLarge")
           : undefined;
@@ -93,6 +102,7 @@ export function FileUpload({
           id={id}
           type="file"
           multiple
+          accept={accept}
           className="sr-only"
           onChange={(e) => {
             add(Array.from(e.target.files ?? []));
