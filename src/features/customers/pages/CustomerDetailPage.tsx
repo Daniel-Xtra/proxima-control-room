@@ -21,17 +21,16 @@ import {
 } from "@/shared/components/ui/DropdownMenu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/Tabs";
 import { t } from "@/shared/i18n/t";
-import { formatLagos, initials } from "@/shared/lib/format";
 import { useCustomer } from "../api/queries";
 import {
   RepairBankOneDialog,
   ResetPasswordDialog,
   UnlockLoginDialog,
 } from "../components/CustomerActionDialogs";
-import { CustomerBalances } from "../components/CustomerBalances";
+import { CustomerActivity } from "../components/CustomerActivity";
+import { CustomerHeader } from "../components/CustomerHeader";
 import { CustomerKycTab } from "../components/CustomerKycTab";
 import { CustomerSecurityTab } from "../components/CustomerSecurityTab";
-import { CustomerStatusBadge, KycLevelBadge } from "../components/CustomerStatusBadges";
 import { CustomerSummaryTab } from "../components/CustomerSummaryTab";
 import type { Customer } from "../model/types";
 
@@ -98,57 +97,34 @@ function CustomerDetail({ customer }: { customer: Customer }) {
           { label: t("customers.title"), to: "/customers" },
           { label: customer.name },
         ]}
-        title={customer.name}
-        description={[
-          customer.reservedAccount
-            ? t("customers.detail.subtitle", {
-                bank: customer.reservedBank ?? "–",
-                account: customer.reservedAccount,
-              })
-            : null,
-          t("customers.detail.joined", { date: formatLagos(customer.joinedAt, true) }),
-        ]
-          .filter(Boolean)
-          .join(" · ")}
-        logo={
-          <span
-            aria-hidden="true"
-            className="flex size-14 shrink-0 items-center justify-center rounded-full bg-info-bg font-heading text-lg font-semibold text-info-text sm:size-16 sm:text-xl"
-          >
-            {initials(customer.name)}
-          </span>
-        }
-        meta={
-          <>
-            <CustomerStatusBadge status={customer.status} />
-            <KycLevelBadge level={customer.kycLevel} />
-            {customer.loginLock.lockedUntil ? <CustomerStatusBadge status="locked" /> : null}
-          </>
-        }
+        title={t("customers.title")}
+      />
+
+      <CustomerHeader
+        customer={customer}
+        onMoreInfo={() => setParams({ tab: "summary" }, { replace: true })}
         actions={
-          <>
-            {available.length > 0 ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button>
-                    {t("customers.actions")}
-                    <CaretDown aria-hidden="true" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {available.map((action) => (
-                    <DropdownMenuItem key={action.id} onSelect={() => setDialog(action.id)}>
-                      {action.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : null}
-          </>
+          available.length > 0 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button>
+                  {t("customers.actions")}
+                  <CaretDown aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {available.map((action) => (
+                  <DropdownMenuItem key={action.id} onSelect={() => setDialog(action.id)}>
+                    {action.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null
         }
       />
 
-      <CustomerBalances customer={customer} />
+      <CustomerActivity customer={customer} />
 
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>

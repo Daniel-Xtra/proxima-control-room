@@ -1,4 +1,5 @@
-import { customWindow } from "@/shared/lib/dateRange";
+import { customWindow, parseCustomRange } from "@/shared/lib/dateRange";
+import { dayLabel } from "@/shared/lib/dayLabel";
 import { request, type Page } from "@/shared/api/client";
 import { fromApiAmount } from "@/shared/api/money";
 import type {
@@ -266,4 +267,48 @@ export function unmaskCustomer(id: string, fields: UnmaskField[], reason: string
     `/admin/customers/${encodeURIComponent(id)}/unmask`,
     { method: "POST", body: { fields, reason } },
   );
+}
+
+interface TransactionSummaryResponse {
+  amount_unit?: string;
+  totals: { volume: number; value: number };
+  statuses: Record<"success" | "failed" | "pending", { count: number; value: number }>;
+  trend: { date: string; volume: number; value: number }[];
+}
+
+export interface CustomerTransactionSummary {
+  totals: { volume: number; valueKobo: number };
+  statuses: Record<"success" | "failed" | "pending", { count: number; valueKobo: number }>;
+  series: { labels: string[]; valueKobo: number[]; volume: number[] };
+}
+
+/** One customer's trend and status split for a period: "7d", "30d", "90d" or a custom range. */
+export async function getCustomerTransactionSummary(
+  id: string,
+  range: string,
+  purpose?: string,
+): Promise<CustomerTransactionSummary> {
+  const custom = parseCustomRange(range);
+  const r = await request<TransactionSummaryResponse>(
+    `/admin/customers/${encodeURIComponent(id)}/transaction-summary`,
+    { query: { ...(custom ? { from: custom.from, to: custom.to } : { range }), purpose } },
+  );
+  const money = (amount: number) => fromApiAmount(amount, r.amount_unit);
+  const bucket = (b: { count: number; value: number }) => ({
+    count: b.count,
+    valueKobo: money(b.value),
+  });
+  return {
+    totals: { volume: r.totals.volume, valueKobo: money(r.totals.value) },
+    statuses: {
+      success: bucket(r.statuses.success),
+      failed: bucket(r.statuses.failed),
+      pending: bucket(r.statuses.pending),
+    },
+    series: {
+      labels: r.trend.map((point) => dayLabel(point.date)),
+      valueKobo: r.trend.map((point) => money(point.value)),
+      volume: r.trend.map((point) => point.volume),
+    },
+  };
 }

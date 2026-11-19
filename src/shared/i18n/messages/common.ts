@@ -35,6 +35,10 @@ export const common = {
   "table.next": "Next page",
   "table.page": "Page {page} of {pages}",
   "table.previous": "Previous page",
+  "table.prev": "Previous",
+  "table.nextShort": "Next",
+  "table.pagination": "Pagination",
+  "table.goTo": "Go to page {page}",
   "table.showing": "Showing {from}–{to} of {total}",
 
   "range.7d": "Last 7 days",
