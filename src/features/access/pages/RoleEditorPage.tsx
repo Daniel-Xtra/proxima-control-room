@@ -1,3 +1,4 @@
+import { MagnifyingGlass } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -6,14 +7,18 @@ import { ActionDialog } from "@/shared/components/ActionDialog";
 import { AsyncBody } from "@/shared/components/AsyncBody";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
+import { StatusBadge } from "@/shared/components/StatusBadge";
 import { Button } from "@/shared/components/ui/Button";
 import { Checkbox } from "@/shared/components/ui/Checkbox";
 import { Input } from "@/shared/components/ui/Input";
 import { Label } from "@/shared/components/ui/Label";
+import { Switch } from "@/shared/components/ui/Switch";
 import { Textarea } from "@/shared/components/ui/Textarea";
 import { t } from "@/shared/i18n/t";
+import { cn } from "@/shared/lib/cn";
 import { saveRole, type PermissionDef, type RoleSummary } from "../api/accessApi";
 import { useRoleCatalogue } from "../api/queries";
+import { moduleLabel } from "../model/moduleLabels";
 
 const CODE_PATTERN = /^[A-Z][A-Z0-9_]{2,39}$/;
 
@@ -40,17 +45,35 @@ export function RoleEditorPage() {
   );
 }
 
+/**
+ * The order permissions are listed in: viewing first, then each action with its "ask" right before its "approve".
+ * (The codes sort alphabetically, which puts "approve" before "request" and "view" last.)
+ */
+function listOrder(code: string): [number, string, number] {
+  const parts = code.split(".").slice(1);
+  const last = parts[parts.length - 1] ?? "";
+  const kind = last === "request" ? 0 : last === "approve" ? 1 : 0;
+  const base = (kind === 1 || last === "request" ? parts.slice(0, -1) : parts).join(".");
+  const viewing = /(^|.)view/.test(base) ? 0 : 1;
+  return [viewing, base, kind];
+}
+
+function byListOrder(a: PermissionDef, b: PermissionDef) {
+  const [aView, aBase, aKind] = listOrder(a.code);
+  const [bView, bBase, bKind] = listOrder(b.code);
+  return aView - bView || aBase.localeCompare(bBase) || aKind - bKind;
+}
+
 /** Groups the permissions a role can hold by the area of the platform they belong to. */
 function groupByModule(permissions: PermissionDef[]) {
   const groups = new Map<string, PermissionDef[]>();
   for (const permission of permissions) {
     groups.set(permission.module, [...(groups.get(permission.module) ?? []), permission]);
   }
-  return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
+  return [...groups.entries()]
+    .map(([module, group]) => [module, group.sort(byListOrder)] as [string, PermissionDef[]])
+    .sort(([a], [b]) => moduleLabel(a).localeCompare(moduleLabel(b)));
 }
-
-const titleCase = (value: string) =>
-  value.replace(/[_-]/g, " ").replace(/^\w/, (first) => first.toUpperCase());
 
 function RoleEditor({
   roleId,
@@ -70,6 +93,10 @@ function RoleEditor({
   const [description, setDescription] = useState(role?.description ?? "");
   const [held, setHeld] = useState<Set<string>>(new Set(role?.permissionCodes ?? []));
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [selectedOnly, setSelectedOnly] = useState(false);
+  const modules = groupByModule(permissions);
+  const [active, setActive] = useState(modules[0]?.[0] ?? "");
 
   // Built-in roles keep their permissions; a copy of one is a custom role and can change them.
   const locked = roleId !== null && role?.isSystem === true;
@@ -77,6 +104,8 @@ function RoleEditor({
     canAccess(entry, new Set(toUiPermissions([...held]))),
   );
   const codeOk = roleId !== null || CODE_PATTERN.test(code);
+  const title = roleId ? (role?.name ?? roleId) : cloned ? t("roles.clone") : t("roles.create");
+  const share = permissions.length ? Math.round((held.size / permissions.length) * 100) : 0;
 
   function toggle(permissionCode: string, on: boolean) {
     setHeld((prev) => {
@@ -95,23 +124,48 @@ function RoleEditor({
     });
   }
 
+  // A search looks across every area; otherwise the chosen area is shown.
+  const needle = query.trim().toLowerCase();
+  const searching = needle !== "";
+  const activeGroup = modules.find(([module]) => module === active)?.[1] ?? [];
+  const matches = (p: PermissionDef) =>
+    (!selectedOnly || held.has(p.code)) &&
+    (!searching ||
+      p.description.toLowerCase().includes(needle) ||
+      moduleLabel(p.module).toLowerCase().includes(needle));
+  const rows = (searching ? modules.flatMap(([, group]) => group) : activeGroup).filter(matches);
+  const activeHeld = activeGroup.filter((p) => held.has(p.code)).length;
+
   return (
     <>
       <PageHeader
-        crumbs={[{ label: t("roles.title"), to: "/settings/roles" }]}
-        title={roleId ? t("roles.edit") : cloned ? t("roles.clone") : t("roles.create")}
+        crumbs={[{ label: t("roles.title"), to: "/settings/roles" }, { label: title }]}
+        title={title}
+        description={roleId ? role?.description : undefined}
+        meta={locked ? <StatusBadge tone="neutral" label={t("roles.system")} /> : undefined}
         actions={
-          <Button
-            disabled={!name.trim() || !codeOk || held.size === 0}
-            onClick={() => setConfirmOpen(true)}
-          >
-            {t("common.save")}
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => navigate("/settings/roles")}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              disabled={!name.trim() || !codeOk || held.size === 0}
+              onClick={() => setConfirmOpen(true)}
+            >
+              {t("common.save")}
+            </Button>
+          </>
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-        <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="flex min-w-0 flex-col gap-4">
+          {locked ? (
+            <output className="block rounded-md bg-info-bg p-3 text-sm text-info-text">
+              {t("roles.editor.systemNote")}
+            </output>
+          ) : null}
+
           <SectionCard title={t("roles.editor.details")}>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
@@ -126,12 +180,13 @@ function RoleEditor({
                   disabled={roleId !== null}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                 />
-                <p className="text-xs text-muted-text">{t("roles.editor.codeHint")}</p>
+                <p className="m-0 text-xs text-muted-text">{t("roles.editor.codeHint")}</p>
               </div>
               <div className="flex flex-col gap-1.5 sm:col-span-2">
                 <Label htmlFor="role-description">{t("roles.editor.description")}</Label>
                 <Textarea
                   id="role-description"
+                  rows={2}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
@@ -139,64 +194,189 @@ function RoleEditor({
             </div>
           </SectionCard>
 
-          {locked ? (
-            <output className="block rounded-md bg-info-bg p-3 text-sm text-info-text">
-              {t("roles.editor.systemNote")}
-            </output>
-          ) : null}
+          <SectionCard
+            title={t("roles.editor.access")}
+            description={t("roles.editor.accessHint")}
+            flush
+          >
+            <div className="flex flex-wrap items-center gap-3 border-b border-border-soft p-4">
+              <div className="relative min-w-56 flex-1">
+                <Input
+                  type="search"
+                  aria-label={t("roles.editor.searchPermissions")}
+                  placeholder={t("roles.editor.searchPermissions")}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="pr-10"
+                />
+                <MagnifyingGlass
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-text"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="selected-only"
+                  checked={selectedOnly}
+                  onCheckedChange={setSelectedOnly}
+                />
+                <Label htmlFor="selected-only" className="font-normal">
+                  {t("roles.editor.selectedOnly")}
+                </Label>
+              </div>
+            </div>
 
-          {groupByModule(permissions).map(([module, group]) => {
-            const all = group.every((p) => held.has(p.code));
-            return (
-              <SectionCard
-                key={module}
-                title={titleCase(module)}
-                actions={
-                  locked ? null : (
+            {/* From md up the two columns share one height that follows the window, and each scrolls on its own. */}
+            <div className="grid grid-cols-1 md:h-[clamp(24rem,72vh,48rem)] md:grid-cols-[220px_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)]">
+              <nav
+                aria-label={t("roles.editor.areas")}
+                className="flex gap-1 overflow-x-auto border-b border-border-soft p-2 md:min-h-0 md:flex-col md:overflow-y-auto md:border-r md:border-b-0"
+              >
+                {modules.map(([module, group]) => {
+                  const count = group.filter((p) => held.has(p.code)).length;
+                  const current = !searching && module === active;
+                  return (
+                    <button
+                      key={module}
+                      type="button"
+                      aria-current={current ? "true" : undefined}
+                      onClick={() => {
+                        setQuery("");
+                        setActive(module);
+                      }}
+                      className={cn(
+                        "flex shrink-0 cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors",
+                        current
+                          ? "bg-info-bg font-medium text-info-text"
+                          : "text-ink hover:bg-surface-muted",
+                      )}
+                    >
+                      <span className="truncate">{moduleLabel(module)}</span>
+                      <span
+                        className={cn(
+                          "tabular text-xs",
+                          count > 0 && !current ? "text-ink" : "text-muted-text",
+                        )}
+                      >
+                        {count}/{group.length}
+                      </span>
+                    </button>
+                  );
+                })}
+              </nav>
+
+              <div className="min-h-0 min-w-0 md:overflow-y-auto">
+                <div className="flex items-center justify-between gap-3 border-b border-border-soft bg-card px-4 py-3 md:sticky md:top-0 md:z-10">
+                  <h3 className="m-0 text-sm font-semibold text-ink">
+                    {searching ? t("roles.editor.results") : moduleLabel(active)}
+                    <span className="tabular ml-2 text-xs font-normal text-muted-text">
+                      {searching
+                        ? rows.length
+                        : t("roles.editor.stat.of", {
+                            count: activeHeld,
+                            total: activeGroup.length,
+                          })}
+                    </span>
+                  </h3>
+                  {locked || searching ? null : (
                     <div className="flex items-center gap-2">
                       <Checkbox
-                        id={`module-${module}`}
-                        checked={all}
-                        onChange={(event) => toggleModule(group, event.target.checked)}
+                        id="select-all"
+                        checked={activeHeld === activeGroup.length}
+                        onChange={(event) => toggleModule(activeGroup, event.target.checked)}
                       />
-                      <Label htmlFor={`module-${module}`}>{t("roles.editor.selectAll")}</Label>
-                    </div>
-                  )
-                }
-              >
-                <ul className="grid gap-2 sm:grid-cols-2">
-                  {group.map((permission) => (
-                    <li key={permission.code} className="flex items-center gap-2">
-                      <Checkbox
-                        id={`perm-${permission.code}`}
-                        checked={held.has(permission.code)}
-                        disabled={locked}
-                        onChange={(event) => toggle(permission.code, event.target.checked)}
-                      />
-                      <Label htmlFor={`perm-${permission.code}`} className="font-normal">
-                        {permission.description || permission.displayName}
+                      <Label htmlFor="select-all" className="font-normal">
+                        {t("roles.editor.selectAll")}
                       </Label>
-                    </li>
-                  ))}
-                </ul>
-              </SectionCard>
-            );
-          })}
+                    </div>
+                  )}
+                </div>
+
+                {rows.length === 0 ? (
+                  <p className="m-0 p-6 text-center text-sm text-muted-text">
+                    {t("roles.editor.noMatch")}
+                  </p>
+                ) : (
+                  <ul className="m-0 list-none p-0">
+                    {rows.map((permission) => (
+                      <li
+                        key={permission.code}
+                        className="border-b border-border-soft last:border-b-0"
+                      >
+                        <label
+                          htmlFor={`perm-${permission.code}`}
+                          className={cn(
+                            "flex items-center gap-3 px-4 py-2.5 text-sm text-ink",
+                            locked ? "" : "cursor-pointer hover:bg-surface-muted",
+                          )}
+                        >
+                          <Checkbox
+                            id={`perm-${permission.code}`}
+                            checked={held.has(permission.code)}
+                            disabled={locked}
+                            onChange={(event) => toggle(permission.code, event.target.checked)}
+                          />
+                          <span className="min-w-0">
+                            {permission.description || t("roles.editor.noDescription")}
+                            {searching ? (
+                              <span className="block text-xs text-muted-text">
+                                {moduleLabel(permission.module)}
+                              </span>
+                            ) : null}
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </SectionCard>
         </div>
 
-        <aside className="lg:sticky lg:top-4 lg:self-start">
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start">
+          <SectionCard title={t("roles.editor.summary")}>
+            <p className="m-0 flex items-baseline gap-1.5">
+              <span className="tabular font-heading text-2xl font-semibold text-ink">
+                {held.size}
+              </span>
+              <span className="text-sm text-muted-text">
+                {t("roles.editor.ofTotal", { total: permissions.length })}
+              </span>
+            </p>
+            {/* The figures above say the same thing, so the bar is decoration. */}
+            <div
+              aria-hidden="true"
+              className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-muted"
+            >
+              <div className="h-full rounded-full bg-primary" style={{ width: `${share}%` }} />
+            </div>
+            <dl className="m-0 mt-4 flex items-center justify-between text-sm">
+              <dt className="text-muted-text">{t("roles.editor.stat.staff")}</dt>
+              <dd className="tabular m-0 font-medium text-ink">
+                {roleId ? (role?.memberCount ?? 0) : "–"}
+              </dd>
+            </dl>
+          </SectionCard>
+
           <SectionCard
             title={t("roles.editor.preview")}
             description={t("roles.editor.previewHint")}
           >
-            <ul className="flex flex-col gap-1.5 text-base">
-              {visible.map((entry) => (
-                <li key={entry.id}>{t(entry.label)}</li>
-              ))}
-            </ul>
-            <p className="mt-3 text-xs text-muted-text">
-              {t("roles.editor.count", { count: held.size })}
-            </p>
+            {visible.length === 0 ? (
+              <p className="m-0 text-sm text-muted-text">{t("roles.editor.previewEmpty")}</p>
+            ) : (
+              <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0">
+                {visible.map((entry) => (
+                  <li
+                    key={entry.id}
+                    className="rounded-full bg-surface-muted px-2.5 py-1 text-xs text-ink"
+                  >
+                    {t(entry.label)}
+                  </li>
+                ))}
+              </ul>
+            )}
           </SectionCard>
         </aside>
       </div>

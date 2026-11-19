@@ -48,7 +48,7 @@ export function StatCard({
       </div>
       <p
         className={cn(
-          "m-0 mt-1 text-2xl font-semibold tracking-tight tabular-nums",
+          "m-0 mt-1 text-xl font-semibold tracking-tight tabular-nums break-words sm:text-2xl",
           tone === "danger"
             ? "text-danger-text"
             : tone === "warning"
