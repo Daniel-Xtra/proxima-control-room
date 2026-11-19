@@ -22,7 +22,7 @@ export function CustomerSummaryTab({ customer }: { customer: Customer }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard
           label={t("customers.summary.balance")}
           value={<MoneyText kobo={customer.balanceKobo} />}
@@ -41,7 +41,7 @@ export function CustomerSummaryTab({ customer }: { customer: Customer }) {
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         <SectionCard title={t("customers.summary.limits")}>
           <div className="flex flex-col gap-3">
             <div>

@@ -51,12 +51,14 @@ export function DataTable<T>({
     <div>
       <div className="flex flex-wrap items-center justify-end gap-2 border-b border-border-soft px-4 py-2">
         {toolbarExtra}
-        <ColumnPicker
-          columns={tableProps.columns}
-          hidden={hidden}
-          onToggle={toggle}
-          onReset={reset}
-        />
+        <div className={tableProps.cardsOnSmall === false ? undefined : "hidden lg:block"}>
+          <ColumnPicker
+            columns={tableProps.columns}
+            hidden={hidden}
+            onToggle={toggle}
+            onReset={reset}
+          />
+        </div>
       </div>
       <SimpleTable hiddenKeys={hidden} {...tableProps} />
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-soft px-4 py-3">

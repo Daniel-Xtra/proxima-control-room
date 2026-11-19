@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 interface TrendChartProps {
   values: number[];
@@ -10,13 +10,26 @@ interface TrendChartProps {
   summary: string;
 }
 
-const WIDTH = 640;
-const HEIGHT = 220;
+const DEFAULT_WIDTH = 640;
 const PAD = { top: 12, right: 12, bottom: 24, left: 56 };
 
 /** Area line chart in the reference's style: smooth line, soft fill and a dashed average. */
 export function TrendChart({ values, labels, format, averageLabel, summary }: TrendChartProps) {
   const gradientId = useId();
+  const box = useRef<HTMLElement>(null);
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  // The chart is drawn at its real width, so axis text keeps its size instead of shrinking with the screen.
+  useEffect(() => {
+    const node = box.current;
+    if (!node) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry && entry.contentRect.width > 0) setWidth(Math.round(entry.contentRect.width));
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  const WIDTH = width;
+  const HEIGHT = width < 480 ? 200 : 220;
   if (values.length < 2) return null;
   const max = Math.max(...values) || 1;
   const average = values.reduce((sum, v) => sum + v, 0) / values.length;
@@ -28,15 +41,15 @@ export function TrendChart({ values, labels, format, averageLabel, summary }: Tr
   const line = values.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`);
   const area = `${line.join(" ")} L${x(values.length - 1)},${PAD.top + innerH} L${x(0)},${PAD.top + innerH} Z`;
   const ticks = [0, 0.33, 0.66, 1].map((f) => f * max);
-  const labelStep = Math.ceil(labels.length / 6);
+  const labelStep = Math.ceil(labels.length / (width < 480 ? 4 : 6));
 
   return (
-    <figure className="m-0">
+    <figure ref={box} className="m-0">
       <figcaption className="sr-only">{summary}</figcaption>
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         aria-hidden="true"
-        className="h-auto w-full text-chart-2"
+        className="block h-auto w-full text-chart-2"
       >
         <defs>
           <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
@@ -58,7 +71,7 @@ export function TrendChart({ values, labels, format, averageLabel, summary }: Tr
               x={PAD.left - 8}
               y={y(tick) + 3}
               textAnchor="end"
-              className="fill-chart-axis text-[9px]"
+              className="fill-chart-axis text-[10px]"
             >
               {format(tick)}
             </text>
@@ -85,7 +98,7 @@ export function TrendChart({ values, labels, format, averageLabel, summary }: Tr
           x={WIDTH - PAD.right}
           y={y(average) - 4}
           textAnchor="end"
-          className="fill-chart-axis text-[9px]"
+          className="fill-chart-axis text-[10px]"
         >
           {averageLabel}
         </text>
@@ -96,7 +109,7 @@ export function TrendChart({ values, labels, format, averageLabel, summary }: Tr
               x={x(i)}
               y={HEIGHT - 6}
               textAnchor="middle"
-              className="fill-chart-axis text-[9px]"
+              className="fill-chart-axis text-[10px]"
             >
               {label}
             </text>

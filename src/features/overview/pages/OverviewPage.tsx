@@ -127,7 +127,7 @@ function OverviewBody({ data }: { data: Overview }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
         <StatCard
           label={t("overview.kpi.transactions")}
           value={formatCount(data.kpis.transactions.total)}
@@ -159,7 +159,7 @@ function OverviewBody({ data }: { data: Overview }) {
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <TrendCard data={data} />
         <SectionCard
           title={t("overview.recent.title")}
@@ -208,10 +208,10 @@ function OverviewBody({ data }: { data: Overview }) {
         </SectionCard>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <SectionCard
           title={t("overview.transfers.title")}
-          className="lg:col-span-2"
+          className="md:col-span-2"
           description={t("overview.transfers.rate", { rate })}
         >
           <div className="grid gap-4 sm:grid-cols-4">
@@ -277,8 +277,8 @@ function OverviewBody({ data }: { data: Overview }) {
         </SectionCard>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <SectionCard title={t("overview.bills.title")} flush className="lg:col-span-2">
+      <div className="grid gap-4 md:grid-cols-3">
+        <SectionCard title={t("overview.bills.title")} flush className="md:col-span-2">
           <SimpleTable
             caption={t("overview.bills.title")}
             rows={[
@@ -359,7 +359,7 @@ function TrendCard({ data }: { data: Overview }) {
   return (
     <SectionCard
       title={t("overview.trend.title")}
-      className="lg:col-span-2"
+      className="md:col-span-2"
       actions={
         <div className="flex gap-1">
           {(["value", "volume"] as const).map((id) => (
@@ -376,7 +376,7 @@ function TrendCard({ data }: { data: Overview }) {
         </div>
       }
     >
-      <dl className="m-0 mb-3 grid grid-cols-3 gap-4">
+      <dl className="m-0 mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
         {(
           [
             ["total", total],
@@ -384,7 +384,7 @@ function TrendCard({ data }: { data: Overview }) {
             ["peak", peak],
           ] as const
         ).map(([id, n]) => (
-          <div key={id}>
+          <div key={id} className="flex items-baseline justify-between gap-3 sm:block">
             <dt className="text-xs text-muted-text">{t(`overview.trend.${id}`)}</dt>
             <dd className="m-0 text-base font-semibold text-ink">{full(n)}</dd>
           </div>
