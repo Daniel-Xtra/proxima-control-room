@@ -5,8 +5,7 @@ export const auth = {
   "auth.password": "Password",
 
   "auth.totp.title": "Two-step verification",
-  "auth.totp.description":
-    "Open your authenticator app. Codes sent by email or SMS are not accepted.",
+  "auth.totp.description": "Enter the 6-digit code from your authenticator app.",
   "auth.totp.verify": "Verify",
   "auth.backToSignIn": "Back to sign in",
   "auth.invite.title": "Set up your account",
@@ -31,14 +30,15 @@ export const auth = {
   "auth.totp.locked": "Too many wrong codes. Sign-in is locked for 15 minutes.",
 
   "auth.enrol.title": "Set up your authenticator",
-  "auth.enrol.description":
-    "Scan the QR code in an authenticator app, or type the setup key. Access stays blocked until you confirm a code.",
+  "auth.enrol.description": "Scan this code with an authenticator app.",
+  "auth.enrol.next": "I've scanned it",
+  "auth.enrol.confirmTitle": "Confirm your setup",
+  "auth.enrol.confirmDescription": "Enter the 6-digit code now showing in your app.",
+  "auth.enrol.back": "Back to QR code",
+  "auth.enrol.noScan": "Can't scan? Use a setup key",
   "auth.enrol.qrLabel": "QR code for your authenticator app",
-  "auth.enrol.issuer": "Issuer",
-  "auth.enrol.account": "Account",
-  "auth.enrol.setupKey": "Setup key",
-  "auth.enrol.confirm": "Enter a code to confirm",
-  "auth.enrol.submit": "Confirm and continue",
+  "auth.enrol.confirm": "Authenticator code",
+  "auth.enrol.submit": "Confirm",
 
   "auth.idle.title": "Still there?",
   "auth.idle.countdownLabel": "{seconds} seconds left",

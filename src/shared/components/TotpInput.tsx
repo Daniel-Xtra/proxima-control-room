@@ -10,6 +10,8 @@ interface TotpInputProps {
   onChange: (value: string) => void;
   error?: string;
   label?: string;
+  /** Keeps the label for screen readers only, when the screen already says what the code is for. */
+  hideLabel?: boolean;
   onComplete?: (value: string) => void;
 }
 
@@ -19,6 +21,7 @@ export function TotpInput({
   onChange,
   error,
   label = t("totp.label"),
+  hideLabel = false,
   onComplete,
 }: TotpInputProps) {
   const id = useId();
@@ -44,7 +47,7 @@ export function TotpInput({
       className="flex min-w-0 flex-col gap-1.5 border-0 p-0"
       aria-labelledby={`${id}-label`}
     >
-      <Label id={`${id}-label`} htmlFor={`${id}-0`}>
+      <Label id={`${id}-label`} htmlFor={`${id}-0`} className={hideLabel ? "sr-only" : undefined}>
         {label}
       </Label>
       <div className="flex justify-between gap-2">
