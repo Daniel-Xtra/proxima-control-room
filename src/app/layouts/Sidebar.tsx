@@ -10,6 +10,9 @@ import { NAV_GROUPS } from "./navItems";
 
 const KEY = "proxima.sidebar";
 
+/** Labels fade with the width, so they never pop in or out while the sidebar moves. */
+const FADE = "transition-opacity duration-200 motion-reduce:transition-none";
+
 function useCollapsed() {
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -47,17 +50,24 @@ function SidebarContent({
 
   return (
     <div className="flex h-full flex-col">
-      <div className={cn("py-4", collapsed ? "flex justify-center px-2" : "px-4")}>
-        <div className="flex items-center gap-2.5">
+      <div className="py-4 pl-7">
+        <div className="flex items-center gap-2.5 overflow-hidden">
           <BrandMark />
-          {collapsed ? null : (
-            <p className="m-0 text-base font-semibold leading-tight tracking-tight text-ink">
-              {t("app.name")}
-            </p>
-          )}
+          <p
+            className={cn(
+              "m-0 text-base font-semibold leading-tight tracking-tight whitespace-nowrap text-ink",
+              FADE,
+              collapsed && "opacity-0",
+            )}
+          >
+            {t("app.name")}
+          </p>
         </div>
       </div>
-      <nav aria-label={t("shell.navigation")} className="flex-1 overflow-y-auto px-2 pb-4">
+      <nav
+        aria-label={t("shell.navigation")}
+        className="flex-1 overflow-x-hidden overflow-y-auto px-3 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {NAV_GROUPS.map((group, groupIndex) => {
           const items = group.items.filter((item) => allowed.has(item.id));
           if (items.length === 0) return null;
@@ -65,11 +75,20 @@ function SidebarContent({
             <div
               key={group.id}
               className={cn(
-                groupIndex > 0 && (collapsed ? "mt-2 border-t border-border-soft pt-2" : "mt-4"),
+                groupIndex > 0 && "border-t pt-2 mt-2",
+                groupIndex > 0 && (collapsed ? "border-border-soft" : "border-transparent"),
+                "transition-[border-color] duration-300",
               )}
             >
-              {group.label && !collapsed ? (
-                <p className="m-0 px-3 pb-1 text-sm font-medium uppercase text-muted-text">
+              {group.label ? (
+                <p
+                  aria-hidden={collapsed}
+                  className={cn(
+                    "m-0 overflow-hidden px-3 text-sm font-medium whitespace-nowrap uppercase text-muted-text",
+                    "transition-[max-height,opacity,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                    collapsed ? "max-h-0 pb-0 opacity-0" : "max-h-8 pb-1 opacity-100",
+                  )}
+                >
                   {t(group.label)}
                 </p>
               ) : null}
@@ -86,8 +105,7 @@ function SidebarContent({
                         aria-label={collapsed ? t(item.label) : undefined}
                         className={({ isActive }) =>
                           cn(
-                            "relative flex items-center rounded-sm text-sm font-medium text-body hover:bg-surface-muted",
-                            collapsed ? "mx-auto size-10 justify-center" : "h-10 gap-3 px-3",
+                            "relative flex h-10 items-center gap-3 overflow-hidden rounded-sm pl-[15.5px] text-sm font-medium whitespace-nowrap text-body hover:bg-surface-muted",
                             isActive && "bg-nav-active text-ink",
                           )
                         }
@@ -100,15 +118,22 @@ function SidebarContent({
                               className="shrink-0"
                               aria-hidden="true"
                             />
-                            {collapsed ? null : (
-                              <span className="min-w-0 flex-1 truncate">{t(item.label)}</span>
-                            )}
+                            <span
+                              className={cn(
+                                "min-w-0 flex-1 truncate",
+                                FADE,
+                                collapsed && "opacity-0",
+                              )}
+                            >
+                              {t(item.label)}
+                            </span>
                             {showBadge ? (
                               <span
                                 className={cn(
                                   "flex shrink-0 items-center justify-center rounded-pill bg-danger font-semibold text-on-ink",
+                                  "transition-all duration-300",
                                   collapsed
-                                    ? "absolute right-1 top-1 size-2.5 border-2 border-surface"
+                                    ? "absolute right-1.5 top-1.5 size-2.5 border-2 border-surface"
                                     : "h-5 min-w-5 px-1 text-[10px]",
                                 )}
                                 aria-label={t("shell.pendingCount", { count: pending })}
@@ -138,7 +163,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     <>
       <aside
         className={cn(
-          "sticky top-0 z-40 hidden h-screen shrink-0 self-start border-r border-border bg-surface transition-[width] duration-200 lg:block",
+          "sticky top-0 z-40 hidden h-screen shrink-0 self-start border-r border-border bg-surface transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none lg:block",
           collapsed ? "w-[76px]" : "w-60",
         )}
       >
