@@ -141,50 +141,56 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <SectionCard title={t("bulk.section.payees")} description={t("bulk.section.payeesHint")}>
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-          <div>
-            <FileUpload
-              label={t("bulk.upload.label")}
-              help={t("bulk.upload.help")}
-              onChange={onFiles}
-              accept=".xlsx"
-              single
-              allowed={/\.xlsx$/i}
-              badType={t("bulk.upload.onlyXlsx")}
-            />
-            {problems.length > 0 ? (
-              <ul role="alert" className="m-0 mt-2 list-none p-0 text-xs text-danger-text">
-                {problems.map((problem) => (
-                  <li key={problem}>{problem}</li>
-                ))}
-              </ul>
-            ) : null}
+      <SectionCard
+        title={t("bulk.section.payees")}
+        description={t("bulk.section.payeesHint")}
+        actions={
+          <Button variant="outline" size="sm" onClick={() => void downloadTemplate()}>
+            <DownloadSimple aria-hidden="true" />
+            {t("bulk.template")}
+          </Button>
+        }
+      >
+        <FileUpload
+          label={t("bulk.upload.label")}
+          help={t("bulk.upload.help")}
+          onChange={onFiles}
+          accept=".xlsx"
+          single
+          allowed={/\.xlsx$/i}
+          badType={t("bulk.upload.onlyXlsx")}
+        />
+        {problems.length > 0 ? (
+          <ul role="alert" className="m-0 mt-2 list-none p-0 text-xs text-danger-text">
+            {problems.map((problem) => (
+              <li key={problem}>{problem}</li>
+            ))}
+          </ul>
+        ) : null}
+
+        <div className="mt-4 rounded-md border border-border-soft bg-surface-muted px-3 py-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-xs font-medium text-ink">
+              {t("bulk.format.columnsLabel")}
+            </span>
+            {PAYEE_COLUMNS.map((header) => (
+              <code
+                key={header}
+                className="rounded border border-border-soft bg-surface px-1.5 py-0.5 font-mono text-xs text-ink"
+              >
+                {header}
+                {header === "bank" ? (
+                  <span className="ml-1 font-sans text-muted-text">
+                    {t("bulk.format.optional")}
+                  </span>
+                ) : null}
+              </code>
+            ))}
           </div>
-          <div className="rounded-md border border-border-soft bg-surface-muted p-4">
-            <h3 className="m-0 text-sm font-semibold text-ink">{t("bulk.format.title")}</h3>
-            <p className="m-0 mt-2 text-xs text-muted-text">{t("bulk.format.columns")}</p>
-            <ul className="m-0 mt-1 list-none space-y-0.5 p-0 font-mono text-xs text-ink">
-              {PAYEE_COLUMNS.map((header) => (
-                <li key={header}>{header}</li>
-              ))}
-            </ul>
-            <p className="m-0 mt-2 text-xs text-muted-text">{t("bulk.format.bankOptional")}</p>
-            <p className="m-0 mt-3 text-xs text-muted-text">
-              {t("bulk.format.limits", {
-                max: (MAX_PAYEE_KOBO / 100).toLocaleString("en-NG"),
-              })}
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={() => void downloadTemplate()}
-            >
-              <DownloadSimple aria-hidden="true" />
-              {t("bulk.template")}
-            </Button>
-          </div>
+          <p className="m-0 mt-2 text-xs text-muted-text">
+            {t("bulk.format.limits", { max: (MAX_PAYEE_KOBO / 100).toLocaleString("en-NG") })}{" "}
+            {t("bulk.format.bankOptional")}
+          </p>
         </div>
       </SectionCard>
 

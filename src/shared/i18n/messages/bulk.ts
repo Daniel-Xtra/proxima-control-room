@@ -53,8 +53,8 @@ export const bulk = {
   "bulk.timing.now.desc": "Payees are paid as soon as a second person approves the batch.",
   "bulk.timing.schedule.desc":
     "Payees are paid at the time you choose, once the batch is approved.",
-  "bulk.format.title": "File format",
-  "bulk.format.columns": "One payee per row, with these columns:",
+  "bulk.format.columnsLabel": "Columns, one payee per row:",
+  "bulk.format.optional": "(optional)",
   "bulk.format.limits": "Excel (.xlsx) only. Up to ₦{max} per payee.",
   "bulk.filter.all": "All",
   "bulk.filter.fix": "Needs fixing",
