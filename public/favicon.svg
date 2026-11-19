@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1327 1999" fill="none">
+  <defs>
+    <linearGradient id="proxima-gradient" gradientUnits="userSpaceOnUse" x1="60" y1="260" x2="1280" y2="1700">
+      <stop offset="0" stop-color="#33b350"/>
+      <stop offset="1" stop-color="#3550d9"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#proxima-gradient)" d="M0 0 610 298V1999L0 1665Z"/>
+  <path fill="url(#proxima-gradient)" d="M717 298 1327 0V938L717 1274Z"/>
+</svg>
