@@ -47,13 +47,6 @@ export const operations = {
   "overview.savings.title": "Savings book",
   "overview.savings.fixed": "Fixed deposits ({count})",
   "overview.savings.target": "Target savings ({count})",
-  "overview.gap.title": "Still to come",
-  "overview.gap.description": "These widgets need new backend metrics.",
-  "overview.gap.float": "Total wallet float",
-  "overview.gap.gmv": "GMV and fee income",
-  "overview.gap.funnel": "KYC funnel",
-  "overview.gap.failed": "Failed transfers needing attention",
-  "overview.gap.providers": "Provider health",
 
   "banners.title": "Banners and promotions",
   "banners.description": "What customers see in the mobile app.",

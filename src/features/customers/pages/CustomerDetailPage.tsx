@@ -21,13 +21,14 @@ import {
 } from "@/shared/components/ui/DropdownMenu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/Tabs";
 import { t } from "@/shared/i18n/t";
-import { initials } from "@/shared/lib/format";
+import { formatLagos, initials } from "@/shared/lib/format";
 import { useCustomer } from "../api/queries";
 import {
   RepairBankOneDialog,
   ResetPasswordDialog,
   UnlockLoginDialog,
 } from "../components/CustomerActionDialogs";
+import { CustomerBalances } from "../components/CustomerBalances";
 import { CustomerKycTab } from "../components/CustomerKycTab";
 import { CustomerSecurityTab } from "../components/CustomerSecurityTab";
 import { CustomerStatusBadge, KycLevelBadge } from "../components/CustomerStatusBadges";
@@ -98,18 +99,21 @@ function CustomerDetail({ customer }: { customer: Customer }) {
           { label: customer.name },
         ]}
         title={customer.name}
-        description={
+        description={[
           customer.reservedAccount
             ? t("customers.detail.subtitle", {
                 bank: customer.reservedBank ?? "–",
                 account: customer.reservedAccount,
               })
-            : undefined
-        }
+            : null,
+          t("customers.detail.joined", { date: formatLagos(customer.joinedAt, true) }),
+        ]
+          .filter(Boolean)
+          .join(" · ")}
         logo={
           <span
             aria-hidden="true"
-            className="flex size-16 shrink-0 items-center justify-center rounded-md border border-border bg-surface-muted text-lg font-semibold text-ink"
+            className="flex size-14 shrink-0 items-center justify-center rounded-full bg-info-bg font-heading text-lg font-semibold text-info-text sm:size-16 sm:text-xl"
           >
             {initials(customer.name)}
           </span>
@@ -143,6 +147,8 @@ function CustomerDetail({ customer }: { customer: Customer }) {
           </>
         }
       />
+
+      <CustomerBalances customer={customer} />
 
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
         <TabsList>

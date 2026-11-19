@@ -98,23 +98,6 @@ export function OverviewPage() {
           {(data) => <OverviewBody data={data} />}
         </AsyncBody>
       )}
-
-      <SectionCard
-        title={t("overview.gap.title")}
-        description={t("overview.gap.description")}
-        className="mt-4"
-      >
-        <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
-          {(["float", "gmv", "funnel", "failed", "providers"] as const).map((id) => (
-            <li
-              key={id}
-              className="rounded-full border border-dashed border-border-strong px-3 py-1 text-sm text-muted-text"
-            >
-              {t(`overview.gap.${id}`)}
-            </li>
-          ))}
-        </ul>
-      </SectionCard>
     </>
   );
 }

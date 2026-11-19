@@ -24,7 +24,6 @@ export function TransactionsPage() {
         crumbs={[{ label: t("nav.group.customers") }, { label: t("transactions.title") }]}
       />
       <TransactionsView filters={filters} defaults={DEFAULTS} setFilter={setFilter} />
-      <p className="mt-3 text-xs text-muted-text">{t("transactions.gap")}</p>
     </>
   );
 }

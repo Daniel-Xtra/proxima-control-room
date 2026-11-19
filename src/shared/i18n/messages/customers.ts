@@ -34,6 +34,7 @@ export const customers = {
   "customers.status.frozen": "Frozen",
 
   "customers.detail.subtitle": "{account} · {bank}",
+  "customers.detail.joined": "Joined {date}",
   "customers.actions": "Actions",
   "customers.action.requestFreeze": "Request freeze",
   "customers.action.requestUnfreeze": "Request unfreeze",
@@ -69,6 +70,8 @@ export const customers = {
   "customers.summary.referral": "Referral code",
   "customers.summary.merchant": "Has merchant account",
   "customers.summary.verification": "Verification",
+  "customers.summary.money": "Balances",
+  "customers.verify.progress": "{done} of {total} complete",
   "customers.verify.phone": "Phone verified",
   "customers.verify.email": "Email verified",
   "customers.verify.kyc": "KYC completed",

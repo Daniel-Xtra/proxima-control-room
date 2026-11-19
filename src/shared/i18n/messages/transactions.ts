@@ -1,8 +1,6 @@
 export const transactions = {
   "transactions.title": "Transactions",
   "transactions.description": "Every wallet movement across transfers, bills and savings.",
-  "transactions.gap":
-    "Filtering by customer, phone, account number, amount range and provider needs backend support.",
   "transactions.search": "Search reference or customer",
   "transactions.searchLabel": "Search transactions",
   "transactions.empty.title": "No transactions match",

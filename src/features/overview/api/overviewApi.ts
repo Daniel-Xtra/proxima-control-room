@@ -1,4 +1,5 @@
 import { parseCustomRange } from "@/shared/lib/dateRange";
+import { purposeLabel } from "@/shared/lib/purposeLabel";
 import { request } from "@/shared/api/client";
 import { fromApiAmount } from "@/shared/api/money";
 
@@ -175,7 +176,7 @@ export async function getOverview(range: string): Promise<Overview> {
       airtime: bill(r.bills.airtime),
       data: bill(r.bills.data),
       billers: r.bills.billers.map((biller) => ({
-        name: biller.type,
+        name: purposeLabel(biller.type),
         count: biller.count,
         amountKobo: money(biller.amount),
         failures: biller.failures,
