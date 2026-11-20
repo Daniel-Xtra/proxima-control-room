@@ -10,7 +10,7 @@ export type RequestKind =
   | "refund"
   | "staff"
   | "other";
-export type StaffAction = "disable" | "enable" | "role" | "mfa_reset";
+export type StaffAction = "disable" | "enable" | "role" | "mfa_reset" | "password_reset";
 export type RequestStatus =
   "pending" | "approved" | "rejected" | "cancelled" | "expired" | "failed";
 

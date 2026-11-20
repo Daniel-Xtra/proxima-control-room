@@ -1,6 +1,7 @@
 import { PageHeader } from "@/shared/components/PageHeader";
 import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
+import { TransactionInsights } from "../components/TransactionInsights";
 import { TransactionsView } from "../components/TransactionsView";
 
 const DEFAULTS = {
@@ -23,6 +24,7 @@ export function TransactionsPage() {
         description={t("transactions.description")}
         crumbs={[{ label: t("nav.group.customers") }, { label: t("transactions.title") }]}
       />
+      <TransactionInsights />
       <TransactionsView filters={filters} defaults={DEFAULTS} setFilter={setFilter} />
     </>
   );

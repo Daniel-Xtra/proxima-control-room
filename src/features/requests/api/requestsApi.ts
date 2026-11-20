@@ -73,6 +73,8 @@ const TYPE_TO_KIND: Record<string, RequestKind> = {
   STAFF_ENABLE: "staff",
   STAFF_ROLE_CHANGE: "staff",
   STAFF_MFA_RESET: "staff",
+  STAFF_SELF_MFA_RESET: "staff",
+  STAFF_SELF_PASSWORD_RESET: "staff",
 };
 
 const STAFF_ACTION: Record<string, StaffAction> = {
@@ -80,6 +82,8 @@ const STAFF_ACTION: Record<string, StaffAction> = {
   STAFF_ENABLE: "enable",
   STAFF_ROLE_CHANGE: "role",
   STAFF_MFA_RESET: "mfa_reset",
+  STAFF_SELF_MFA_RESET: "mfa_reset",
+  STAFF_SELF_PASSWORD_RESET: "password_reset",
 };
 
 const STATUS: Record<ApprovalStatus, RequestStatus> = {

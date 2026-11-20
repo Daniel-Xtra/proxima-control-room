@@ -83,9 +83,34 @@ export const auth = {
   "auth.idle.message":
     "You have been inactive, so we will sign you out to keep your account safe. Anything you have typed is kept if you stay.",
 
-  "security.title": "Profile",
+  "security.title": "Account settings",
   "security.description": "Your sign-in, authenticator and active sessions.",
   "security.profile": "Profile",
+  "security.signIn": "Sign-in and security",
+  "security.appearance": "Appearance",
+  "security.appearanceHint": "Choose how the console looks on this device.",
+  "security.password.title": "Password",
+  "security.password.hint":
+    "Another admin approves, then a link to choose a new password is emailed to you.",
+  "security.password.request": "Request change",
+  "security.password.dialogTitle": "Request a password change",
+  "security.password.impact":
+    "An admin who can reset sign-in details reviews this. When they approve, a one-time link to set a new password is emailed to you.",
+  "security.password.sent": "Request sent to the admins",
+  "security.twoFactor.request": "Request reset",
+  "security.twoFactor.sent": "Request sent to the admins",
+  "security.twoFactor.dialogTitle": "Request a 2FA reset",
+  "security.twoFactor.impact":
+    "An admin who can reset sign-in details reviews this. When they approve, your authenticator is removed, every session is signed out, and you set it up again at your next sign-in.",
+  "security.approverNote":
+    "You can approve these requests, so you cannot make them for your own account. Ask another admin.",
+  "auth.reset.title": "Choose a new password",
+  "auth.reset.welcome": "Hi {name}. Choose a new password for your account.",
+  "auth.reset.submit": "Change password",
+  "auth.reset.done": "Your password has been changed. Sign in with your new password.",
+  "auth.reset.invalid":
+    "This link is not valid. It may have expired or already been used. Request a new one from Account settings.",
+  "security.sessionsHint": "Devices signed in to your account right now.",
   "security.name": "Name",
   "security.roles": "Roles",
   "security.twoFactor": "Two-factor authentication",
@@ -107,7 +132,10 @@ export const auth = {
   "security.notEnrolled": "Not enrolled",
   "security.sessions": "Active sessions",
   "security.signOutOthers": "Sign out other sessions",
-  "security.signOutImpact": "Every other device is signed out straight away.",
+  "security.signOutOthers.title": "Sign out {count} other devices?",
+  "security.signOutOthers.body": "They are signed out straight away. This device stays signed in.",
+  "security.signOutOthers.unknown": "Unknown device",
+  "security.signOutOthers.more": "and {count} more",
   "security.signedOutOthers": "Other sessions signed out",
   "security.device": "Device",
   "security.lastActive": "Last active",

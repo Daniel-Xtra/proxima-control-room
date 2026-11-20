@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useCan } from "@/features/auth";
+import { useCan, useCurrentUser } from "@/features/auth";
 import { usePendingRequestCount } from "@/features/requests";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { RangeFilter } from "@/shared/components/RangeFilter";
@@ -12,6 +13,20 @@ import { TrendCard } from "../components/TrendCard";
 
 const DEFAULTS = { range: "30d" };
 
+/** The time of day in Lagos picks the wording and the emoji. */
+function greetingFor(now: Date) {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", {
+      hour: "numeric",
+      hour12: false,
+      timeZone: "Africa/Lagos",
+    }).format(now),
+  );
+  if (hour < 12) return { key: "overview.greeting.morning", emoji: "☀️" } as const;
+  if (hour < 17) return { key: "overview.greeting.afternoon", emoji: "🌤️" } as const;
+  return { key: "overview.greeting.evening", emoji: "🌙" } as const;
+}
+
 /**
  * The dashboard is made of sections that load on their own. The "Showing" period applies to the cards at the top only; the
  * chart and the status card keep their own periods, and the savings card has none.
@@ -20,27 +35,32 @@ export function OverviewPage() {
   const can = useCan();
   const [filters, setFilter] = useUrlFilters(DEFAULTS);
   const pending = usePendingRequestCount(can("request:view_all"));
+  const user = useCurrentUser();
+  const [greeting] = useState(() => greetingFor(new Date()));
+  const firstName = user.name.split(" ")[0] ?? user.name;
 
   return (
     <>
       <PageHeader
-        title={t("overview.title")}
+        title={`${t(greeting.key, { name: firstName })} ${greeting.emoji}`}
+        description={t("overview.welcome")}
         crumbs={[{ label: t("overview.crumb") }, { label: t("overview.title") }]}
+        actions={
+          <div className="flex items-center gap-2 text-sm text-muted-text">
+            <span>{t("overview.showing")}</span>
+            <RangeFilter
+              label={t("overview.range")}
+              value={filters.range}
+              onChange={(v) => setFilter("range", v)}
+              options={[
+                ["7d", t("range.7d")],
+                ["30d", t("range.30d")],
+                ["90d", t("range.90d")],
+              ]}
+            />
+          </div>
+        }
       />
-
-      <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-text">
-        <span>{t("overview.showing")}</span>
-        <RangeFilter
-          label={t("overview.range")}
-          value={filters.range}
-          onChange={(v) => setFilter("range", v)}
-          options={[
-            ["7d", t("range.7d")],
-            ["30d", t("range.30d")],
-            ["90d", t("range.90d")],
-          ]}
-        />
-      </div>
 
       {can("request:view_all") ? (
         <Link

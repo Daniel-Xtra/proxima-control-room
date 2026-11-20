@@ -1,11 +1,10 @@
 import {
   CaretDown,
-  List,
-  Monitor,
-  Moon,
+  CaretRight,
+  GearSix,
   ShieldCheck,
+  List,
   SignOut,
-  Sun,
   Buildings,
 } from "@phosphor-icons/react";
 import { useState } from "react";
@@ -15,14 +14,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/DropdownMenu";
+import { ThemeSwitch } from "@/shared/components/ThemeSwitch";
 import { t } from "@/shared/i18n/t";
 import { initials } from "@/shared/lib/format";
 import { CrumbSlotContext } from "@/shared/lib/crumbSlot";
-import { useTheme } from "@/shared/lib/theme";
 import { Sidebar } from "./Sidebar";
 
 export function AppShell() {
@@ -31,8 +28,6 @@ export function AppShell() {
   const location = useLocation();
   const [navOpen, setNavOpen] = useState(false);
   const [crumbSlot, setCrumbSlot] = useState<HTMLElement | null>(null);
-  const { theme, next: nextTheme } = useTheme();
-  const ThemeGlyph = theme === "dark" ? Moon : theme === "light" ? Sun : Monitor;
 
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
 
@@ -58,7 +53,7 @@ export function AppShell() {
               >
                 <List size={18} aria-hidden="true" />
               </button>
-              {/* Each page puts its breadcrumb and name here. */}
+              {/* Each page puts its breadcrumb here. */}
               <div ref={setCrumbSlot} className="flex min-w-0 flex-col gap-0.5" />
             </div>
 
@@ -67,15 +62,6 @@ export function AppShell() {
                 <Buildings size={12} aria-hidden="true" />
                 {t("shell.environment")}
               </span>
-              <button
-                type="button"
-                aria-label={`${t("shell.theme")}: ${t(`shell.theme.${theme}`)}`}
-                title={`${t("shell.theme")}: ${t(`shell.theme.${theme}`)}`}
-                className="inline-flex size-10 cursor-pointer items-center justify-center rounded-lg text-ink hover:bg-surface-muted"
-                onClick={nextTheme}
-              >
-                <ThemeGlyph size={18} aria-hidden="true" />
-              </button>
               <span aria-hidden="true" className="hidden h-8 w-px bg-border sm:block" />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -105,28 +91,57 @@ export function AppShell() {
                     />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-60">
-                  <DropdownMenuLabel>
-                    <span className="block truncate text-sm font-medium text-ink">{user.name}</span>
-                    <span className="block truncate text-xs font-normal text-muted-text">
-                      {user.email}
+                <DropdownMenuContent
+                  sideOffset={12}
+                  className="relative w-80 overflow-visible rounded-xl p-0 shadow-lg"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="absolute -top-1.5 right-6 size-3 rotate-45 rounded-xs bg-info-bg"
+                  />
+                  <div
+                    aria-hidden="true"
+                    className="h-16 rounded-t-xl bg-linear-to-br from-info-bg via-blue-tint-strong to-blue-tint"
+                  />
+                  <div className="px-4 pb-4">
+                    <span
+                      aria-hidden="true"
+                      className="-mt-8 flex size-16 items-center justify-center rounded-2xl bg-primary font-heading text-2xl font-semibold text-on-ink ring-4 ring-popover"
+                    >
+                      {initials(user.name)}
                     </span>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => navigate("/settings/security")}>
-                    <ShieldCheck aria-hidden="true" />
-                    {t("shell.security")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="text-danger-text"
-                    onSelect={() => {
-                      signOut();
-                      navigate("/login");
-                    }}
-                  >
-                    <SignOut aria-hidden="true" />
-                    {t("shell.signOut")}
-                  </DropdownMenuItem>
+                    <p className="m-0 mt-3 truncate font-heading text-base font-semibold text-ink">
+                      {user.name}
+                    </p>
+                    <p className="m-0 truncate text-xs text-muted-text">{user.email}</p>
+                    <span className="mt-2 inline-flex items-center gap-1 rounded-pill border border-blue-border bg-blue-tint px-2.5 py-0.5 text-xs font-medium text-ink">
+                      <ShieldCheck aria-hidden="true" className="size-3.5" />
+                      {user.roleNames.join(", ")}
+                    </span>
+
+                    <ThemeSwitch className="mt-4" />
+
+                    <DropdownMenuItem
+                      className="mt-3 h-10 justify-between px-2 text-sm"
+                      onSelect={() => navigate("/settings/security")}
+                    >
+                      <span className="flex items-center gap-3">
+                        <GearSix aria-hidden="true" className="size-4" />
+                        {t("shell.accountSettings")}
+                      </span>
+                      <CaretRight aria-hidden="true" className="size-3.5 text-muted-text" />
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="mt-2 h-10 justify-center gap-2 rounded-lg border border-danger-border bg-danger-soft text-sm font-medium text-danger-text focus:bg-danger-bg focus:text-danger-text"
+                      onSelect={() => {
+                        signOut();
+                        navigate("/login");
+                      }}
+                    >
+                      {t("shell.signOut")}
+                      <SignOut aria-hidden="true" />
+                    </DropdownMenuItem>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

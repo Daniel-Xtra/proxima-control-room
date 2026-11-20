@@ -15,7 +15,7 @@ interface PageHeaderProps {
   actions?: ReactNode;
   /** Group › page, with links for everything but the current page. */
   crumbs?: Crumb[];
-  /** Avatar or logo tile shown beside the title. The title then stays with it on the page. */
+  /** Avatar or logo tile shown beside the title. */
   logo?: ReactNode;
   /** Badges shown under the title. */
   meta?: ReactNode;
@@ -60,51 +60,28 @@ function Breadcrumbs({ crumbs, label }: { crumbs: Crumb[]; label: string }) {
   );
 }
 
-/**
- * In the app shell the breadcrumb and the page name sit in the top bar. What is left here is what belongs to the page itself:
- * the description, badges and actions. A page with a logo keeps its title beside it, since the logo and name go together.
- */
+/** In the app shell the breadcrumb sits in the top bar; the page name, description, badges and actions stay in the page. */
 export function PageHeader({ title, description, actions, crumbs, logo, meta }: PageHeaderProps) {
   const slot = useContext(CrumbSlotContext);
   const trail = crumbs?.length ? <Breadcrumbs crumbs={crumbs} label={title} /> : null;
-  const titleInBar = slot !== null && !logo;
-  const hasBody = !titleInBar || Boolean(description || actions || meta);
 
   return (
     <>
-      {slot
-        ? createPortal(
-            <>
-              {trail}
-              {titleInBar ? (
-                <h1 className="m-0 truncate font-heading text-xl font-semibold text-ink sm:text-2xl">
-                  {title}
-                </h1>
-              ) : null}
-            </>,
-            slot,
-          )
-        : null}
-      {hasBody ? (
-        <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
-          <div className="min-w-0">
-            {slot ? null : trail ? <div className="mb-1">{trail}</div> : null}
-            <div className="flex items-center gap-4">
-              {logo}
-              <div className="min-w-0">
-                {titleInBar ? null : <h1 className="text-2xl">{title}</h1>}
-                {description ? (
-                  <p className={`m-0 text-sm text-body ${titleInBar ? "" : "mt-1"}`}>
-                    {description}
-                  </p>
-                ) : null}
-                {meta ? <div className="mt-2 flex flex-wrap items-center gap-2">{meta}</div> : null}
-              </div>
+      {slot ? createPortal(trail, slot) : null}
+      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          {slot ? null : trail ? <div className="mb-1">{trail}</div> : null}
+          <div className="flex items-center gap-4">
+            {logo}
+            <div className="min-w-0">
+              <h1 className="text-2xl">{title}</h1>
+              {description ? <p className="m-0 mt-1 text-sm text-body">{description}</p> : null}
+              {meta ? <div className="mt-2 flex flex-wrap items-center gap-2">{meta}</div> : null}
             </div>
           </div>
-          {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
-        </header>
-      ) : null}
+        </div>
+        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      </header>
     </>
   );
 }

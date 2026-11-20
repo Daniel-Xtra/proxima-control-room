@@ -1,5 +1,9 @@
 export const transactions = {
   "transactions.title": "Transactions",
+  "transactions.insights.title": "Filter insights",
+  "transactions.insights.total": "Total transactions value",
+  "transactions.insights.credits": "Total credits (money in)",
+  "transactions.insights.debits": "Total debits (money out)",
   "transactions.description": "Every wallet movement across transfers, bills and savings.",
   "transactions.search": "Search reference or customer",
   "transactions.searchLabel": "Search transactions",

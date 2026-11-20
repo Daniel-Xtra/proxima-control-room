@@ -246,6 +246,8 @@ export const access = {
   "approvalRules.type.STAFF_ENABLE": "Enable staff access",
   "approvalRules.type.STAFF_ROLE_CHANGE": "Change staff role",
   "approvalRules.type.STAFF_MFA_RESET": "Reset staff 2FA",
+  "approvalRules.type.STAFF_SELF_MFA_RESET": "Reset your own 2FA",
+  "approvalRules.type.STAFF_SELF_PASSWORD_RESET": "Send yourself a password reset link",
   "approvalRules.type.TXN_REVERSAL": "Reverse a transaction",
   "approvalRules.type.TXN_REFUND": "Refund a transaction",
   "approvalRules.type.BULK_TRANSFER": "Bulk transfer",

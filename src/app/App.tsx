@@ -5,6 +5,7 @@ import { PlatformConfigPage, ProvidersPage } from "@/features/platform-config";
 import {
   AuthProvider,
   AcceptInvitationPage,
+  ResetPasswordPage,
   LoginPage,
   RequirePermission,
   SecuritySettingsPage,
@@ -45,6 +46,7 @@ export function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/accept-invite" element={<AcceptInvitationPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route element={<AppShell />}>
               <Route index element={<OverviewPage />} />
               <Route

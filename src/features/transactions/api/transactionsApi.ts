@@ -1,4 +1,4 @@
-import { customWindow } from "@/shared/lib/dateRange";
+import { customRange, customWindow } from "@/shared/lib/dateRange";
 import { humanize } from "@/shared/lib/format";
 import { request, requestFile, type Page } from "@/shared/api/client";
 import { fromApiAmount, toApiAmount } from "@/shared/api/money";
@@ -64,6 +64,20 @@ function filterQuery(filters: Pick<TransactionFilters, "search" | "range" | "sta
     status: filters.status === "all" ? undefined : filters.status,
     purpose: filters.purpose === "all" ? undefined : filters.purpose,
     ...windowQuery(filters.range),
+  };
+}
+
+/** Successful money in and out for whole Lagos days, `from` and `to` as YYYY-MM-DD. */
+export async function getTransactionSummary(from: string, to: string) {
+  const window = customWindow(customRange(from, to));
+  const r = await request<{ amount_unit?: string; credits: number; debits: number; total: number }>(
+    "/admin/transactions/summary",
+    { query: { ...window } },
+  );
+  return {
+    creditsKobo: fromApiAmount(r.credits, r.amount_unit),
+    debitsKobo: fromApiAmount(r.debits, r.amount_unit),
+    totalKobo: fromApiAmount(r.total, r.amount_unit),
   };
 }
 

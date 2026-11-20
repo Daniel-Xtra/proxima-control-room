@@ -85,10 +85,11 @@ export const common = {
   "shell.theme.light": "Light",
   "shell.theme.dark": "Dark",
   "shell.pendingCount": "{count} pending",
-  "shell.security": "Profile",
+  "shell.security": "Account settings",
+  "shell.accountSettings": "Account settings",
   "nav.collapse": "Collapse sidebar",
   "nav.expand": "Expand sidebar",
-  "shell.signOut": "Sign out",
+  "shell.signOut": "Logout",
   "shell.skip": "Skip to content",
 
   "nav.overview": "Overview",

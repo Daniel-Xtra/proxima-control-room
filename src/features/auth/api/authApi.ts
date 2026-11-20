@@ -177,6 +177,35 @@ export async function previewInvitation(token: string): Promise<InvitationPrevie
   };
 }
 
+export async function previewPasswordReset(token: string) {
+  const data = await request<{ email: string; first_name: string }>(
+    "/admin/auth/password-reset/preview",
+    { query: { token }, auth: false },
+  );
+  return { email: data.email, firstName: data.first_name };
+}
+
+export async function completePasswordReset(token: string, password: string) {
+  await request("/admin/auth/password-reset", {
+    method: "POST",
+    body: { token, password },
+    auth: false,
+  });
+}
+
+/** Asks another admin to reset your own sign-in. Nothing changes until they approve. */
+export async function requestOwnReset(kind: "password" | "mfa", userId: string, reason: string) {
+  await request("/admin/approvals", {
+    method: "POST",
+    headers: { "Idempotency-Key": crypto.randomUUID() },
+    body: {
+      type: kind === "mfa" ? "STAFF_SELF_MFA_RESET" : "STAFF_SELF_PASSWORD_RESET",
+      target_id: userId,
+      reason,
+    },
+  });
+}
+
 export async function acceptInvitation(token: string, password: string) {
   await request("/admin/auth/invitation/accept", {
     method: "POST",

@@ -24,6 +24,7 @@ export const requests = {
   "requests.staffAction.enable": "Enable staff access",
   "requests.staffAction.role": "Change staff role",
   "requests.staffAction.mfa_reset": "Reset staff 2FA",
+  "requests.staffAction.password_reset": "Send password reset link",
   "requests.filter.status": "Status",
   "requests.filter.all": "All statuses",
   "requests.status.pending": "Pending",
