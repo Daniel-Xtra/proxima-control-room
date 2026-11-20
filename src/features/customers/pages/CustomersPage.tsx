@@ -74,7 +74,7 @@ export function CustomersPage() {
       </h2>
 
       <section className="card overflow-hidden">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border-soft p-4">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border-soft p-4 [&_button[role=combobox]]:h-12">
           <SearchBox
             value={filters.q}
             onChange={(value) => setFilter("q", value)}
@@ -231,7 +231,7 @@ function FilterSelect({
   return (
     <div className="w-40 max-sm:w-[calc(50%-0.25rem)]">
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger aria-label={label} className="h-10">
+        <SelectTrigger aria-label={label} className="h-12">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

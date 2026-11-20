@@ -42,7 +42,7 @@ export function SearchBox({ value, onChange, placeholder, label, className }: Se
         placeholder={placeholder}
         value={draft}
         onChange={(event) => handleChange(event.target.value)}
-        className="h-10 pl-9"
+        className="h-12 pl-9"
       />
     </div>
   );

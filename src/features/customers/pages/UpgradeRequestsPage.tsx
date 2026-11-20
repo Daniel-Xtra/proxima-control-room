@@ -53,7 +53,7 @@ export function UpgradeRequestsPage() {
       <p className="m-0 mb-4 text-sm text-muted-text">{t("customers.upgrade.description")}</p>
 
       <section className="card overflow-hidden">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border-soft p-4">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border-soft p-4 [&_button[role=combobox]]:h-12">
           <SearchBox
             value={filters.q}
             onChange={(value) => setFilter("q", value)}
@@ -62,7 +62,7 @@ export function UpgradeRequestsPage() {
           />
           <div className="w-44 max-sm:w-[calc(50%-0.25rem)]">
             <Select value={filters.status} onValueChange={(v) => setFilter("status", v)}>
-              <SelectTrigger aria-label={t("customers.filter.status")} className="h-10">
+              <SelectTrigger aria-label={t("customers.filter.status")} className="h-12">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
