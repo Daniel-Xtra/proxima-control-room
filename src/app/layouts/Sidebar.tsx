@@ -1,5 +1,6 @@
 import { CaretDoubleLeft, CaretDoubleRight } from "@phosphor-icons/react";
 import { BrandMark } from "@/shared/components/BrandMark";
+import { BrandWordmark } from "@/shared/components/BrandWordmark";
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { NAV_ACCESS, canAccess, useSession } from "@/features/auth";
@@ -50,18 +51,16 @@ function SidebarContent({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="py-4 pl-7">
-        <div className="flex items-center gap-2.5 overflow-hidden">
-          <BrandMark />
-          <p
-            className={cn(
-              "m-0 text-base font-semibold leading-tight tracking-tight whitespace-nowrap text-ink",
-              FADE,
-              collapsed && "opacity-0",
-            )}
-          >
-            {t("app.name")}
-          </p>
+      <div className="py-4 pl-[26px]">
+        {/* The icon and the full logo sit in the same place and cross-fade, while the box around them changes width. */}
+        <div
+          className={cn(
+            "relative h-9 overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+            collapsed ? "w-6" : "w-[103px]",
+          )}
+        >
+          <BrandMark className={cn("absolute top-0 left-0 h-9", FADE, !collapsed && "opacity-0")} />
+          <BrandWordmark className={cn("absolute top-0 left-0", FADE, collapsed && "opacity-0")} />
         </div>
       </div>
       <nav

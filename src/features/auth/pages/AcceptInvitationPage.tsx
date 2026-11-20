@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ApiError } from "@/shared/api/client";
-import { BrandMark } from "@/shared/components/BrandMark";
+import { BrandWordmark } from "@/shared/components/BrandWordmark";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
@@ -49,9 +49,8 @@ export function AcceptInvitationPage() {
   return (
     <main className="auth-backdrop relative flex min-h-screen flex-col items-center justify-center gap-5 p-4">
       <AuthBackdrop />
-      <div className="relative z-10 flex items-center gap-2.5">
-        <BrandMark />
-        <span className="text-base font-semibold tracking-tight text-ink">{t("app.name")}</span>
+      <div className="relative z-10">
+        <BrandWordmark className="h-12" />
       </div>
       <Card className="auth-card relative z-10 w-full max-w-md gap-0 px-6 py-6">
         <h1 className="mb-1 text-2xl font-semibold text-ink">{t("auth.invite.title")}</h1>
