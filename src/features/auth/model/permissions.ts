@@ -46,6 +46,7 @@ export const PERMISSIONS_BY_MODULE = {
   bulk: [
     "bulk_transfer:view",
     "bulk_transfer:initiate",
+    "bulk_transfer:fund",
     "bulk_transfer:approve",
     "platform_wallet:view",
     "platform_wallet:topup_request",

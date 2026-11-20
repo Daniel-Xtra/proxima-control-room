@@ -1,25 +1,20 @@
-import { Info, Warning } from "@phosphor-icons/react";
+import { Info } from "@phosphor-icons/react";
 import { KeyValueList } from "@/shared/components/KeyValueList";
 import { MoneyText } from "@/shared/components/MoneyText";
 import { SectionCard } from "@/shared/components/SectionCard";
 import { SimpleTable } from "@/shared/components/SimpleTable";
 import { Button } from "@/shared/components/ui/Button";
 import { t } from "@/shared/i18n/t";
-import { formatCount, formatKobo, formatLagos } from "@/shared/lib/format";
-import { useBulkFee, useSourceName } from "../api/queries";
+import { formatCount, formatLagos } from "@/shared/lib/format";
+import { useBulkFee } from "../api/queries";
 import { draftTotals, scheduledDate, type BatchDraft } from "../model/draft";
-import { LARGE_BATCH_KOBO, type BalanceInfo, type PayeeDraft } from "../model/types";
+import { LARGE_BATCH_KOBO, type PayeeDraft } from "../model/types";
 
 const PREVIEW_ROWS = 8;
 
-export function ReviewStep({ draft, balance }: { draft: BatchDraft; balance: BalanceInfo }) {
-  const sourceName = useSourceName(draft.source);
+export function ReviewStep({ draft }: { draft: BatchDraft }) {
   const fee = useBulkFee(draft.payees);
   const totals = draftTotals(draft.payees, fee.feeKobo);
-  const shortKobo =
-    balance.status === "success" && balance.kobo !== undefined
-      ? totals.debitKobo - balance.kobo
-      : 0;
   const when = scheduledDate(draft);
   const preview = draft.payees.slice(0, PREVIEW_ROWS);
   const hidden = draft.payees.length - preview.length;
@@ -30,7 +25,6 @@ export function ReviewStep({ draft, balance }: { draft: BatchDraft; balance: Bal
         <KeyValueList
           items={[
             { label: t("bulk.field.name"), value: draft.name.trim() },
-            { label: t("bulk.field.source"), value: sourceName },
             {
               label: t("bulk.field.timing"),
               value: when ? formatLagos(when.toISOString()) : t("bulk.timing.onApproval"),
@@ -83,16 +77,6 @@ export function ReviewStep({ draft, balance }: { draft: BatchDraft; balance: Bal
           <Button variant="outline" size="sm" onClick={fee.retry}>
             {t("common.retry")}
           </Button>
-        </div>
-      ) : null}
-
-      {shortKobo > 0 ? (
-        <div
-          role="alert"
-          className="flex gap-2 rounded-md border border-danger bg-danger-bg p-3 text-sm text-danger-text"
-        >
-          <Warning aria-hidden="true" size={16} weight="fill" className="mt-0.5 shrink-0" />
-          <p className="m-0">{t("bulk.balance.insufficient", { short: formatKobo(shortKobo) })}</p>
         </div>
       ) : null}
 

@@ -67,6 +67,7 @@ export function BulkTransfersPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("bulk.filter.any")}</SelectItem>
+              <SelectItem value="pending_funding">{t("bulk.status.pending_funding")}</SelectItem>
               <SelectItem value="pending_approval">{t("bulk.status.pending_approval")}</SelectItem>
               <SelectItem value="approved">{t("bulk.status.approved")}</SelectItem>
               <SelectItem value="processing">{t("bulk.status.processing")}</SelectItem>

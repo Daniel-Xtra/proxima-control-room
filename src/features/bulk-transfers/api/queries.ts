@@ -21,8 +21,8 @@ export const bulkKeys = {
 };
 
 /** Refreshed every minute, since other payouts change the balance. */
-export const useSourceBalances = () =>
-  useApiQuery(bulkKeys.balances, getSourceBalances, { refetchInterval: 60_000 });
+export const useSourceBalances = (enabled = true) =>
+  useApiQuery(bulkKeys.balances, getSourceBalances, { refetchInterval: 60_000, enabled });
 
 export const useBatches = (filters: BatchFilters) =>
   useApiQuery(bulkKeys.list(filters), () => listBatches(filters));
@@ -78,7 +78,7 @@ export const useBatchItems = (id: string, filters: ItemFilters, live = false) =>
 export const usePlatformWallets = () => useApiQuery(bulkKeys.wallets, listPlatformWallets);
 
 /** The name of a pay-from wallet, or its id while the list loads or when it is not listed. */
-export function useSourceName(id: string): string {
-  const sources = useSourceBalances();
-  return sources.data?.find((source) => source.id === id)?.name ?? id;
+export function useSourceName(id: string | null): string {
+  const sources = useSourceBalances(id !== null);
+  return sources.data?.find((source) => source.id === id)?.name ?? id ?? "";
 }

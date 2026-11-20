@@ -10,7 +10,6 @@ import type {
   PayeeCheck,
   PayeeDraft,
   PlatformWallet,
-  SourceAccount,
   SourceBalances,
   VerifyIssue,
 } from "../model/types";
@@ -21,7 +20,7 @@ const nairaToKobo = (naira: number) => Math.round(naira * 100);
 interface BatchView {
   id: string;
   name: string;
-  source_account: string;
+  source_account: string | null;
   status: BatchStatus;
   total_amount: number;
   fee_amount: number;
@@ -29,6 +28,8 @@ interface BatchView {
   item_count: number;
   scheduled_for: string | null;
   created_by_name: string | null;
+  funded_by_name?: string | null;
+  funded_at?: string | null;
   decided_by_name: string | null;
   decision_reason: string | null;
   started_at: string | null;
@@ -66,6 +67,8 @@ function toBatch(view: BatchView, itemCounts: Record<string, number> = {}): Bulk
     name: view.name,
     sourceAccount: view.source_account,
     createdBy: view.created_by_name ?? "",
+    ...(view.funded_by_name ? { fundedBy: view.funded_by_name } : {}),
+    ...(view.funded_at ? { fundedAt: view.funded_at } : {}),
     createdAt: view.created_at,
     // The API does not send the reason the batch was raised with.
     reason: "",
@@ -153,6 +156,28 @@ export async function decideBatch(input: {
   return getBatch(input.id);
 }
 
+/** Step two: the second person chooses the account to pay from and passes the batch on for approval. */
+export async function fundBatch(input: {
+  id: string;
+  sourceAccount: string;
+  reason: string;
+}): Promise<BulkBatch> {
+  await request(`/admin/bulk-transfers/${encodeURIComponent(input.id)}/fund`, {
+    method: "POST",
+    body: { source_account: input.sourceAccount, reason: input.reason },
+  });
+  return getBatch(input.id);
+}
+
+/** Step two, declined: the batch stops before anyone is asked to approve a payout. */
+export async function rejectFunding(id: string, reason: string): Promise<BulkBatch> {
+  await request(`/admin/bulk-transfers/${encodeURIComponent(id)}/reject-funding`, {
+    method: "POST",
+    body: { reason },
+  });
+  return getBatch(id);
+}
+
 export async function retryFailed(id: string, reason: string): Promise<BulkBatch> {
   await request(`/admin/bulk-transfers/${encodeURIComponent(id)}/retry-failed`, {
     method: "POST",
@@ -204,7 +229,6 @@ function findBank(banks: Bank[], text: string): Bank | undefined {
 
 export interface NewBatch {
   name: string;
-  sourceAccount: SourceAccount;
   payees: PayeeDraft[];
   reason: string;
   /** ISO time to pay at. Leave out to pay right after approval. */
@@ -227,7 +251,6 @@ export async function createBatch(input: NewBatch): Promise<BulkBatch> {
     method: "POST",
     body: {
       name: input.name,
-      source_account: input.sourceAccount,
       payees: input.payees.map((payee) => ({
         name: payee.accountName,
         // Left out when blank: the server fills it in for a platform customer and refuses it for anyone else.
@@ -322,6 +345,25 @@ export async function verifyPayees(payees: PayeeDraft[]): Promise<Map<number, Pa
     });
   }
   return checks;
+}
+
+/** Checks the accounts of a batch that is already saved, a page of payees at a time. Results are by row number. */
+export async function verifyBatchAccounts(id: string): Promise<Map<number, PayeeCheck>> {
+  const checks = new Map<number, PayeeCheck>();
+  for (let page = 1; ; page++) {
+    const items = await getBatchItems(id, { page, limit: 100, status: "all" });
+    const drafts: PayeeDraft[] = items.items.map((item) => ({
+      row: item.row,
+      accountName: item.accountName,
+      accountNumber: item.accountNumber,
+      bank: item.bank,
+      amountKobo: item.amountKobo,
+      narration: "",
+      errors: [],
+    }));
+    for (const [row, check] of await verifyPayees(drafts)) checks.set(row, check);
+    if (page * items.limit >= items.total) return checks;
+  }
 }
 
 /** Real platform customers for the template's internal rows. Empty when there are none or they cannot be read. */

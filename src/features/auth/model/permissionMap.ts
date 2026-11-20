@@ -60,6 +60,7 @@ export const PERMISSION_SOURCES: Record<Permission, readonly string[]> = {
 
   "bulk_transfer:view": ["bulk_transfer.view"],
   "bulk_transfer:initiate": ["bulk_transfer.initiate"],
+  "bulk_transfer:fund": ["bulk_transfer.fund"],
   "bulk_transfer:approve": ["bulk_transfer.approve"],
   "platform_wallet:view": ["platform_wallet.view"],
   "platform_wallet:topup_request": ["platform_wallet.topup.request"],

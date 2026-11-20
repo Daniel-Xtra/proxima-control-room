@@ -9,7 +9,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { t } from "@/shared/i18n/t";
 import { formatLagos } from "@/shared/lib/format";
 import { createBatch } from "../api/bulkApi";
-import { bulkKeys, useBulkFee, useSourceBalances } from "../api/queries";
+import { bulkKeys, useBulkFee } from "../api/queries";
 import { BatchSummaryPanel } from "../components/BatchSummaryPanel";
 import { DetailsStep } from "../components/DetailsStep";
 import { PayeesStep } from "../components/PayeesStep";
@@ -22,7 +22,7 @@ import {
   scheduledDate,
   type BatchDraft,
 } from "../model/draft";
-import { LARGE_BATCH_KOBO, type BalanceInfo } from "../model/types";
+import { LARGE_BATCH_KOBO } from "../model/types";
 
 const STEPS = ["details", "payees", "review"] as const;
 
@@ -36,25 +36,16 @@ export function NewBulkTransferPage() {
   // Fixed when the page opens, so the allowed scheduling window does not shift while you type.
   const [now] = useState(() => new Date());
 
-  const balances = useSourceBalances();
-  const sources = balances.data ?? [];
-  // Until one is picked, the first source is used.
-  const draft: BatchDraft = { ...stored, source: stored.source || sources[0]?.id || "" };
-  const chosen = sources.find((source) => source.id === draft.source);
-  const balance: BalanceInfo =
-    chosen?.error || (balances.status === "success" && !chosen)
-      ? { status: "error" }
-      : { status: balances.status, kobo: chosen?.balanceKobo ?? undefined };
-
+  // The uploader never sees an account or a balance: a second person chooses where the batch is paid from.
+  const draft: BatchDraft = stored;
   const update = (patch: Partial<BatchDraft>) => setDraft((current) => ({ ...current, ...patch }));
   const stepReady = [detailsComplete(draft, now), payeesComplete(draft), true] as const;
   const fee = useBulkFee(draft.payees);
   const totals = draftTotals(draft.payees, fee.feeKobo);
   const when = scheduledDate(draft);
   const last = step === STEPS.length - 1;
-  // A batch the account cannot cover is never submitted; an unknown balance blocks it too.
-  const canAfford =
-    fee.known && balance.status === "success" && (balance.kobo ?? 0) >= totals.debitKobo;
+  // The fee is part of what the batch costs, so it has to be known before the batch is saved.
+  const feeReady = fee.known;
 
   const steps: Step[] = STEPS.map((key, index) => ({
     key,
@@ -85,15 +76,7 @@ export function NewBulkTransferPage() {
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex min-w-0 flex-col gap-4">
-          {step === 0 ? (
-            <DetailsStep
-              draft={draft}
-              onChange={update}
-              now={now}
-              balance={balance}
-              sources={sources}
-            />
-          ) : null}
+          {step === 0 ? <DetailsStep draft={draft} onChange={update} now={now} /> : null}
           {step === 1 ? (
             <PayeesStep
               payees={draft.payees}
@@ -102,7 +85,7 @@ export function NewBulkTransferPage() {
               }
             />
           ) : null}
-          {step === 2 ? <ReviewStep draft={draft} balance={balance} /> : null}
+          {step === 2 ? <ReviewStep draft={draft} /> : null}
 
           <div className="flex items-center justify-between gap-2">
             {step > 0 ? (
@@ -114,7 +97,7 @@ export function NewBulkTransferPage() {
               <span />
             )}
             {last ? (
-              <Button disabled={!canAfford} onClick={() => setConfirmOpen(true)}>
+              <Button disabled={!feeReady} onClick={() => setConfirmOpen(true)}>
                 {t("bulk.submit")}
               </Button>
             ) : (
@@ -127,7 +110,7 @@ export function NewBulkTransferPage() {
         </div>
 
         <aside aria-label={t("bulk.summary.title")} className="lg:sticky lg:top-20">
-          <BatchSummaryPanel draft={draft} balance={balance} />
+          <BatchSummaryPanel draft={draft} />
         </aside>
       </div>
 
@@ -152,7 +135,6 @@ export function NewBulkTransferPage() {
         onConfirm={async ({ reason }) => {
           const batch = await createBatch({
             name: draft.name.trim(),
-            sourceAccount: draft.source,
             payees: draft.payees,
             reason,
             scheduledFor: when?.toISOString(),

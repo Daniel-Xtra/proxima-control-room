@@ -3,6 +3,7 @@ import { t } from "@/shared/i18n/t";
 import type { BatchStatus, ItemStatus } from "../model/types";
 
 export const BatchStatusBadge = defineStatusBadge<BatchStatus>({
+  pending_funding: { tone: "warning", label: t("bulk.status.pending_funding") },
   pending_approval: { tone: "warning", label: t("bulk.status.pending_approval") },
   approved: { tone: "info", label: t("bulk.status.approved") },
   processing: { tone: "info", label: t("bulk.status.processing") },

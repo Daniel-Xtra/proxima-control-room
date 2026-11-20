@@ -1,17 +1,18 @@
 export const bulk = {
   "bulk.title": "Bulk transfers",
   "bulk.description":
-    "Pay many people from one batch. Every batch needs a second person's approval.",
+    "Pay many people from one batch. Three different people take it through: one uploads the payees, one chooses the account to pay from, one approves the payout.",
   "bulk.new": "New bulk transfer",
   "bulk.new.description":
-    "Set up the batch, upload your payees, check them, then submit for approval.",
+    "Name the batch, upload your payees and check them. A second person then chooses the account to pay from, and a third approves the payout.",
   "bulk.search": "Search batch name",
   "bulk.searchLabel": "Search bulk transfer batches",
   "bulk.filter.status": "Status",
   "bulk.filter.any": "Any status",
   "bulk.empty.title": "No batches yet",
-  "bulk.empty.description": "Batches you submit appear here with their approval status.",
+  "bulk.empty.description": "Batches appear here with the step they have reached.",
 
+  "bulk.status.pending_funding": "Awaiting pay-from account",
   "bulk.status.pending_approval": "Pending approval",
   "bulk.status.approved": "Approved",
   "bulk.status.processing": "Sending",
@@ -44,13 +45,14 @@ export const bulk = {
   "bulk.col.failure": "Failure reason",
 
   "bulk.section.details": "Batch details",
-  "bulk.section.detailsHint": "Name the batch and choose the account it is paid from.",
+  "bulk.section.detailsHint":
+    "Name the batch. You do not choose the account it is paid from: a second person does that.",
   "bulk.section.when": "When should it be paid?",
   "bulk.step.details": "Details",
   "bulk.step.payees": "Payees",
   "bulk.step.review": "Review",
   "bulk.steps.label": "Bulk transfer steps",
-  "bulk.timing.now.desc": "Payees are paid as soon as a second person approves the batch.",
+  "bulk.timing.now.desc": "Payees are paid as soon as the payout is approved.",
   "bulk.timing.schedule.desc":
     "Payees are paid at the time you choose, once the batch is approved.",
   "bulk.format.columnsLabel": "Columns, one payee per row:",
@@ -72,7 +74,8 @@ export const bulk = {
   "bulk.review.description":
     "Make sure everything below is right. You cannot edit a batch after submitting it.",
   "bulk.review.more": "and {count} more payees",
-  "bulk.review.note": "A second person must approve this batch before anything is paid.",
+  "bulk.review.note":
+    "A second person chooses the account to pay from and a third approves the payout. Nothing is paid before then.",
   "bulk.review.large": "This batch is above ₦10,000,000, so you will be asked to type CONFIRM.",
   "bulk.section.payees": "Payees",
   "bulk.section.payeesHint": "Upload an Excel (.xlsx) file. Only its first sheet is read.",
@@ -115,15 +118,36 @@ export const bulk = {
   "bulk.err.amountMax": "Amount is above the ₦10,000,000 limit per payee.",
   "bulk.err.duplicate": "This account appears more than once.",
 
-  "bulk.submit": "Submit for approval",
+  "bulk.submit": "Submit batch",
   "bulk.submit.title": "Submit bulk transfer",
   "bulk.submit.impact":
-    "{count} payees are queued. Nothing is paid until a second person approves the batch.",
+    "{count} payees are saved. A second person chooses the account to pay from, then a third approves. Nothing is paid until then.",
   "bulk.submit.impactScheduled":
-    "{count} payees are queued. After a second person approves, they are paid on {when}.",
-  "bulk.submit.done": "Batch submitted and waiting for approval",
+    "{count} payees are saved. Once the payout is approved they are paid on {when}.",
+  "bulk.submit.done": "Batch submitted and waiting for a pay-from account",
 
   "bulk.detail.subtitle": "Paid from {source} · {when}",
+  "bulk.detail.subtitleNoSource": "{when}",
+  "bulk.detail.fundedByBlocked":
+    "You chose the pay-from account, so a third person has to approve the payout.",
+  "bulk.fund.title": "Choose where to pay from",
+  "bulk.fund.description":
+    "Pick the account, check its balance and the payees, then pass the batch on for approval.",
+  "bulk.fund.verifyTitle": "Check the payees",
+  "bulk.fund.verifyHint":
+    "Look up each account with its bank before you pass the batch on. Optional, but it catches wrong accounts early.",
+  "bulk.fund.row": "Row {row}: {issues}",
+  "bulk.fund.submit": "Pass on for approval",
+  "bulk.fund.dialog.title": "Pass batch on for approval",
+  "bulk.fund.dialog.impact":
+    "{count} payees will be paid from {source} once a third person approves. Nothing is paid yet.",
+  "bulk.fund.done": "Passed on for approval",
+  "bulk.fund.waiting":
+    "Waiting for someone else to choose the account to pay from and pass this batch on.",
+  "bulk.fund.ownBlocked":
+    "You uploaded this batch, so someone else has to choose where it is paid from.",
+  "bulk.pay.title": "Pay from",
+  "bulk.activity.funded": "Pay-from account chosen",
   "bulk.detail.selfBlocked": "You created this batch, so someone else has to decide it.",
   "bulk.detail.ceilingBlocked":
     "The total debit is above your approval ceiling. Ask a senior approver.",

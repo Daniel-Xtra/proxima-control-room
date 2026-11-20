@@ -38,6 +38,7 @@ export const LARGE_BATCH_KOBO = 1_000_000_000;
 export { MAX_SCHEDULE_DAYS } from "@/shared/lib/schedule";
 
 export type BatchStatus =
+  | "pending_funding"
   | "pending_approval"
   | "approved"
   | "processing"
@@ -64,8 +65,12 @@ export interface BulkItem {
 export interface BulkBatch {
   id: string;
   name: string;
-  sourceAccount: SourceAccount;
+  /** Empty for people who may not see it: the uploader never learns which account pays. */
+  sourceAccount: SourceAccount | null;
   createdBy: string;
+  /** Who chose the pay-from account and passed the batch on. */
+  fundedBy?: string;
+  fundedAt?: string;
   createdAt: string;
   reason: string;
   /** ISO time the payments should run. Empty means right after approval. */

@@ -1,6 +1,6 @@
 import { isScheduleAllowed } from "@/shared/lib/schedule";
 import { validateDrafts } from "./payeeRows";
-import type { PayeeDraft, SourceAccount } from "./types";
+import type { PayeeDraft } from "./types";
 
 export { isScheduleAllowed, scheduleWindow, toLocalInput } from "@/shared/lib/schedule";
 
@@ -9,7 +9,6 @@ export type Timing = "now" | "scheduled";
 /** Everything the create flow collects before the batch is submitted. */
 export interface BatchDraft {
   name: string;
-  source: SourceAccount;
   timing: Timing;
   /** Local `datetime-local` value, used when timing is "scheduled". */
   when: string;
@@ -18,7 +17,6 @@ export interface BatchDraft {
 
 export const EMPTY_DRAFT: BatchDraft = {
   name: "",
-  source: "",
   timing: "now",
   when: "",
   payees: [],
