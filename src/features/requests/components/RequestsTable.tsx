@@ -3,10 +3,11 @@ import { useState } from "react";
 import { AsyncBody } from "@/shared/components/AsyncBody";
 import { DateText } from "@/shared/components/DateText";
 import { MoneyText } from "@/shared/components/MoneyText";
-import { SimpleTable } from "@/shared/components/SimpleTable";
+import { DataTable } from "@/shared/components/DataTable";
 import { t } from "@/shared/i18n/t";
 import { useRequests } from "../api/queries";
 import type { AccountRequest, RequestFilters } from "../model/types";
+import { requestLabel } from "./requestLabel";
 import { RequestStatusBadge } from "./RequestStatusBadge";
 import { ReviewDrawer } from "./ReviewDrawer";
 
@@ -19,6 +20,11 @@ export function RequestsTable({
 }) {
   const result = useRequests(filters);
   const [selected, setSelected] = useState<AccountRequest | null>(null);
+  const [paging, setPaging] = useState({ page: 1, limit: 10 });
+
+  /** The page shown, pulled back when a filter leaves fewer pages than the one open. */
+  const page = (total: number) =>
+    Math.min(paging.page, Math.max(1, Math.ceil(total / paging.limit)));
 
   return (
     <>
@@ -28,10 +34,16 @@ export function RequestsTable({
         emptyTitle={t("requests.empty.title")}
         emptyDescription={t("requests.empty.description")}
       >
-        {(rows) => (
-          <SimpleTable<AccountRequest>
+        {(all) => (
+          <DataTable<AccountRequest>
+            storageKey="requests"
             caption={t("requests.title")}
-            rows={rows}
+            rows={all.slice((page(all.length) - 1) * paging.limit, page(all.length) * paging.limit)}
+            page={page(all.length)}
+            limit={paging.limit}
+            total={all.length}
+            onPageChange={(next) => setPaging((current) => ({ ...current, page: next }))}
+            onLimitChange={(limit) => setPaging({ page: 1, limit })}
             getRowId={(r) => r.id}
             onRowOpen={setSelected}
             columns={[
@@ -49,7 +61,7 @@ export function RequestsTable({
                       key: "kind",
                       header: t("requests.col.type"),
                       sortValue: (r: { kind: string }) => r.kind,
-                      cell: (r: AccountRequest) => t(`requests.kind.${r.kind}`),
+                      cell: (r: AccountRequest) => requestLabel(r),
                     },
                   ]),
               ...(showCustomer && !filters.kind
@@ -58,7 +70,7 @@ export function RequestsTable({
                       key: "kind",
                       header: t("requests.col.type"),
                       sortValue: (r: { kind: string }) => r.kind,
-                      cell: (r: AccountRequest) => t(`requests.kind.${r.kind}`),
+                      cell: (r: AccountRequest) => requestLabel(r),
                     },
                   ]
                 : []),
@@ -69,22 +81,17 @@ export function RequestsTable({
                 cell: (r) =>
                   r.limits ? (
                     <span className="inline-flex items-center gap-1.5">
-                      <MoneyText kobo={r.limits.currentDailyKobo} />
-                      <ArrowRight aria-hidden="true" className="size-3 text-muted-text" />
+                      {r.limits.currentDailyKobo === null ? null : (
+                        <>
+                          <MoneyText kobo={r.limits.currentDailyKobo} />
+                          <ArrowRight aria-hidden="true" className="size-3 text-muted-text" />
+                        </>
+                      )}
                       <MoneyText kobo={r.limits.requestedDailyKobo} className="font-semibold" />
                     </span>
                   ) : (
                     r.reason
                   ),
-              },
-              {
-                key: "comment",
-                header: t("requests.col.staffComment"),
-                cell: (r) => (
-                  <span className="text-muted-text">
-                    {r.staffComment || t("common.notAvailable")}
-                  </span>
-                ),
               },
               {
                 key: "status",

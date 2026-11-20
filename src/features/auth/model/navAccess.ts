@@ -24,7 +24,8 @@ export const NAV_ACCESS: NavAccess[] = [
     ],
   },
   { id: "savings", label: "nav.savings", anyOf: ["savings:view"] },
-  { id: "bulk-payments", label: "nav.bulkPayments", anyOf: ["bulk_payment:view"] },
+  { id: "bulk-transfers", label: "nav.bulkTransfers", anyOf: ["bulk_transfer:view"] },
+  { id: "platform-wallets", label: "nav.platformWallets", anyOf: ["platform_wallet:view"] },
   { id: "banners", label: "nav.banners", anyOf: ["content:view"] },
   { id: "broadcasts", label: "nav.broadcasts", anyOf: ["content:view"] },
   { id: "broadcast-templates", label: "nav.templates", anyOf: ["content:view"] },
@@ -34,8 +35,9 @@ export const NAV_ACCESS: NavAccess[] = [
   { id: "audit", label: "nav.audit", anyOf: ["audit_log:view"] },
   { id: "bankone", label: "nav.bankone", anyOf: ["customer:repair_bankone", "queues:manage"] },
   { id: "staff", label: "nav.staff", anyOf: ["staff:view"] },
-  { id: "roles", label: "nav.roles", anyOf: ["roles:manage"] },
-  { id: "approval-rules", label: "nav.approvalRules", anyOf: ["config:view"] },
+  { id: "roles", label: "nav.roles", anyOf: ["staff:view"] },
+  { id: "providers", label: "nav.providers", anyOf: ["provider:view"] },
+  { id: "approval-rules", label: "nav.approvalRules", anyOf: ["approval_rules:view"] },
   { id: "platform-config", label: "nav.platformConfig", anyOf: ["config:view"] },
 ];
 

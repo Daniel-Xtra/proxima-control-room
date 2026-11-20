@@ -1,11 +1,11 @@
 import { DownloadSimple } from "@phosphor-icons/react";
 import { useState } from "react";
-import { toast } from "sonner";
 import { useCan } from "@/features/auth";
 import { AsyncBody } from "@/shared/components/AsyncBody";
 import { DataTable } from "@/shared/components/DataTable";
 import { DateText } from "@/shared/components/DateText";
 import { FilterBar } from "@/shared/components/FilterBar";
+import { RangeFilter } from "@/shared/components/RangeFilter";
 import { MoneyText } from "@/shared/components/MoneyText";
 import { SectionCard } from "@/shared/components/SectionCard";
 import { Button } from "@/shared/components/ui/Button";
@@ -20,6 +20,8 @@ import { t } from "@/shared/i18n/t";
 import { useTransactions } from "../api/queries";
 import { TRANSACTION_PURPOSES, type Transaction } from "../model/types";
 import { DirectionChip, TransactionStatusBadge } from "./TransactionBadges";
+import { ExportDialog } from "./ExportDialog";
+import { purposeLabel } from "@/shared/lib/purposeLabel";
 import { TransactionDrawer } from "./TransactionDrawer";
 
 export interface TransactionFilterValues {
@@ -47,6 +49,7 @@ interface Props {
 export function TransactionsView({ customerId, filters, defaults, setFilter }: Props) {
   const can = useCan();
   const [selected, setSelected] = useState<Transaction | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
   const result = useTransactions({
     search: filters.q,
     range: filters.range,
@@ -80,7 +83,7 @@ export function TransactionsView({ customerId, filters, defaults, setFilter }: P
           label: t("transactions.searchLabel"),
         }}
       >
-        <Filter
+        <RangeFilter
           label={t("transactions.filter.range")}
           value={filters.range}
           onChange={(v) => setFilter("range", v)}
@@ -132,11 +135,7 @@ export function TransactionsView({ customerId, filters, defaults, setFilter }: P
               storageKey={customerId ? "transactions-customer" : "transactions"}
               toolbarExtra={
                 can("transaction:export") ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toast.success(t("transactions.exportQueued"))}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setExportOpen(true)}>
                     <DownloadSimple aria-hidden="true" />
                     {t("common.exportCsv")}
                   </Button>
@@ -155,7 +154,6 @@ export function TransactionsView({ customerId, filters, defaults, setFilter }: P
                 {
                   key: "ref",
                   header: t("transactions.col.reference"),
-                  sortKey: "reference",
                   cell: (r) => <span className="tabular">{r.reference}</span>,
                 },
                 ...(customerId
@@ -164,7 +162,6 @@ export function TransactionsView({ customerId, filters, defaults, setFilter }: P
                       {
                         key: "customer",
                         header: t("transactions.col.customer"),
-                        sortKey: "customer",
                         cell: (r: Transaction) => r.customerName,
                       },
                     ]),
@@ -176,8 +173,7 @@ export function TransactionsView({ customerId, filters, defaults, setFilter }: P
                 {
                   key: "purpose",
                   header: t("transactions.col.purpose"),
-                  sortKey: "purpose",
-                  cell: (r) => t(`purpose.${r.purpose}`),
+                  cell: (r) => purposeLabel(r.purpose),
                 },
                 {
                   key: "amount",
@@ -189,7 +185,6 @@ export function TransactionsView({ customerId, filters, defaults, setFilter }: P
                 {
                   key: "status",
                   header: t("transactions.col.status"),
-                  sortKey: "status",
                   cell: (r) => <TransactionStatusBadge status={r.status} />,
                 },
                 {
@@ -203,6 +198,17 @@ export function TransactionsView({ customerId, filters, defaults, setFilter }: P
           )}
         </AsyncBody>
         <TransactionDrawer transaction={selected} onClose={() => setSelected(null)} />
+        <ExportDialog
+          open={exportOpen}
+          onOpenChange={setExportOpen}
+          filters={{
+            search: filters.q,
+            range: filters.range,
+            status: filters.status,
+            purpose: filters.purpose,
+            customerId,
+          }}
+        />
       </SectionCard>
     </>
   );

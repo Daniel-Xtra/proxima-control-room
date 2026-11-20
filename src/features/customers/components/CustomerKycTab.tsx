@@ -1,19 +1,17 @@
 import { UploadSimple } from "@phosphor-icons/react";
 import { useState } from "react";
-import { Can, useCan } from "@/features/auth";
+import { Can } from "@/features/auth";
 import { DateText } from "@/shared/components/DateText";
-import { MaskedValue } from "@/shared/components/MaskedValue";
 import { SectionCard } from "@/shared/components/SectionCard";
 import { SimpleTable } from "@/shared/components/SimpleTable";
 import { Button } from "@/shared/components/ui/Button";
 import { t } from "@/shared/i18n/t";
-import { maskTail } from "@/shared/lib/format";
 import type { Customer } from "../model/types";
 import { UploadDocumentDialog } from "./CustomerActionDialogs";
+import { CustomerKycReview } from "./CustomerKycReview";
 import { ComplianceStatusBadge, KycLevelBadge } from "./CustomerStatusBadges";
 
 export function CustomerKycTab({ customer }: { customer: Customer }) {
-  const can = useCan();
   const [uploadOpen, setUploadOpen] = useState(false);
 
   return (
@@ -48,17 +46,8 @@ export function CustomerKycTab({ customer }: { customer: Customer }) {
             {
               key: "value",
               header: t("kyc.col.value"),
-              cell: (r) =>
-                r.type === "LIVELINESS" ? (
-                  r.value
-                ) : (
-                  <MaskedValue
-                    value={r.value}
-                    mask={(v) => maskTail(v, 3)}
-                    auditTarget={`${r.type} of ${customer.name}`}
-                    canReveal={can("customer:view_sensitive")}
-                  />
-                ),
+              // BVN and NIN are never revealed through the admin API.
+              cell: (r) => r.value || t("common.notAvailable"),
             },
             {
               key: "approved",
@@ -73,10 +62,12 @@ export function CustomerKycTab({ customer }: { customer: Customer }) {
             },
           ]}
         />
-        <p className="border-t border-border px-4 py-3 text-sm text-muted-text">
-          {t("kyc.reviewGap")}
-        </p>
       </SectionCard>
+      <Can permission="kyc:view">
+        <div className="mt-4 flex flex-col gap-4">
+          <CustomerKycReview customerId={customer.id} />
+        </div>
+      </Can>
       <UploadDocumentDialog open={uploadOpen} onOpenChange={setUploadOpen} customer={customer} />
     </>
   );

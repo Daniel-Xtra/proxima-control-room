@@ -15,10 +15,14 @@ export const broadcasts = {
 
   "broadcasts.status.pending_approval": "Pending approval",
   "broadcasts.status.scheduled": "Scheduled",
+  "broadcasts.status.sending": "Sending",
   "broadcasts.status.sent": "Sent",
+  "broadcasts.status.failed": "Failed",
   "broadcasts.status.rejected": "Rejected",
-  "broadcasts.delivery.delivered": "Delivered",
+  "broadcasts.status.cancelled": "Cancelled",
+  "broadcasts.delivery.queued": "Sent to delivery queue",
   "broadcasts.delivery.failed": "Failed",
+  "broadcasts.delivery.skipped": "Skipped",
 
   "broadcasts.channel.push": "Push",
   "broadcasts.channel.push.desc": "A notification on the customer's phone.",

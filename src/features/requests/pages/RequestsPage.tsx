@@ -1,4 +1,4 @@
-import { useCan, useCurrentUser } from "@/features/auth";
+import { useCan } from "@/features/auth";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
 import {
@@ -14,14 +14,27 @@ import { t } from "@/shared/i18n/t";
 import { RequestsTable } from "../components/RequestsTable";
 import type { RequestKind } from "../model/types";
 
-const DEFAULTS = { tab: "freeze", status: "pending" };
-const KIND_TABS: RequestKind[] = ["freeze", "unfreeze", "limit"];
+const DEFAULTS = { tab: "freeze", status: "all" };
+const KIND_TABS: RequestKind[] = [
+  "freeze",
+  "unfreeze",
+  "limit",
+  "unlock",
+  "password_reset",
+  "reversal",
+  "refund",
+  "staff",
+  "other",
+];
 
 export function RequestsPage() {
   const can = useCan();
-  const user = useCurrentUser();
   const [filters, setFilter] = useUrlFilters(DEFAULTS);
   const viewAll = can("request:view_all");
+  const canSeeAll = can("audit_log:view");
+  // Pending requests are the ones this admin may decide. Decided ones are everyone's with audit access, otherwise the ones
+  // this admin decided or raised themselves.
+  const decidedScope = canSeeAll ? "all" : "handled";
   const tab = viewAll ? filters.tab : "mine";
 
   return (
@@ -62,12 +75,18 @@ export function RequestsPage() {
             {viewAll
               ? KIND_TABS.map((kind) => (
                   <TabsContent key={kind} value={kind} className="pt-0">
-                    <RequestsTable filters={{ kind, status: filters.status }} />
+                    <RequestsTable
+                      filters={{
+                        kind,
+                        status: filters.status,
+                        scope: filters.status === "pending" ? "assigned" : decidedScope,
+                      }}
+                    />
                   </TabsContent>
                 ))
               : null}
             <TabsContent value="mine" className="pt-0">
-              <RequestsTable filters={{ status: filters.status, requestedBy: user.name }} />
+              <RequestsTable filters={{ status: filters.status, scope: "mine" }} />
             </TabsContent>
           </SectionCard>
         </div>

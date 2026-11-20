@@ -21,7 +21,7 @@ interface FilterBarProps {
 /** A bordered panel of filters that sits above the table card. */
 export function FilterBar({ search, children, actions, onClear, dirty }: FilterBarProps) {
   return (
-    <div className="card mb-4 flex flex-wrap items-center gap-3 p-4 [&_button[role=combobox]]:h-12">
+    <div className="card mb-4 grid grid-cols-2 items-center gap-3 p-4 sm:flex sm:flex-wrap max-sm:[&>*]:min-w-0 max-sm:[&>*]:!w-full max-sm:[&>*]:!max-w-none [&_button[role=combobox]]:h-12">
       {search ? <DebouncedSearch {...search} /> : null}
       {children}
       {onClear ? (
@@ -29,7 +29,9 @@ export function FilterBar({ search, children, actions, onClear, dirty }: FilterB
           {t("common.clearFilters")}
         </Button>
       ) : null}
-      {actions ? <div className="ml-auto flex items-center gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="flex items-center gap-2 max-sm:col-span-2 sm:ml-auto">{actions}</div>
+      ) : null}
     </div>
   );
 }
@@ -53,7 +55,7 @@ function DebouncedSearch({
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   return (
-    <div className="relative w-full max-w-xs min-w-56 flex-1">
+    <div className="relative w-full max-w-xs min-w-56 flex-1 max-sm:col-span-2">
       <Input
         type="search"
         aria-label={label}

@@ -35,15 +35,8 @@ export function RequestLimitDialog({ open, onOpenChange, customer }: Props) {
         await createRequest({
           kind: "limit",
           customerId: customer.id,
-          customerName: customer.name,
           reason,
-          staffComment: "",
-          limits: {
-            currentDailyKobo: customer.dailyLimitKobo,
-            requestedDailyKobo: toKobo(daily),
-            currentPerTransactionKobo: customer.perTransactionLimitKobo,
-            requestedPerTransactionKobo: toKobo(perTxn),
-          },
+          limits: { dailyKobo: toKobo(daily), perTransactionKobo: toKobo(perTxn) },
         });
         await queryClient.invalidateQueries({ queryKey: requestKeys.all });
         setDaily("");

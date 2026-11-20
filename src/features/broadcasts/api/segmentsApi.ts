@@ -1,77 +1,92 @@
-import { getAuditActor, recordAudit } from "@/shared/api/auditStore";
-import { ApiError, simulate } from "@/shared/api/client";
-import { estimateSize, segmentProblems } from "../model/audience";
-import type { AudienceSegment, SegmentDraft, SegmentFilters } from "../model/types";
-import { broadcastUsage } from "./broadcastsApi";
-import { allSegments, findSegment, replaceSegments, type StoredSegment } from "./segmentsStore";
+import { request } from "@/shared/api/client";
+import { t } from "@/shared/i18n/t";
+import { rulesFromApi, rulesToApi, type ApiRules } from "../model/audience";
+import {
+  ALL_SEGMENT_ID,
+  EMPTY_RULES,
+  type AudienceRules,
+  type AudienceSegment,
+  type SegmentDraft,
+  type SegmentFilters,
+} from "../model/types";
 
-function toSegment(stored: StoredSegment): AudienceSegment {
+interface SegmentRow {
+  id: string;
+  name: string;
+  description: string | null;
+  rules: ApiRules;
+  updated_at: string;
+}
+
+/** How many customers the rules would reach right now. */
+export async function estimateAudience(rules: AudienceRules): Promise<number> {
+  const result = await request<{ estimated_size: number }>("/admin/audience-segments/estimate", {
+    method: "POST",
+    body: { rules: rulesToApi(rules) },
+  });
+  return result.estimated_size;
+}
+
+export async function listSegments(filters: SegmentFilters): Promise<AudienceSegment[]> {
+  const rows = await request<SegmentRow[]>("/admin/audience-segments");
+  const needle = filters.search.trim().toLowerCase();
+  const saved = await Promise.all(
+    rows
+      .filter((row) => !needle || row.name.toLowerCase().includes(needle))
+      .map(async (row): Promise<AudienceSegment> => {
+        const rules = rulesFromApi(row.rules);
+        return {
+          id: row.id,
+          name: row.name,
+          description: row.description ?? "",
+          rules,
+          builtIn: false,
+          size: await estimateAudience(rules),
+          updatedAt: row.updated_at,
+        };
+      }),
+  );
+  // "Every customer" is not stored: it is simply a broadcast with no rules.
+  const everyone: AudienceSegment = {
+    id: ALL_SEGMENT_ID,
+    name: t("segments.rule.everyone"),
+    description: "",
+    rules: { ...EMPTY_RULES },
+    builtIn: true,
+    size: await estimateAudience(EMPTY_RULES),
+    updatedAt: "",
+  };
+  return needle ? saved : [everyone, ...saved];
+}
+
+export async function saveSegment(
+  draft: SegmentDraft,
+  id: string | null,
+  _reason: string,
+): Promise<AudienceSegment> {
+  const body = {
+    name: draft.name.trim(),
+    description: draft.description.trim() || undefined,
+    rules: rulesToApi(draft.rules),
+  };
+  const row = id
+    ? await request<SegmentRow>(`/admin/audience-segments/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body,
+      })
+    : await request<SegmentRow>("/admin/audience-segments", { method: "POST", body });
+  const rules = rulesFromApi(row.rules);
   return {
-    ...stored,
-    rules: { ...stored.rules },
-    size: estimateSize(stored.rules),
-    broadcastCount: broadcastUsage()[stored.id]?.total ?? 0,
+    id: row.id,
+    name: row.name,
+    description: row.description ?? "",
+    rules,
+    builtIn: false,
+    size: await estimateAudience(rules),
+    updatedAt: row.updated_at,
   };
 }
 
-export function listSegments(filters: SegmentFilters): Promise<AudienceSegment[]> {
-  return simulate(() => {
-    const needle = filters.search.trim().toLowerCase();
-    return allSegments()
-      .filter((s) => !needle || `${s.name} ${s.description}`.toLowerCase().includes(needle))
-      .map(toSegment)
-      .sort((a, b) => Number(b.builtIn) - Number(a.builtIn) || a.name.localeCompare(b.name));
-  });
-}
-
-function nameTaken(name: string, exceptId: string | null): boolean {
-  const wanted = name.trim().toLowerCase();
-  return allSegments().some((s) => s.id !== exceptId && s.name.trim().toLowerCase() === wanted);
-}
-
-export function saveSegment(
-  draft: SegmentDraft,
-  id: string | null,
-  reason: string,
-): Promise<AudienceSegment> {
-  return simulate(() => {
-    const existing = id ? findSegment(id) : undefined;
-    if (id && !existing) throw new ApiError(404, "Segment not found.");
-    if (existing?.builtIn) throw new ApiError(403, "The built-in segment cannot be changed.");
-    if (segmentProblems(draft).length > 0)
-      throw new ApiError(422, "Fix the segment before saving it.");
-    if (nameTaken(draft.name, id))
-      throw new ApiError(409, "Another segment already has that name.");
-
-    const fields = {
-      name: draft.name.trim(),
-      description: draft.description.trim(),
-      rules: { ...draft.rules },
-      updatedBy: getAuditActor(),
-      updatedAt: new Date().toISOString(),
-    };
-    if (existing) {
-      Object.assign(existing, fields);
-      recordAudit({ action: "audience_segment.update", target: existing.name, reason });
-      return toSegment(existing);
-    }
-    const created: StoredSegment = { id: crypto.randomUUID(), builtIn: false, ...fields };
-    allSegments().push(created);
-    recordAudit({ action: "audience_segment.create", target: created.name, reason });
-    return toSegment(created);
-  });
-}
-
-export function deleteSegment(id: string, reason: string): Promise<void> {
-  return simulate(() => {
-    const existing = findSegment(id);
-    if (!existing) throw new ApiError(404, "Segment not found.");
-    if (existing.builtIn) throw new ApiError(403, "The built-in segment cannot be deleted.");
-    const open = broadcastUsage()[id]?.open ?? 0;
-    if (open > 0) {
-      throw new ApiError(409, `${open} broadcast(s) waiting to be sent still use this segment.`);
-    }
-    replaceSegments(allSegments().filter((s) => s.id !== id));
-    recordAudit({ action: "audience_segment.delete", target: existing.name, reason });
-  });
+export async function deleteSegment(id: string, _reason: string): Promise<void> {
+  await request(`/admin/audience-segments/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

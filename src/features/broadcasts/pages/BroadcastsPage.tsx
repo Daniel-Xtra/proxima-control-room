@@ -79,7 +79,10 @@ export function BroadcastsPage() {
                 {t("broadcasts.status.pending_approval")}
               </SelectItem>
               <SelectItem value="scheduled">{t("broadcasts.status.scheduled")}</SelectItem>
+              <SelectItem value="sending">{t("broadcasts.status.sending")}</SelectItem>
               <SelectItem value="sent">{t("broadcasts.status.sent")}</SelectItem>
+              <SelectItem value="failed">{t("broadcasts.status.failed")}</SelectItem>
+              <SelectItem value="cancelled">{t("broadcasts.status.cancelled")}</SelectItem>
               <SelectItem value="rejected">{t("broadcasts.status.rejected")}</SelectItem>
             </SelectContent>
           </Select>
@@ -109,6 +112,7 @@ export function BroadcastsPage() {
         >
           {(rows) => (
             <SimpleTable<BroadcastRow>
+              storageKey="broadcasts"
               caption={t("broadcasts.title")}
               rows={rows}
               getRowId={(r) => r.id}

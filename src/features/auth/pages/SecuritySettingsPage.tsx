@@ -1,53 +1,43 @@
+import { DeviceMobile, Key, Password } from "@phosphor-icons/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { recordAudit } from "@/shared/api/auditStore";
-import { simulate } from "@/shared/api/client";
-import { ActionDialog } from "@/shared/components/ActionDialog";
+import { AsyncBody } from "@/shared/components/AsyncBody";
 import { DateText } from "@/shared/components/DateText";
-import { KeyValueList } from "@/shared/components/KeyValueList";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
 import { SimpleTable } from "@/shared/components/SimpleTable";
 import { StatusBadge } from "@/shared/components/StatusBadge";
+import { ActionDialog } from "@/shared/components/ActionDialog";
+import { ThemeSwitch } from "@/shared/components/ThemeSwitch";
 import { Button } from "@/shared/components/ui/Button";
+import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { t } from "@/shared/i18n/t";
-import { useCurrentUser } from "../hooks/useSession";
+import { fetchRecoveryCodesRemaining, requestOwnReset } from "../api/authApi";
+import { listSessions, type SessionRow } from "../api/sessionsApi";
+import { AccountIdentityCard } from "../components/AccountIdentityCard";
+import { ReplaceRecoveryCodesDialog } from "../components/ReplaceRecoveryCodesDialog";
+import { SecurityRow } from "../components/SecurityRow";
+import { SignOutOthersDialog } from "../components/SignOutOthersDialog";
+import { useCan, useCurrentUser } from "../hooks/useSession";
 
-interface SessionRow {
-  id: string;
-  device: string;
-  ip: string;
-  lastActive: string;
-  current: boolean;
-}
-
-const INITIAL_SESSIONS: SessionRow[] = [
-  {
-    id: "s1",
-    device: "Chrome on Windows",
-    ip: "102.89.34.17",
-    lastActive: "2026-11-15T09:40:00.000Z",
-    current: true,
-  },
-  {
-    id: "s2",
-    device: "Safari on macOS",
-    ip: "105.112.8.201",
-    lastActive: "2026-11-14T16:05:00.000Z",
-    current: false,
-  },
-  {
-    id: "s3",
-    device: "Firefox on Linux",
-    ip: "197.210.65.9",
-    lastActive: "2026-11-12T11:22:00.000Z",
-    current: false,
-  },
-];
+const SESSIONS_KEY = ["auth", "sessions"];
+const RECOVERY_KEY = ["auth", "recovery-remaining"];
 
 export function SecuritySettingsPage() {
   const user = useCurrentUser();
-  const [sessions, setSessions] = useState(INITIAL_SESSIONS);
+  const can = useCan();
+  // Anyone who can decide these requests may not make one for themselves; the server enforces the same rule.
+  const canRequestReset = !can("2fa:reset");
+  const [resetKind, setResetKind] = useState<"password" | "mfa" | null>(null);
+  const queryClient = useQueryClient();
+  const sessions = useApiQuery(SESSIONS_KEY, listSessions, { staleTime: 0 });
+  const remaining = useApiQuery(RECOVERY_KEY, fetchRecoveryCodesRemaining, {
+    enabled: user.twoFactorEnrolled,
+    staleTime: 0,
+  });
+  const left = remaining.data ?? 0;
   const [signOutOpen, setSignOutOpen] = useState(false);
+  const [codesOpen, setCodesOpen] = useState(false);
 
   return (
     <>
@@ -56,75 +46,146 @@ export function SecuritySettingsPage() {
         crumbs={[{ label: t("nav.group.settings") }, { label: t("security.title") }]}
         description={t("security.description")}
       />
-      <div className="flex flex-col gap-4">
-        <SectionCard title={t("security.profile")}>
-          <KeyValueList
-            items={[
-              { label: t("security.name"), value: user.name },
-              { label: t("auth.email"), value: user.email },
-              { label: t("security.roles"), value: user.roleNames.join(", ") },
-              { label: t("security.lastLogin"), value: <DateText iso={user.lastLoginAt} /> },
-            ]}
-          />
-        </SectionCard>
+      <div className="grid items-start gap-4 lg:grid-cols-3">
+        <div className="flex flex-col gap-4">
+          <AccountIdentityCard name={user.name} email={user.email} roles={user.roleNames} />
+          <SectionCard title={t("security.appearance")} description={t("security.appearanceHint")}>
+            <ThemeSwitch />
+          </SectionCard>
+        </div>
 
-        <SectionCard title={t("security.twoFactor")} description={t("security.twoFactorHint")}>
-          <StatusBadge
-            tone={user.twoFactorEnrolled ? "success" : "warning"}
-            label={user.twoFactorEnrolled ? t("security.enrolled") : t("security.notEnrolled")}
-          />
-        </SectionCard>
+        <div className="flex flex-col gap-4 lg:col-span-2">
+          <SectionCard title={t("security.signIn")} flush>
+            <div className="divide-y divide-border-soft">
+              <SecurityRow
+                icon={DeviceMobile}
+                title={t("security.twoFactor")}
+                hint={t("security.twoFactorHint")}
+              >
+                <StatusBadge
+                  tone={user.twoFactorEnrolled ? "success" : "warning"}
+                  label={
+                    user.twoFactorEnrolled ? t("security.enrolled") : t("security.notEnrolled")
+                  }
+                />
+                {canRequestReset && user.twoFactorEnrolled ? (
+                  <Button variant="outline" onClick={() => setResetKind("mfa")}>
+                    {t("security.twoFactor.request")}
+                  </Button>
+                ) : null}
+              </SecurityRow>
+              <SecurityRow
+                icon={Password}
+                title={t("security.password.title")}
+                hint={canRequestReset ? t("security.password.hint") : t("security.approverNote")}
+              >
+                {canRequestReset ? (
+                  <Button variant="outline" onClick={() => setResetKind("password")}>
+                    {t("security.password.request")}
+                  </Button>
+                ) : null}
+              </SecurityRow>
+              {user.twoFactorEnrolled ? (
+                <SecurityRow
+                  icon={Key}
+                  title={t("security.recovery.title")}
+                  hint={
+                    remaining.data === undefined
+                      ? t("security.recovery.hint")
+                      : t("security.recovery.left", { count: left })
+                  }
+                >
+                  {remaining.data !== undefined && left <= 2 ? (
+                    <StatusBadge tone="warning" label={String(left)} />
+                  ) : null}
+                  <Button variant="outline" onClick={() => setCodesOpen(true)}>
+                    {t("security.recovery.generate")}
+                  </Button>
+                </SecurityRow>
+              ) : null}
+            </div>
+          </SectionCard>
 
-        <SectionCard
-          title={t("security.sessions")}
-          flush
-          actions={
-            <Button variant="outline" onClick={() => setSignOutOpen(true)}>
-              {t("security.signOutOthers")}
-            </Button>
-          }
-        >
-          <SimpleTable
-            caption={t("security.sessions")}
-            rows={sessions}
-            getRowId={(row) => row.id}
-            columns={[
-              { key: "device", header: t("security.device"), cell: (r) => r.device },
-              { key: "ip", header: t("audit.ip"), cell: (r) => r.ip },
-              {
-                key: "active",
-                header: t("security.lastActive"),
-                cell: (r) => <DateText iso={r.lastActive} />,
-              },
-              {
-                key: "current",
-                header: t("common.status"),
-                cell: (r) =>
-                  r.current ? (
-                    <StatusBadge tone="info" label={t("security.thisDevice")} />
-                  ) : (
-                    <StatusBadge tone="neutral" label={t("security.signedIn")} />
-                  ),
-              },
-            ]}
-          />
-        </SectionCard>
+          <SectionCard
+            title={t("security.sessions")}
+            description={t("security.sessionsHint")}
+            flush
+            actions={
+              <Button
+                variant="outline"
+                disabled={!sessions.data?.some((row) => !row.current)}
+                onClick={() => setSignOutOpen(true)}
+              >
+                {t("security.signOutOthers")}
+              </Button>
+            }
+          >
+            <AsyncBody query={sessions} isEmpty={(rows) => rows.length === 0}>
+              {(rows) => (
+                <SimpleTable<SessionRow>
+                  storageKey="sessions"
+                  caption={t("security.sessions")}
+                  rows={rows}
+                  getRowId={(row) => row.id}
+                  columns={[
+                    { key: "device", header: t("security.device"), cell: (r) => r.device },
+                    { key: "ip", header: t("audit.ip"), cell: (r) => r.ip },
+                    {
+                      key: "active",
+                      header: t("security.lastActive"),
+                      cell: (r) => <DateText iso={r.lastActive} />,
+                    },
+                    {
+                      key: "current",
+                      header: t("common.status"),
+                      cell: (r) =>
+                        r.current ? (
+                          <StatusBadge tone="info" label={t("security.thisDevice")} />
+                        ) : (
+                          <StatusBadge tone="neutral" label={t("security.signedIn")} />
+                        ),
+                    },
+                  ]}
+                />
+              )}
+            </AsyncBody>
+          </SectionCard>
+        </div>
       </div>
 
+      <ReplaceRecoveryCodesDialog
+        open={codesOpen}
+        onOpenChange={setCodesOpen}
+        remaining={remaining.data}
+        onReplaced={() => void queryClient.invalidateQueries({ queryKey: RECOVERY_KEY })}
+      />
+
       <ActionDialog
+        open={resetKind !== null}
+        onOpenChange={(open) => !open && setResetKind(null)}
+        title={
+          resetKind === "mfa"
+            ? t("security.twoFactor.dialogTitle")
+            : t("security.password.dialogTitle")
+        }
+        impact={
+          resetKind === "mfa" ? t("security.twoFactor.impact") : t("security.password.impact")
+        }
+        confirmLabel={
+          resetKind === "mfa" ? t("security.twoFactor.request") : t("security.password.request")
+        }
+        requireTotp={user.twoFactorEnrolled}
+        onConfirm={async ({ reason }) => {
+          await requestOwnReset(resetKind === "mfa" ? "mfa" : "password", user.id, reason);
+          return resetKind === "mfa" ? t("security.twoFactor.sent") : t("security.password.sent");
+        }}
+      />
+
+      <SignOutOthersDialog
         open={signOutOpen}
         onOpenChange={setSignOutOpen}
-        title={t("security.signOutOthers")}
-        impact={t("security.signOutImpact")}
-        confirmLabel={t("security.signOutOthers")}
-        requireReason={false}
-        requireTotp={false}
-        onConfirm={async () => {
-          await simulate(() => undefined);
-          setSessions((rows) => rows.filter((row) => row.current));
-          recordAudit({ action: "auth.sessions.revoke_others", target: user.email });
-          return t("security.signedOutOthers");
-        }}
+        sessions={sessions.data ?? []}
+        onDone={() => void queryClient.invalidateQueries({ queryKey: SESSIONS_KEY })}
       />
     </>
   );

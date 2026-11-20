@@ -98,6 +98,7 @@ export function TemplatesPage() {
         >
           {(rows) => (
             <SimpleTable<BroadcastTemplate>
+              storageKey="templates"
               caption={t("templates.title")}
               rows={rows}
               getRowId={(r) => r.id}
@@ -126,19 +127,6 @@ export function TemplatesPage() {
                       </p>
                     </div>
                   ),
-                },
-                {
-                  key: "used",
-                  header: t("templates.col.used"),
-                  align: "right",
-                  sortValue: (r) => r.usedCount,
-                  cell: (r) => r.usedCount,
-                },
-                {
-                  key: "by",
-                  header: t("templates.col.updatedBy"),
-                  sortValue: (r) => r.updatedBy,
-                  cell: (r) => r.updatedBy,
                 },
                 {
                   key: "at",

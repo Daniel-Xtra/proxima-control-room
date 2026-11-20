@@ -11,6 +11,8 @@ import { Button } from "@/shared/components/ui/Button";
 import { t } from "@/shared/i18n/t";
 import { decideRequest } from "../api/requestsApi";
 import { APPROVE_PERMISSION, type AccountRequest } from "../model/types";
+import { PayloadDetails } from "./PayloadDetails";
+import { requestLabel } from "./requestLabel";
 import { RequestStatusBadge } from "./RequestStatusBadge";
 
 interface Props {
@@ -24,7 +26,7 @@ export function ReviewDrawer({ request, onClose }: Props) {
   const can = useCan();
   const [decision, setDecision] = useState<"approved" | "rejected" | null>(null);
 
-  const isOwn = request?.requestedBy === user.name;
+  const isOwn = request?.requestedById === user.id;
   const overCeiling =
     request?.kind === "limit" &&
     request.limits !== undefined &&
@@ -43,7 +45,7 @@ export function ReviewDrawer({ request, onClose }: Props) {
         open={request !== null}
         onOpenChange={(open) => !open && onClose()}
         size="md"
-        title={request ? t(`requests.kind.${request.kind}`) : ""}
+        title={request ? requestLabel(request) : ""}
         description={request?.customerName}
         action={
           canAct ? (
@@ -76,13 +78,12 @@ export function ReviewDrawer({ request, onClose }: Props) {
                 { label: t("requests.col.requestedBy"), value: request.requestedBy },
                 { label: t("requests.col.date"), value: <DateText iso={request.createdAt} /> },
                 { label: t("requests.col.reason"), value: request.reason },
-                {
-                  label: t("requests.col.staffComment"),
-                  value: request.staffComment || t("common.notAvailable"),
-                },
               ]}
             />
             {request.limits ? <LimitDiffTable limits={request.limits} /> : null}
+            {request.kind === "other" ? (
+              <PayloadDetails payload={request.payload} type={request.type} />
+            ) : null}
             {request.decidedBy ? (
               <KeyValueList
                 columns={1}
@@ -93,6 +94,9 @@ export function ReviewDrawer({ request, onClose }: Props) {
                     value: request.decidedAt ? <DateText iso={request.decidedAt} /> : null,
                   },
                   { label: t("requests.review.adminComment"), value: request.adminComment },
+                  ...(request.failure
+                    ? [{ label: t("requests.status.failed"), value: request.failure }]
+                    : []),
                 ]}
               />
             ) : null}
@@ -107,7 +111,7 @@ export function ReviewDrawer({ request, onClose }: Props) {
           title={
             decision === "approved" ? t("requests.review.approve") : t("requests.review.reject")
           }
-          description={`${t(`requests.kind.${request.kind}`)} · ${request.customerName}`}
+          description={`${requestLabel(request)} · ${request.customerName}`}
           impact={
             decision === "approved"
               ? t(`requests.approve.impact.${request.kind}`, { name: request.customerName })
@@ -156,7 +160,7 @@ function LimitDiffTable({ limits }: { limits: NonNullable<AccountRequest["limits
               {label}
             </th>
             <td className="py-2 text-right">
-              <MoneyText kobo={from} />
+              {from === null ? t("common.notAvailable") : <MoneyText kobo={from} />}
             </td>
             <td className="w-6 py-2 text-center">
               <ArrowRight aria-hidden="true" className="inline size-3.5 text-muted-text" />

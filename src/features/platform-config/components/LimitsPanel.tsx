@@ -1,128 +1,152 @@
+import { humanize } from "@/shared/lib/format";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActionDialog } from "@/shared/components/ActionDialog";
+import { MoneyText } from "@/shared/components/MoneyText";
 import { SectionCard } from "@/shared/components/SectionCard";
 import { SimpleTable } from "@/shared/components/SimpleTable";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
+import { Label } from "@/shared/components/ui/Label";
 import { t } from "@/shared/i18n/t";
-import { proposeLimits } from "../api/configApi";
+import { requestLimitChanges } from "../api/configApi";
 import { configKeys } from "../api/queries";
-import type { LimitRule, Tier } from "../model/types";
-import { koboToNaira, limitProblems, nairaToKobo } from "../model/validate";
-
-interface Row {
-  tier: Tier;
-  single: string;
-  daily: string;
-}
-
-const toRow = (limit: LimitRule): Row => ({
-  tier: limit.tier,
-  single: koboToNaira(limit.singleKobo),
-  daily: koboToNaira(limit.dailyKobo),
-});
-
-const toLimit = (row: Row): LimitRule => ({
-  tier: row.tier,
-  singleKobo: nairaToKobo(row.single),
-  dailyKobo: nairaToKobo(row.daily),
-});
+import { koboToNaira, nairaToKobo } from "../model/money";
+import type { TierLimit } from "../model/types";
 
 interface Props {
-  limits: LimitRule[];
+  limits: TierLimit[];
+  /** The unit the API reports limits in; changes are sent back in it. */
+  unit: string | undefined;
+  /** Holds `config:edit`. */
   editable: boolean;
-  locked: boolean;
 }
 
-/** Mount with a `key` that changes when the live limits do, so the form starts from them. */
-export function LimitsPanel({ limits, editable, locked }: Props) {
-  const queryClient = useQueryClient();
-  const [rows, setRows] = useState(() => limits.map(toRow));
-  const [open, setOpen] = useState(false);
-  const canEdit = editable && !locked;
+/** Names a tier: the KYC level for retail tiers, otherwise the tier code. */
+function tierName(limit: TierLimit) {
+  return limit.kycLevel === null
+    ? `${humanize(limit.type)} · ${humanize(limit.tier)}`
+    : t("config.tier.level", { level: limit.kycLevel });
+}
 
-  const proposed = rows.map(toLimit);
-  const problems = limitProblems(proposed);
-  const dirty = JSON.stringify(proposed) !== JSON.stringify(limits);
-  const update = (tier: Tier, patch: Partial<Row>) =>
-    setRows((list) => list.map((row) => (row.tier === tier ? { ...row, ...patch } : row)));
+export function LimitsPanel({ limits, unit, editable }: Props) {
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState<TierLimit | null>(null);
+  const [single, setSingle] = useState("");
+  const [daily, setDaily] = useState("");
+
+  const singleKobo = nairaToKobo(single);
+  const dailyKobo = nairaToKobo(daily);
+  const valid =
+    editing !== null &&
+    singleKobo > 0 &&
+    dailyKobo >= singleKobo &&
+    (singleKobo !== editing.perTransactionKobo || dailyKobo !== editing.dailyKobo);
 
   return (
     <SectionCard
-      flush
       title={t("config.section.limits")}
       description={t("config.limits.description")}
-      actions={
-        editable ? (
-          <Button
-            disabled={!canEdit || !dirty || problems.length > 0}
-            onClick={() => setOpen(true)}
-          >
-            {t("config.submit")}
-          </Button>
-        ) : null
-      }
+      flush
     >
-      <SimpleTable<Row>
+      <SimpleTable<TierLimit>
+        storageKey="tier-limits"
         caption={t("config.section.limits")}
-        rows={rows}
-        getRowId={(r) => r.tier}
+        rows={limits}
+        getRowId={(r) => r.id}
         columns={[
-          { key: "tier", header: t("config.col.tier"), cell: (r) => t(`config.tier.${r.tier}`) },
+          { key: "tier", header: t("config.col.tier"), cell: (r) => tierName(r) },
           {
             key: "single",
             header: t("config.col.single"),
-            cell: (r) => (
-              <Input
-                inputMode="decimal"
-                className="w-40"
-                disabled={!canEdit}
-                aria-label={t("config.singleNamed", { name: t(`config.tier.${r.tier}`) })}
-                value={r.single}
-                onChange={(e) => update(r.tier, { single: e.target.value })}
-              />
-            ),
+            align: "right",
+            cell: (r) => <MoneyText kobo={r.perTransactionKobo} />,
           },
           {
             key: "daily",
             header: t("config.col.daily"),
-            cell: (r) => (
-              <Input
-                inputMode="decimal"
-                className="w-40"
-                disabled={!canEdit}
-                aria-label={t("config.dailyNamed", { name: t(`config.tier.${r.tier}`) })}
-                value={r.daily}
-                onChange={(e) => update(r.tier, { daily: e.target.value })}
-              />
-            ),
+            align: "right",
+            cell: (r) => <MoneyText kobo={r.dailyKobo} />,
+          },
+          {
+            key: "actions",
+            header: "",
+            align: "right",
+            cell: (r) =>
+              editable ? (
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={() => {
+                    setSingle(koboToNaira(r.perTransactionKobo));
+                    setDaily(koboToNaira(r.dailyKobo));
+                    setEditing(r);
+                  }}
+                >
+                  {t("config.edit")}
+                </Button>
+              ) : null,
           },
         ]}
       />
-      <p className="m-0 border-t border-border-soft px-4 py-2 text-xs text-muted-text">
+      <p className="m-0 border-t border-border-soft px-4 py-3 text-xs text-muted-text">
         {t("config.limits.help")}
       </p>
-      {dirty && problems.length > 0 ? (
-        <ul className="m-0 list-disc border-t border-border-soft py-2 pl-8 pr-4 text-xs text-danger-text">
-          {problems.map((problem) => (
-            <li key={problem}>{t(problem)}</li>
-          ))}
-        </ul>
-      ) : null}
 
       <ActionDialog
-        open={open}
-        onOpenChange={setOpen}
+        open={editing !== null}
+        onOpenChange={(open) => !open && setEditing(null)}
         title={t("config.limits.submit.title")}
+        description={editing ? tierName(editing) : undefined}
         impact={t("config.submit.impact")}
         confirmLabel={t("config.submit")}
+        blocked={!valid}
         onConfirm={async ({ reason }) => {
-          await proposeLimits(proposed, reason);
+          if (!editing) return "";
+          const result = await requestLimitChanges(
+            [
+              {
+                type: editing.type,
+                tier: editing.tier,
+                dailyKobo,
+                perTransactionKobo: singleKobo,
+              },
+            ],
+            unit,
+            reason,
+          );
+          const failed = result.results.find((entry) => !entry.ok);
+          if (failed) throw new Error(failed.error);
           await queryClient.invalidateQueries({ queryKey: configKeys.all });
           return t("config.submitted");
         }}
-      />
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="tier-single">{t("config.col.single")}</Label>
+            <Input
+              id="tier-single"
+              inputMode="decimal"
+              value={single}
+              onChange={(event) => setSingle(event.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="tier-daily">{t("config.col.daily")}</Label>
+            <Input
+              id="tier-daily"
+              inputMode="decimal"
+              value={daily}
+              onChange={(event) => setDaily(event.target.value)}
+            />
+          </div>
+        </div>
+        {single && daily && dailyKobo < singleKobo ? (
+          <p role="alert" className="text-sm text-danger-text">
+            {t("config.err.limit.daily")}
+          </p>
+        ) : null}
+      </ActionDialog>
     </SectionCard>
   );
 }

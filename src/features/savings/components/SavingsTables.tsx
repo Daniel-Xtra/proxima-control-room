@@ -4,17 +4,20 @@ import { AsyncBody } from "@/shared/components/AsyncBody";
 import { DateText } from "@/shared/components/DateText";
 import { defineStatusBadge } from "@/shared/components/defineStatusBadge";
 import { MoneyText } from "@/shared/components/MoneyText";
-import { SimpleTable } from "@/shared/components/SimpleTable";
+import { DataTable } from "@/shared/components/DataTable";
 import { Button } from "@/shared/components/ui/Button";
 import { t } from "@/shared/i18n/t";
+import type { SavingsFilters } from "../api/savingsApi";
 import { useFixedDeposits, useTargetSavings } from "../api/queries";
 import type {
   FixedDeposit,
+  SavingsPlanRef,
   FixedDepositStatus,
   TargetSaving,
   TargetSavingStatus,
 } from "../model/types";
 import { LiquidateDialog, type LiquidationTarget } from "./LiquidateDialog";
+import { PlanActivitySheet } from "./PlanActivitySheet";
 
 const FixedBadge = defineStatusBadge<FixedDepositStatus>({
   active: { tone: "info", label: t("savings.status.active") },
@@ -30,24 +33,58 @@ const TargetBadge = defineStatusBadge<TargetSavingStatus>({
   paid: { tone: "success", label: t("savings.status.paid") },
 });
 
-export function FixedDepositsTable({ customerId }: { customerId?: string }) {
+export function FixedDepositsTable({
+  customerId,
+  filters,
+}: {
+  customerId?: string;
+  filters?: SavingsFilters;
+}) {
   const can = useCan();
-  const result = useFixedDeposits(customerId);
+  const [paging, setPaging] = useState({ page: 1, limit: 10 });
+  const result = useFixedDeposits(customerId, filters, paging.page, paging.limit);
   const [target, setTarget] = useState<LiquidationTarget | null>(null);
+  const [viewing, setViewing] = useState<SavingsPlanRef | null>(null);
 
   return (
     <>
       <AsyncBody
         query={result}
-        isEmpty={(rows) => rows.length === 0}
+        isEmpty={(data) => data.total === 0}
         emptyTitle={t("savings.empty")}
       >
-        {(rows) => (
-          <SimpleTable<FixedDeposit>
+        {(data) => (
+          <DataTable<FixedDeposit>
+            page={data.page}
+            limit={data.limit}
+            total={data.total}
+            onPageChange={(page) => setPaging((p) => ({ ...p, page }))}
+            onLimitChange={(limit) => setPaging({ page: 1, limit })}
+            onRowOpen={(r) =>
+              setViewing({
+                kind: "fixed",
+                id: r.id,
+                name: r.name,
+                reference: r.reference,
+                customerName: r.customerName,
+              })
+            }
+            storageKey="fixed-deposits"
             caption={t("savings.tab.fixed")}
-            rows={rows}
+            rows={data.items}
             getRowId={(r) => r.id}
             columns={[
+              {
+                key: "name",
+                header: t("savings.col.plan"),
+                sortValue: (r: { name: string }) => r.name,
+                cell: (r: FixedDeposit) => (
+                  <div>
+                    <p className="font-medium">{r.name || t("common.notAvailable")}</p>
+                    {r.reference ? <p className="text-xs text-muted-text">{r.reference}</p> : null}
+                  </div>
+                ),
+              },
               ...(customerId
                 ? []
                 : [
@@ -111,26 +148,54 @@ export function FixedDepositsTable({ customerId }: { customerId?: string }) {
         )}
       </AsyncBody>
       <LiquidateDialog target={target} onClose={() => setTarget(null)} />
+      <PlanActivitySheet
+        key={viewing?.id ?? "none"}
+        plan={viewing}
+        onClose={() => setViewing(null)}
+      />
     </>
   );
 }
 
-export function TargetSavingsTable({ customerId }: { customerId?: string }) {
+export function TargetSavingsTable({
+  customerId,
+  filters,
+}: {
+  customerId?: string;
+  filters?: SavingsFilters;
+}) {
   const can = useCan();
-  const result = useTargetSavings(customerId);
+  const [paging, setPaging] = useState({ page: 1, limit: 10 });
+  const result = useTargetSavings(customerId, filters, paging.page, paging.limit);
   const [target, setTarget] = useState<LiquidationTarget | null>(null);
+  const [viewing, setViewing] = useState<SavingsPlanRef | null>(null);
 
   return (
     <>
       <AsyncBody
         query={result}
-        isEmpty={(rows) => rows.length === 0}
+        isEmpty={(data) => data.total === 0}
         emptyTitle={t("savings.empty")}
       >
-        {(rows) => (
-          <SimpleTable<TargetSaving>
+        {(data) => (
+          <DataTable<TargetSaving>
+            page={data.page}
+            limit={data.limit}
+            total={data.total}
+            onPageChange={(page) => setPaging((p) => ({ ...p, page }))}
+            onLimitChange={(limit) => setPaging({ page: 1, limit })}
+            onRowOpen={(r) =>
+              setViewing({
+                kind: "target",
+                id: r.id,
+                name: r.name,
+                reference: r.reference,
+                customerName: r.customerName,
+              })
+            }
+            storageKey="target-savings"
             caption={t("savings.tab.target")}
-            rows={rows}
+            rows={data.items}
             getRowId={(r) => r.id}
             columns={[
               ...(customerId
@@ -192,6 +257,11 @@ export function TargetSavingsTable({ customerId }: { customerId?: string }) {
         )}
       </AsyncBody>
       <LiquidateDialog target={target} onClose={() => setTarget(null)} />
+      <PlanActivitySheet
+        key={viewing?.id ?? "none"}
+        plan={viewing}
+        onClose={() => setViewing(null)}
+      />
     </>
   );
 }

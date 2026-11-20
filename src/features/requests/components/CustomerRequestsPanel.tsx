@@ -1,3 +1,5 @@
+import { Snowflake } from "@phosphor-icons/react";
+import { EmptyState } from "@/shared/components/EmptyState";
 import { SectionCard } from "@/shared/components/SectionCard";
 import { Timeline } from "@/shared/components/Timeline";
 import { t } from "@/shared/i18n/t";
@@ -18,11 +20,18 @@ export function CustomerRequestsPanel({ customerId, freezeHistory }: Props) {
   return (
     <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
       <SectionCard title={t("requests.customer.title")} flush>
-        <RequestsTable filters={{ status: "all", customerId }} showCustomer={false} />
+        <RequestsTable
+          filters={{ status: "all", scope: "customer", customerId }}
+          showCustomer={false}
+        />
       </SectionCard>
       <SectionCard title={t("requests.customer.freezeHistory")}>
         {freezeHistory.length === 0 ? (
-          <p className="text-sm text-muted-text">{t("requests.customer.noFreezeHistory")}</p>
+          <EmptyState
+            icon={Snowflake}
+            title={t("requests.customer.noFreezeHistoryTitle")}
+            description={t("requests.customer.noFreezeHistory")}
+          />
         ) : (
           <Timeline
             entries={freezeHistory.map((event) => ({

@@ -57,6 +57,7 @@ export function BannersPage() {
         >
           {(rows) => (
             <SimpleTable<Banner>
+              storageKey="banners"
               caption={t("banners.title")}
               rows={rows}
               getRowId={(r) => r.id}
@@ -86,16 +87,17 @@ export function BannersPage() {
                 {
                   key: "views",
                   header: t("banners.col.impressions"),
-                  sortValue: (r: { impressions: number }) => r.impressions,
+                  sortValue: (r: { impressions: number | null }) => r.impressions ?? 0,
                   align: "right",
-                  cell: (r) => formatCount(r.impressions),
+                  cell: (r) =>
+                    r.impressions === null ? t("common.notAvailable") : formatCount(r.impressions),
                 },
                 {
                   key: "ctr",
                   header: t("banners.col.ctr"),
                   align: "right",
                   cell: (r) =>
-                    r.impressions
+                    r.impressions && r.clicks !== null
                       ? `${((r.clicks / r.impressions) * 100).toFixed(1)}%`
                       : t("common.notAvailable"),
                 },

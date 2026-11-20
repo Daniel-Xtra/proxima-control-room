@@ -1,160 +1,212 @@
-import { simulate } from "@/shared/api/client";
-import { FIXTURE_CUSTOMERS, daysAgo, seeded } from "@/shared/api/mockFixtures";
+import { request } from "@/shared/api/client";
+import { fromApiAmount } from "@/shared/api/money";
+import { parseCustomRange } from "@/shared/lib/dateRange";
+import { dayLabel } from "@/shared/lib/dayLabel";
+import { purposeLabel } from "@/shared/lib/purposeLabel";
+
+/**
+ * The overview is read a section at a time. Each section has its own endpoint, and the ones with a period take their own,
+ * so changing the period of one never reloads another.
+ */
 
 export interface Bucket {
   count: number;
   amountKobo: number;
 }
 
-export interface RecentTransaction {
-  id: string;
-  name: string;
-  amountKobo: number;
-  purpose:
-    "wallet_transfer" | "bank_transfer" | "bill_payment" | "airtime_payment" | "data_payment";
-  status: "success" | "pending" | "failed";
+export interface BillBucket extends Bucket {
+  successes: number;
+  failures: number;
+  pending: number;
 }
 
-export interface Overview {
+/** A custom range is sent as its first and last day; the server compares it with the period just before. */
+function periodQuery(range: string) {
+  const custom = parseCustomRange(range);
+  return custom ? { from: custom.from, to: custom.to } : { range };
+}
+
+/** No period to compare with means no change to report. */
+const delta = (pct: number | null) => pct ?? 0;
+
+// ---- cards -------------------------------------------------------------------------------------------------------
+
+export interface OverviewSummary {
   /** Percent change against the previous period of the same length. */
   deltas: { transactions: number; value: number; fixedDeposits: number; targetSavings: number };
-  valueKobo: number;
-  series: { labels: string[]; valueKobo: number[]; volume: number[] };
-  recent: RecentTransaction[];
-  kpis: {
-    transactions: { total: number; trend: number[] };
-    fixedDeposits: { total: number; trend: number[] };
-    targetSavings: { total: number; trend: number[] };
+  transactions: { total: number; valueKobo: number };
+  fixedDeposits: { total: number };
+  targetSavings: { total: number };
+  transfers: { total: number; successful: number; failed: number; pending: number };
+  bills: { total: number; airtime: number; data: number; failures: number };
+  signUps: { total: number; male: number; female: number };
+}
+
+interface SummaryResponse {
+  amount_unit?: string;
+  transactions: {
+    volume: number;
+    value: number;
+    volume_delta_pct: number | null;
+    value_delta_pct: number | null;
   };
-  transfers: {
-    total: Bucket;
-    successful: Bucket;
-    failed: Bucket;
-    pending: Bucket;
-    wallet: Bucket;
-    otherBank: Bucket;
-    weekday: { label: string; count: number }[];
-  };
-  bills: {
-    airtime: Bucket & { successes: number; failures: number; pending: number };
-    data: Bucket & { successes: number; failures: number; pending: number };
-    billers: { name: string; count: number; amountKobo: number; failures: number }[];
-  };
-  customers: {
-    signUps: number;
-    trend: number[];
-    male: number;
-    female: number;
-    unspecified: number;
-  };
-  savings: {
-    fixedTotalKobo: number;
-    fixedCount: number;
-    targetTotalKobo: number;
-    targetCount: number;
+  fixed_deposits: { volume: number; volume_delta_pct: number | null };
+  target_savings: { volume: number; volume_delta_pct: number | null };
+  transfers: { total: number; successful: number; failed: number; pending: number };
+  bills: { total: number; airtime: { count: number }; data: { count: number }; failures: number };
+  signups: { total: number; gender: { male: number; female: number } };
+}
+
+export async function getOverviewSummary(range: string): Promise<OverviewSummary> {
+  const r = await request<SummaryResponse>("/admin/overview/summary", {
+    query: periodQuery(range),
+  });
+  return {
+    deltas: {
+      transactions: delta(r.transactions.volume_delta_pct),
+      value: delta(r.transactions.value_delta_pct),
+      fixedDeposits: delta(r.fixed_deposits.volume_delta_pct),
+      targetSavings: delta(r.target_savings.volume_delta_pct),
+    },
+    transactions: {
+      total: r.transactions.volume,
+      valueKobo: fromApiAmount(r.transactions.value, r.amount_unit),
+    },
+    fixedDeposits: { total: r.fixed_deposits.volume },
+    targetSavings: { total: r.target_savings.volume },
+    transfers: r.transfers,
+    bills: {
+      total: r.bills.total,
+      airtime: r.bills.airtime.count,
+      data: r.bills.data.count,
+      failures: r.bills.failures,
+    },
+    signUps: {
+      total: r.signups.total,
+      male: r.signups.gender.male,
+      female: r.signups.gender.female,
+    },
   };
 }
 
-export function getOverview(range: string): Promise<Overview> {
-  return simulate(() => {
-    const days = Number(range.replace("d", "")) || 30;
-    const rand = seeded(days * 13);
-    const points = (base: number) =>
-      Array.from({ length: 12 }, () => Math.round(base * (0.6 + rand() * 0.8)));
-    const scale = days / 30;
-    const successCount = Math.round(18_400 * scale);
-    const failedCount = Math.round(1_150 * scale);
-    const pendingCount = Math.round(240 * scale);
-    const avg = 3_800_00;
-    const bucket = (count: number): Bucket => ({
-      count,
-      amountKobo: count * Math.round(avg * (0.8 + rand() * 0.5)),
-    });
-    const walletCount = Math.round(successCount * 0.58);
-    const bill = (count: number) => ({
-      ...bucket(count),
-      successes: Math.round(count * 0.93),
-      failures: Math.round(count * 0.05),
-      pending: Math.round(count * 0.02),
-    });
-    const signUps = Math.round(2_960 * scale);
-    const successful = bucket(successCount);
-    const dayCount = Math.min(days, 30);
-    const labels = Array.from({ length: dayCount }, (_, i) =>
-      new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(
-        new Date(daysAgo(dayCount - 1 - i)),
-      ),
-    );
-    const volume = Array.from({ length: dayCount }, () =>
-      Math.round((successCount / dayCount) * (0.5 + rand())),
-    );
-    const purposes = [
-      "wallet_transfer",
-      "bank_transfer",
-      "bill_payment",
-      "airtime_payment",
-      "data_payment",
-    ] as const;
-    return {
-      deltas: {
-        transactions: Math.round((rand() * 30 - 10) * 10) / 10,
-        value: Math.round((rand() * 30 - 15) * 10) / 10,
-        fixedDeposits: Math.round((rand() * 20 - 4) * 10) / 10,
-        targetSavings: Math.round((rand() * 20 - 8) * 10) / 10,
-      },
-      valueKobo: successful.amountKobo,
-      series: {
-        labels,
-        volume,
-        valueKobo: volume.map((v) => v * Math.round(avg * (0.8 + rand() * 0.5))),
-      },
-      recent: purposes.map((purpose, i) => ({
-        id: `recent-${i}`,
-        name: FIXTURE_CUSTOMERS[(i * 11 + days) % FIXTURE_CUSTOMERS.length]!.name,
-        amountKobo: Math.round((rand() * 480_000 + 2_000) * 100),
-        purpose,
-        status: i === 3 ? "pending" : i === 4 ? "failed" : "success",
+// ---- trend -------------------------------------------------------------------------------------------------------
+
+export interface OverviewTrend {
+  labels: string[];
+  valueKobo: number[];
+  volume: number[];
+}
+
+interface TrendResponse {
+  amount_unit?: string;
+  trend: { date: string; volume: number; value: number }[];
+}
+
+/** The daily line for a period, for all transactions or one purpose such as `bank_transfer`. */
+export async function getOverviewTrend(range: string, purpose?: string): Promise<OverviewTrend> {
+  const r = await request<TrendResponse>("/admin/overview/trend", {
+    query: { ...periodQuery(range), purpose },
+  });
+  return {
+    labels: r.trend.map((point) => dayLabel(point.date)),
+    valueKobo: r.trend.map((point) => fromApiAmount(point.value, r.amount_unit)),
+    volume: r.trend.map((point) => point.volume),
+  };
+}
+
+// ---- status ------------------------------------------------------------------------------------------------------
+
+export interface OverviewStatus {
+  transfers: { total: Bucket; successful: Bucket; failed: Bucket; pending: Bucket };
+  bills: {
+    airtime: BillBucket;
+    data: BillBucket;
+    billers: { name: string; count: number; amountKobo: number; failures: number }[];
+  };
+}
+
+interface BillType {
+  type: string;
+  count: number;
+  amount: number;
+  failures: number;
+}
+
+interface StatusResponse {
+  amount_unit?: string;
+  transfers: {
+    total: number;
+    successful: number;
+    failed: number;
+    pending: number;
+    value: number;
+  };
+  bills: { airtime: BillType; data: BillType; billers: BillType[] };
+}
+
+/** How transfers and bill payments ended in a period. */
+export async function getOverviewStatus(range: string): Promise<OverviewStatus> {
+  const r = await request<StatusResponse>("/admin/overview/status", {
+    query: periodQuery(range),
+  });
+  const money = (amount: number) => fromApiAmount(amount, r.amount_unit);
+  // The API gives counts for transfers, and money only for the successful ones.
+  const count = (n: number, amountKobo = 0): Bucket => ({ count: n, amountKobo });
+  const bill = (b: BillType): BillBucket => ({
+    count: b.count,
+    amountKobo: money(b.amount),
+    successes: Math.max(0, b.count - b.failures),
+    failures: b.failures,
+    pending: 0,
+  });
+  return {
+    transfers: {
+      total: count(r.transfers.total, money(r.transfers.value)),
+      successful: count(r.transfers.successful, money(r.transfers.value)),
+      failed: count(r.transfers.failed),
+      pending: count(r.transfers.pending),
+    },
+    bills: {
+      airtime: bill(r.bills.airtime),
+      data: bill(r.bills.data),
+      billers: r.bills.billers.map((biller) => ({
+        name: purposeLabel(biller.type),
+        count: biller.count,
+        amountKobo: money(biller.amount),
+        failures: biller.failures,
       })),
-      kpis: {
-        transactions: { total: successCount + failedCount + pendingCount, trend: points(600) },
-        fixedDeposits: { total: Math.round(412 * scale), trend: points(14) },
-        targetSavings: { total: Math.round(1_020 * scale), trend: points(34) },
-      },
-      transfers: {
-        total: bucket(successCount + failedCount + pendingCount),
-        successful: bucket(successCount),
-        failed: bucket(failedCount),
-        pending: bucket(pendingCount),
-        wallet: bucket(walletCount),
-        otherBank: bucket(successCount - walletCount),
-        weekday: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label, i) => ({
-          label,
-          count: Math.round((successCount / 7) * (i < 5 ? 1.1 : 0.7) * (0.85 + rand() * 0.3)),
-        })),
-      },
-      bills: {
-        airtime: bill(Math.round(5_200 * scale)),
-        data: bill(Math.round(3_100 * scale)),
-        billers: ["Electricity", "Cable TV", "Internet", "Betting wallet"].map((name) => ({
-          name,
-          count: Math.round((400 + rand() * 900) * scale),
-          amountKobo: Math.round((2_000_000 + rand() * 9_000_000) * scale) * 100,
-          failures: Math.round((10 + rand() * 40) * scale),
-        })),
-      },
-      customers: {
-        signUps,
-        trend: points(100),
-        male: Math.round(signUps * 0.48),
-        female: Math.round(signUps * 0.43),
-        unspecified: signUps - Math.round(signUps * 0.48) - Math.round(signUps * 0.43),
-      },
-      savings: {
-        fixedCount: Math.round(412 * scale),
-        fixedTotalKobo: Math.round(412 * scale) * 1_850_000_00,
-        targetCount: Math.round(1_020 * scale),
-        targetTotalKobo: Math.round(1_020 * scale) * 420_000_00,
-      },
-    };
-  }, 500);
+    },
+  };
+}
+
+// ---- savings -----------------------------------------------------------------------------------------------------
+
+export interface OverviewSavings {
+  fixedTotalKobo: number;
+  fixedCount: number;
+  targetTotalKobo: number;
+  targetCount: number;
+}
+
+interface SavingsResponse {
+  amount_unit?: string;
+  savings: {
+    fixed_deposit_principal: number;
+    fixed_deposit_interest: number;
+    target_savings_balance: number;
+  };
+  fixed_deposits: { active: { count: number } };
+  target_savings: { active: { count: number } };
+}
+
+/** What customers hold now. It has no period. */
+export async function getOverviewSavings(): Promise<OverviewSavings> {
+  const r = await request<SavingsResponse>("/admin/overview/savings");
+  const money = (amount: number) => fromApiAmount(amount, r.amount_unit);
+  return {
+    fixedTotalKobo: money(r.savings.fixed_deposit_principal + r.savings.fixed_deposit_interest),
+    fixedCount: r.fixed_deposits.active.count,
+    targetTotalKobo: money(r.savings.target_savings_balance),
+    targetCount: r.target_savings.active.count,
+  };
 }

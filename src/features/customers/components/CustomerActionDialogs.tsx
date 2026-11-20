@@ -2,16 +2,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActionDialog } from "@/shared/components/ActionDialog";
 import { t } from "@/shared/i18n/t";
-import { customerKeys } from "../api/queries";
-import {
-  repairBankOneCustomer,
-  resetCustomerPassword,
-  unlockCustomerLogin,
-} from "../api/customersApi";
+import { repairBankOneCustomer } from "../api/customersApi";
 import type { Customer } from "../model/types";
 import { FileUpload, type EvidenceFile } from "@/shared/components/FileUpload";
-import { recordAudit } from "@/shared/api/auditStore";
-import { simulate } from "@/shared/api/client";
+import { unavailable } from "@/shared/api/unavailable";
+import { createRequest, requestKeys } from "@/features/requests";
 
 interface DialogProps {
   open: boolean;
@@ -31,8 +26,8 @@ export function ResetPasswordDialog({ open, onOpenChange, customer }: DialogProp
       confirmLabel={t("customers.action.resetPassword")}
       destructive
       onConfirm={async ({ reason }) => {
-        await resetCustomerPassword(customer.id, reason);
-        await queryClient.invalidateQueries({ queryKey: customerKeys.all });
+        await createRequest({ kind: "password_reset", customerId: customer.id, reason });
+        await queryClient.invalidateQueries({ queryKey: requestKeys.all });
         return t("customers.resetPassword.done");
       }}
     />
@@ -49,10 +44,9 @@ export function UnlockLoginDialog({ open, onOpenChange, customer }: DialogProps)
       description={customer.name}
       impact={t("customers.unlock.impact", { name: customer.name })}
       confirmLabel={t("customers.action.unlock")}
-      requireTotp={false}
       onConfirm={async ({ reason }) => {
-        await unlockCustomerLogin(customer.id, reason);
-        await queryClient.invalidateQueries({ queryKey: customerKeys.all });
+        await createRequest({ kind: "unlock", customerId: customer.id, reason });
+        await queryClient.invalidateQueries({ queryKey: requestKeys.all });
         return t("customers.unlock.done");
       }}
     />
@@ -91,16 +85,10 @@ export function UploadDocumentDialog({ open, onOpenChange, customer }: DialogPro
       description={customer.name}
       confirmLabel={t("kyc.upload.confirm")}
       requireTotp={false}
-      evidence="none"
       blocked={files.length === 0}
-      onConfirm={async ({ reason }) => {
-        await simulate(() => undefined);
-        recordAudit({
-          action: "customer.document.upload",
-          target: customer.name,
-          reason,
-          after: files.map((file) => file.name).join(", "),
-        });
+      onConfirm={async () => {
+        // The admin API has no document upload yet.
+        await unavailable();
         return t("kyc.upload.done");
       }}
     >

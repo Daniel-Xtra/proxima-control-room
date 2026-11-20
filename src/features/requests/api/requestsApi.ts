@@ -1,107 +1,225 @@
-import { getAuditActor, recordAudit } from "@/shared/api/auditStore";
-import { ApiError, simulate } from "@/shared/api/client";
-import { emitDomainEvent } from "@/shared/api/domainEvents";
-import { FIXTURE_CUSTOMERS, daysAgo } from "@/shared/api/mockFixtures";
-import type { AccountRequest, LimitDiff, RequestFilters, RequestKind } from "../model/types";
+import { request } from "@/shared/api/client";
+import { fromApiAmount, toApiAmount } from "@/shared/api/money";
+import type {
+  AccountRequest,
+  LimitDiff,
+  RequestFilters,
+  RequestKind,
+  RequestScope,
+  RequestStatus,
+  StaffAction,
+} from "../model/types";
 
-const STAFF = ["Tolu Adebayo", "Ife Johnson", "Amaka Eze"];
-const REASONS: Record<RequestKind, string[]> = {
-  freeze: ["Suspected account takeover", "Court order received", "Multiple chargeback complaints"],
-  unfreeze: ["Customer verified identity in branch", "Investigation closed, no case found"],
-  limit: [
-    "Customer completed BVN upgrade",
-    "Business owner needs higher daily cap",
-    "Rent payment due",
-  ],
+type ApprovalStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "EXECUTING"
+  | "EXECUTED"
+  | "EXECUTION_FAILED"
+  | "REJECTED"
+  | "CANCELLED"
+  | "EXPIRED";
+
+interface Approval {
+  id: string;
+  type: string;
+  target_id: string;
+  payload: {
+    daily_limit?: number;
+    transaction_limit?: number;
+    role_code?: string;
+    [key: string]: unknown;
+  };
+  reason: string;
+  status: ApprovalStatus;
+  maker_unique_identifier: string;
+  maker_name?: string | null;
+  checker_unique_identifier: string | null;
+  checker_name?: string | null;
+  customer_name?: string | null;
+  current_limits?: { daily_limit: number; transaction_limit: number } | null;
+  decision_reason: string | null;
+  decided_at: string | null;
+  failure: string | null;
+  created_at: string;
+}
+
+interface ApprovalPage {
+  data: Approval[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+const KIND_TO_TYPE = {
+  freeze: "CUSTOMER_FREEZE",
+  unfreeze: "CUSTOMER_UNFREEZE",
+  limit: "CUSTOMER_LIMIT_CHANGE",
+  unlock: "CUSTOMER_UNLOCK_LOGIN",
+  password_reset: "CUSTOMER_PASSWORD_RESET",
+  reversal: "TXN_REVERSAL",
+  refund: "TXN_REFUND",
+} as const;
+
+const TYPE_TO_KIND: Record<string, RequestKind> = {
+  CUSTOMER_FREEZE: "freeze",
+  CUSTOMER_UNFREEZE: "unfreeze",
+  CUSTOMER_LIMIT_CHANGE: "limit",
+  CUSTOMER_UNLOCK_LOGIN: "unlock",
+  CUSTOMER_PASSWORD_RESET: "password_reset",
+  TXN_REVERSAL: "reversal",
+  TXN_REFUND: "refund",
+  STAFF_DISABLE: "staff",
+  STAFF_ENABLE: "staff",
+  STAFF_ROLE_CHANGE: "staff",
+  STAFF_MFA_RESET: "staff",
+  STAFF_SELF_MFA_RESET: "staff",
+  STAFF_SELF_PASSWORD_RESET: "staff",
 };
 
-let store: AccountRequest[] | null = null;
+const STAFF_ACTION: Record<string, StaffAction> = {
+  STAFF_DISABLE: "disable",
+  STAFF_ENABLE: "enable",
+  STAFF_ROLE_CHANGE: "role",
+  STAFF_MFA_RESET: "mfa_reset",
+  STAFF_SELF_MFA_RESET: "mfa_reset",
+  STAFF_SELF_PASSWORD_RESET: "password_reset",
+};
 
-function build(): AccountRequest[] {
-  const kinds: RequestKind[] = ["freeze", "limit", "unfreeze", "limit", "freeze", "limit"];
-  return Array.from({ length: 18 }, (_, index) => {
-    const customer = FIXTURE_CUSTOMERS[(index * 3) % FIXTURE_CUSTOMERS.length]!;
-    const kind = kinds[index % kinds.length]!;
-    const status = index < 8 ? "pending" : index % 3 === 0 ? "rejected" : "approved";
-    const limits: LimitDiff | undefined =
-      kind === "limit"
-        ? {
-            currentDailyKobo: 5_000_000,
-            requestedDailyKobo: index % 2 ? 50_000_000 : 20_000_000,
-            currentPerTransactionKobo: 2_500_000,
-            requestedPerTransactionKobo: index % 2 ? 25_000_000 : 10_000_000,
-          }
-        : undefined;
-    const reasons = REASONS[kind];
-    return {
-      id: `00000000-0000-4000-8000-0002${index.toString(16).padStart(8, "0")}`,
-      kind,
-      customerId: customer.id,
-      customerName: customer.name,
-      requestedBy: STAFF[index % STAFF.length]!,
-      reason: reasons[index % reasons.length]!,
-      staffComment:
-        index % 2 ? "Ticket verified with caller." : "Customer called the support line.",
-      status,
-      createdAt: daysAgo(index % 6, 9 + (index % 8)),
-      ...(status !== "pending"
-        ? {
-            decidedBy: "Chuka Obi",
-            decidedAt: daysAgo(index % 6, 15),
-            adminComment: status === "approved" ? "Documents checked." : "Insufficient evidence.",
-          }
-        : {}),
-      limits,
-    };
+const STATUS: Record<ApprovalStatus, RequestStatus> = {
+  PENDING: "pending",
+  APPROVED: "approved",
+  EXECUTING: "approved",
+  EXECUTED: "approved",
+  EXECUTION_FAILED: "failed",
+  REJECTED: "rejected",
+  CANCELLED: "cancelled",
+  EXPIRED: "expired",
+};
+
+const short = (id: string) => id.slice(0, 8);
+
+function toRequest(a: Approval): AccountRequest {
+  // Types the UI has no dedicated screen for (fees, tier limits, bulk transfers, broadcasts) still show up.
+  const kind = TYPE_TO_KIND[a.type] ?? "other";
+  const limits: LimitDiff | undefined =
+    kind === "limit" && a.payload.daily_limit !== undefined
+      ? {
+          currentDailyKobo: a.current_limits ? fromApiAmount(a.current_limits.daily_limit) : null,
+          requestedDailyKobo: fromApiAmount(a.payload.daily_limit),
+          currentPerTransactionKobo: a.current_limits
+            ? fromApiAmount(a.current_limits.transaction_limit)
+            : null,
+          requestedPerTransactionKobo: fromApiAmount(a.payload.transaction_limit ?? 0),
+        }
+      : undefined;
+  return {
+    id: a.id,
+    kind,
+    type: a.type,
+    payload: a.payload ?? {},
+    customerId: a.target_id,
+    customerName: a.customer_name ?? short(a.target_id),
+    ...(STAFF_ACTION[a.type] ? { staffAction: STAFF_ACTION[a.type] } : {}),
+    ...(a.payload.role_code ? { roleCode: a.payload.role_code } : {}),
+    requestedById: a.maker_unique_identifier,
+    requestedBy: a.maker_name ?? short(a.maker_unique_identifier),
+    reason: a.reason,
+    status: STATUS[a.status],
+    createdAt: a.created_at,
+    ...(a.checker_unique_identifier
+      ? { decidedBy: a.checker_name ?? short(a.checker_unique_identifier) }
+      : {}),
+    ...(a.decided_at ? { decidedAt: a.decided_at } : {}),
+    ...(a.decision_reason ? { adminComment: a.decision_reason } : {}),
+    ...(a.failure ? { failure: a.failure } : {}),
+    limits,
+  };
+}
+
+const PAGE_SIZE = 100;
+const MAX_PAGES = 10;
+
+/** Every request in the scope, a page at a time. Status, staff and customer filters apply to the whole set afterwards. */
+async function fetchScope(scope: Exclude<RequestScope, "customer">, type?: string) {
+  const first = await request<ApprovalPage>("/admin/approvals", {
+    query: { scope, type, limit: PAGE_SIZE, page: 1 },
   });
-}
-
-function all(): AccountRequest[] {
-  store ??= build();
-  return store;
-}
-
-export function listRequests(filters: RequestFilters) {
-  return simulate(() =>
-    all()
-      .filter((r) => !filters.kind || r.kind === filters.kind)
-      .filter((r) => filters.status === "all" || r.status === filters.status)
-      .filter((r) => !filters.customerId || r.customerId === filters.customerId)
-      .filter((r) => !filters.requestedBy || r.requestedBy === filters.requestedBy)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+  const last = Math.min(MAX_PAGES, Math.ceil(first.total / PAGE_SIZE));
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(0, last - 1) }, (_, i) =>
+      request<ApprovalPage>("/admin/approvals", {
+        query: { scope, type, limit: PAGE_SIZE, page: i + 2 },
+      }),
+    ),
   );
+  return { ...first, data: [first, ...rest].flatMap((page) => page.data) };
 }
 
-export function countPending() {
-  return simulate(() => all().filter((r) => r.status === "pending").length, 150);
+export async function listRequests(filters: RequestFilters): Promise<AccountRequest[]> {
+  // Staff changes span several approval types, so they are narrowed after the fetch.
+  const type =
+    filters.kind && filters.kind !== "staff" && filters.kind !== "other"
+      ? KIND_TO_TYPE[filters.kind]
+      : undefined;
+  const pages =
+    filters.scope === "customer"
+      ? await Promise.all([fetchScope("assigned", type), fetchScope("mine", type)])
+      : [await fetchScope(filters.scope, type)];
+  const seen = new Set<string>();
+  return pages
+    .flatMap((page) => page.data)
+    .filter((a) => !seen.has(a.id) && seen.add(a.id))
+    .map(toRequest)
+    .filter((r) => !filters.kind || r.kind === filters.kind)
+    .filter((r) => !filters.customerId || r.customerId === filters.customerId)
+    .filter((r) => filters.status === "all" || r.status === filters.status)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+/** Pending requests waiting for this admin's decision. */
+export async function countPending(): Promise<number> {
+  const page = await request<ApprovalPage>("/admin/approvals", {
+    query: { scope: "assigned", limit: 1 },
+  });
+  return page.total;
 }
 
 export interface NewRequest {
-  kind: RequestKind;
+  kind: Exclude<RequestKind, "staff" | "reversal" | "refund" | "other">;
   customerId: string;
-  customerName: string;
   reason: string;
-  staffComment: string;
-  limits?: LimitDiff;
+  limits?: { dailyKobo: number; perTransactionKobo: number };
 }
 
+const CREATE_PATH: Record<
+  Exclude<RequestKind, "staff" | "reversal" | "refund" | "other">,
+  string
+> = {
+  freeze: "freeze-requests",
+  unfreeze: "unfreeze-requests",
+  limit: "limit-requests",
+  unlock: "unlock-requests",
+  password_reset: "password-reset-requests",
+};
+
 export function createRequest(input: NewRequest) {
-  return simulate(() => {
-    const request: AccountRequest = {
-      ...input,
-      id: crypto.randomUUID(),
-      requestedBy: getAuditActor(),
-      status: "pending",
-      createdAt: new Date().toISOString(),
-    };
-    all().unshift(request);
-    recordAudit({
-      action: `request.${input.kind}.initiate`,
-      target: input.customerName,
-      reason: input.reason,
-    });
-    return request;
-  });
+  return request<Approval>(
+    `/admin/customers/${encodeURIComponent(input.customerId)}/${CREATE_PATH[input.kind]}`,
+    {
+      method: "POST",
+      headers: { "Idempotency-Key": crypto.randomUUID() },
+      body: {
+        reason: input.reason,
+        ...(input.limits
+          ? {
+              daily_limit: toApiAmount(input.limits.dailyKobo),
+              transaction_limit: toApiAmount(input.limits.perTransactionKobo),
+            }
+          : {}),
+      },
+    },
+  );
 }
 
 export function decideRequest(input: {
@@ -109,44 +227,9 @@ export function decideRequest(input: {
   decision: "approved" | "rejected";
   comment: string;
 }) {
-  return simulate(() => {
-    const request = all().find((r) => r.id === input.id);
-    if (!request) throw new ApiError(404, "Request not found.");
-    if (request.status !== "pending") {
-      throw new ApiError(409, "This request has already been decided.");
-    }
-    const actor = getAuditActor();
-    if (request.requestedBy === actor) {
-      throw new ApiError(403, "You cannot decide a request you raised.");
-    }
-    request.status = input.decision;
-    request.decidedBy = actor;
-    request.decidedAt = new Date().toISOString();
-    request.adminComment = input.comment;
-    recordAudit({
-      action: `request.${request.kind}.${input.decision}`,
-      target: request.customerName,
-      reason: input.comment,
-      before: "pending",
-      after: input.decision,
-    });
-    if (input.decision === "approved") {
-      if (request.kind === "limit" && request.limits) {
-        emitDomainEvent({
-          type: "limits.changed",
-          customerId: request.customerId,
-          dailyLimitKobo: request.limits.requestedDailyKobo,
-          perTransactionLimitKobo: request.limits.requestedPerTransactionKobo,
-        });
-      } else {
-        emitDomainEvent({
-          type: request.kind === "freeze" ? "account.frozen" : "account.unfrozen",
-          customerId: request.customerId,
-          by: actor,
-          reason: request.reason,
-        });
-      }
-    }
-    return request;
-  }, 500);
+  const path = input.decision === "approved" ? "approve" : "reject";
+  return request<Approval>(`/admin/approvals/${encodeURIComponent(input.id)}/${path}`, {
+    method: "POST",
+    body: input.decision === "approved" ? { comment: input.comment } : { reason: input.comment },
+  });
 }

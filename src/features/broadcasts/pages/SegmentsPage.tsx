@@ -71,6 +71,7 @@ export function SegmentsPage() {
         >
           {(rows) => (
             <SimpleTable<AudienceSegment>
+              storageKey="segments"
               caption={t("segments.title")}
               rows={rows}
               getRowId={(r) => r.id}
@@ -109,23 +110,15 @@ export function SegmentsPage() {
                   cell: (r) => formatCount(r.size),
                 },
                 {
-                  key: "used",
-                  header: t("segments.col.used"),
-                  align: "right",
-                  sortValue: (r) => r.broadcastCount,
-                  cell: (r) => r.broadcastCount,
-                },
-                {
-                  key: "by",
-                  header: t("segments.col.updatedBy"),
-                  sortValue: (r) => r.updatedBy,
-                  cell: (r) => r.updatedBy,
-                },
-                {
                   key: "at",
                   header: t("segments.col.updated"),
                   sortValue: (r) => r.updatedAt,
-                  cell: (r) => <DateText iso={r.updatedAt} dateOnly />,
+                  cell: (r) =>
+                    r.updatedAt ? (
+                      <DateText iso={r.updatedAt} dateOnly />
+                    ) : (
+                      t("common.notAvailable")
+                    ),
                 },
                 {
                   key: "delete",

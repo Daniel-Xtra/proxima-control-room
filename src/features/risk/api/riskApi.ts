@@ -1,6 +1,5 @@
-import { listAudit, recordAudit, type AuditEntry } from "@/shared/api/auditStore";
-import { simulate } from "@/shared/api/client";
-import { daysAgo } from "@/shared/api/mockFixtures";
+import { humanize } from "@/shared/lib/format";
+import { request, type Page } from "@/shared/api/client";
 
 export interface LockPolicy {
   enabled: boolean;
@@ -18,163 +17,139 @@ export const DEFAULT_POLICY: Omit<LockPolicy, "updatedBy" | "updatedAt"> = {
   resetWindowMinutes: 15,
 };
 
-let policy: LockPolicy = {
-  ...DEFAULT_POLICY,
-  lockMinutes: 60,
-  updatedBy: "Chuka Obi",
-  updatedAt: daysAgo(12),
-};
+interface LockRow {
+  max_failed_attempts: number;
+  lock_duration_minutes: number;
+  reset_window_minutes: number;
+  is_enabled: boolean;
+  updated_by_admin_name: string | null;
+  updated_at: string;
+}
 
-export const getLockPolicy = () => simulate(() => ({ ...policy }));
+function toPolicy(row: LockRow): LockPolicy {
+  return {
+    enabled: row.is_enabled,
+    maxFailedAttempts: row.max_failed_attempts,
+    lockMinutes: row.lock_duration_minutes,
+    resetWindowMinutes: row.reset_window_minutes,
+    updatedBy: row.updated_by_admin_name ?? "",
+    updatedAt: row.updated_at,
+  };
+}
 
-export function saveLockPolicy(
+export async function getLockPolicy(): Promise<LockPolicy> {
+  return toPolicy(await request<LockRow>("/admin/account-lock-settings"));
+}
+
+export async function saveLockPolicy(
   next: Omit<LockPolicy, "updatedBy" | "updatedAt">,
-  actor: string,
-  reason: string,
+  _actor: string,
+  _reason: string,
 ) {
-  return simulate(() => {
-    const before = `${policy.maxFailedAttempts} attempts, ${policy.lockMinutes} min`;
-    policy = { ...next, updatedBy: actor, updatedAt: new Date().toISOString() };
-    recordAudit({
-      action: "policy.account_lock.update",
-      target: "Account-lock policy",
-      reason,
-      before,
-      after: `${next.maxFailedAttempts} attempts, ${next.lockMinutes} min`,
-    });
+  await request<LockRow>("/admin/account-lock-settings", {
+    method: "PUT",
+    body: {
+      max_failed_attempts: next.maxFailedAttempts,
+      lock_duration_minutes: next.lockMinutes,
+      reset_window_minutes: next.resetWindowMinutes,
+      is_enabled: next.enabled,
+    },
   });
 }
 
-export function clearPolicyCache(reason: string) {
-  return simulate(() => {
-    recordAudit({
-      action: "policy.account_lock.clear_cache",
-      target: "Account-lock policy",
-      reason,
-    });
-  });
+export async function clearPolicyCache(_reason: string) {
+  await request("/admin/account-lock-settings/clear-cache", { method: "POST" });
 }
 
-export interface WhitelistEntry {
+export interface AuditEntry {
   id: string;
-  service: string;
+  at: string;
+  actor: string;
+  action: string;
+  target: string;
+  status: "success" | "failed";
   ip: string;
-  note: string;
-  addedBy: string;
-  addedAt: string;
+  reason?: string;
+  before?: string;
+  after?: string;
+  /** The fields below feed the detail view. */
+  actorId: string;
+  actorRole: string;
+  targetType: string;
+  targetId: string;
+  beforeData: Record<string, unknown> | null;
+  afterData: Record<string, unknown> | null;
 }
 
-let whitelist: WhitelistEntry[] = [
-  {
-    id: "w1",
-    service: "BankOne",
-    ip: "41.206.4.162",
-    note: "Production webhook",
-    addedBy: "Chuka Obi",
-    addedAt: daysAgo(90),
-  },
-  {
-    id: "w2",
-    service: "BankOne",
-    ip: "41.206.4.163",
-    note: "Failover",
-    addedBy: "Chuka Obi",
-    addedAt: daysAgo(90),
-  },
-  {
-    id: "w3",
-    service: "Airtime provider",
-    ip: "102.216.128.10",
-    note: "Callbacks",
-    addedBy: "Ife Johnson",
-    addedAt: daysAgo(44),
-  },
-  {
-    id: "w4",
-    service: "Bills provider",
-    ip: "154.113.16.8",
-    note: "Callbacks",
-    addedBy: "Ife Johnson",
-    addedAt: daysAgo(30),
-  },
-  {
-    id: "w5",
-    service: "Bills provider",
-    ip: "154.113.16.9",
-    note: "Callbacks (secondary)",
-    addedBy: "Ife Johnson",
-    addedAt: daysAgo(30),
-  },
-  {
-    id: "w6",
-    service: "KYC provider",
-    ip: "34.240.11.20",
-    note: "Identity webhooks",
-    addedBy: "Tolu Adebayo",
-    addedAt: daysAgo(8),
-  },
-];
+interface AuditRow {
+  id: string;
+  occurred_at: string;
+  actor_name: string | null;
+  actor_id: string | null;
+  actor_role?: string | null;
+  action: string;
+  target_type: string | null;
+  target_id: string | null;
+  outcome: "success" | "failure" | "denied";
+  ip_address: string | null;
+  reason: string | null;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+}
 
-export const listWhitelist = () => simulate(() => [...whitelist]);
+const show = (value: Record<string, unknown> | null) => (value ? JSON.stringify(value) : undefined);
 
-export function addWhitelistEntry(
-  entry: Pick<WhitelistEntry, "service" | "ip" | "note">,
-  actor: string,
-  reason: string,
-) {
-  return simulate(() => {
-    whitelist = [
-      ...whitelist,
-      { ...entry, id: crypto.randomUUID(), addedBy: actor, addedAt: new Date().toISOString() },
-    ];
-    recordAudit({ action: "webhook_ip.add", target: `${entry.service} ${entry.ip}`, reason });
+export async function listAuditPage(filters: {
+  search: string;
+  status: string;
+  page?: number;
+  limit?: number;
+  /** Only events about this record, such as one customer. */
+  targetId?: string;
+}): Promise<Page<AuditEntry>> {
+  const page = filters.page ?? 1;
+  const limit = filters.limit ?? 100;
+  const result = await request<{ data: AuditRow[]; total?: number }>("/admin/audit-logs", {
+    query: {
+      search: filters.search.trim() || undefined,
+      target_id: filters.targetId,
+      // "Failed" means the failure outcome; denied attempts show under "any".
+      status:
+        filters.status === "success"
+          ? "success"
+          : filters.status === "failed"
+            ? "failure"
+            : undefined,
+      page,
+      limit,
+    },
   });
-}
-
-export function removeWhitelistEntry(id: string, reason: string) {
-  return simulate(() => {
-    const entry = whitelist.find((e) => e.id === id);
-    whitelist = whitelist.filter((e) => e.id !== id);
-    recordAudit({
-      action: "webhook_ip.remove",
-      target: entry ? `${entry.service} ${entry.ip}` : id,
-      reason,
-    });
-  });
-}
-
-const SAMPLE_ACTIONS = [
-  "customer.login.unlock",
-  "request.limit.approved",
-  "request.freeze.initiate",
-  "sensitive.reveal",
-  "customer.statement.export",
-  "request.freeze.rejected",
-  "bankone.repair",
-  "customer.password.reset",
-];
-const ACTORS = ["Tolu Adebayo", "Ife Johnson", "Chuka Obi", "Amaka Eze"];
-
-function sampleEntries(): AuditEntry[] {
-  return Array.from({ length: 30 }, (_, i) => ({
-    id: `sample-${i}`,
-    at: daysAgo(Math.floor(i / 3), 8 + (i % 10)),
-    actor: ACTORS[i % ACTORS.length]!,
-    action: SAMPLE_ACTIONS[i % SAMPLE_ACTIONS.length]!,
-    target: ["Adaeze Okafor", "Chinedu Bello", "Funke Eze", "Ngozi Lawal"][i % 4]!,
-    status: i % 9 === 0 ? "failed" : "success",
-    ip: `102.89.${30 + (i % 5)}.${10 + i}`,
+  const items: AuditEntry[] = result.data.map((row) => ({
+    id: row.id,
+    at: row.occurred_at,
+    actor: row.actor_name ?? row.actor_id ?? "",
+    action: humanize(row.action),
+    target: [humanize(row.target_type), row.target_id].filter(Boolean).join(" "),
+    status: row.outcome === "success" ? "success" : "failed",
+    ip: row.ip_address ?? "",
+    reason: row.reason ?? undefined,
+    before: show(row.before),
+    after: show(row.after),
+    actorId: row.actor_id ?? "",
+    actorRole: humanize(row.actor_role),
+    targetType: humanize(row.target_type),
+    targetId: row.target_id ?? "",
+    beforeData: row.before,
+    afterData: row.after,
   }));
+  return { items, total: result.total ?? items.length, page, limit };
 }
 
-export function listAuditLog(filters: { search: string; status: string }) {
-  return simulate(() => {
-    const needle = filters.search.trim().toLowerCase();
-    return [...listAudit(), ...sampleEntries()]
-      .filter((e) => filters.status === "all" || e.status === filters.status)
-      .filter(
-        (e) =>
-          !needle || `${e.actor} ${e.action} ${e.target} ${e.ip}`.toLowerCase().includes(needle),
-      );
-  }, 300);
+/** The latest events, for panels that show a short list. */
+export async function listAuditLog(filters: {
+  search: string;
+  status: string;
+  targetId?: string;
+}): Promise<AuditEntry[]> {
+  return (await listAuditPage({ ...filters, limit: 100 })).items;
 }

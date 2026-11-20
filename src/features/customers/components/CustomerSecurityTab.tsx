@@ -17,7 +17,7 @@ export function CustomerSecurityTab({ customer }: { customer: Customer }) {
 
   return (
     <>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         <SectionCard
           title={t("customers.security.loginLock")}
           actions={

@@ -1,8 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ApprovalRulesPage, RoleEditorPage, RolesPage, StaffPage } from "@/features/access";
-import { PlatformConfigPage } from "@/features/platform-config";
-import { AuthProvider, LoginPage, RequirePermission, SecuritySettingsPage } from "@/features/auth";
+import { PlatformConfigPage, ProvidersPage } from "@/features/platform-config";
+import {
+  AuthProvider,
+  AcceptInvitationPage,
+  ResetPasswordPage,
+  LoginPage,
+  RequirePermission,
+  SecuritySettingsPage,
+} from "@/features/auth";
 import {
   BroadcastDetailPage,
   BroadcastsPage,
@@ -11,12 +18,13 @@ import {
   SegmentsPage,
 } from "@/features/broadcasts";
 import {
-  BulkPaymentDetailPage,
-  BulkPaymentsPage,
-  NewBulkPaymentPage,
-} from "@/features/bulk-payments";
+  BulkTransferDetailPage,
+  BulkTransfersPage,
+  NewBulkTransferPage,
+  PlatformWalletsPage,
+} from "@/features/bulk-transfers";
 import { BannersPage } from "@/features/content";
-import { CustomerDetailPage, CustomersPage } from "@/features/customers";
+import { CustomerDetailPage, CustomersPage, UpgradeRequestsPage } from "@/features/customers";
 import { OverviewPage } from "@/features/overview";
 import { RequestsPage } from "@/features/requests";
 import { AuditLogPage, LockPolicyPage, WebhookWhitelistPage } from "@/features/risk";
@@ -37,6 +45,8 @@ export function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/accept-invite" element={<AcceptInvitationPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route element={<AppShell />}>
               <Route index element={<OverviewPage />} />
               <Route
@@ -44,6 +54,14 @@ export function App() {
                 element={
                   <RequirePermission permission="customer:view">
                     <CustomersPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="customers/upgrade-requests"
+                element={
+                  <RequirePermission permission="kyc:view">
+                    <UpgradeRequestsPage />
                   </RequirePermission>
                 }
               />
@@ -73,26 +91,34 @@ export function App() {
                 }
               />
               <Route
-                path="bulk-payments"
+                path="bulk-transfers"
                 element={
-                  <RequirePermission permission="bulk_payment:view">
-                    <BulkPaymentsPage />
+                  <RequirePermission permission="bulk_transfer:view">
+                    <BulkTransfersPage />
                   </RequirePermission>
                 }
               />
               <Route
-                path="bulk-payments/new"
+                path="bulk-transfers/new"
                 element={
-                  <RequirePermission permission="bulk_payment:initiate">
-                    <NewBulkPaymentPage />
+                  <RequirePermission permission="bulk_transfer:initiate">
+                    <NewBulkTransferPage />
                   </RequirePermission>
                 }
               />
               <Route
-                path="bulk-payments/:id"
+                path="platform-wallets"
                 element={
-                  <RequirePermission permission="bulk_payment:view">
-                    <BulkPaymentDetailPage />
+                  <RequirePermission permission="platform_wallet:view">
+                    <PlatformWalletsPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="bulk-transfers/:id"
+                element={
+                  <RequirePermission permission="bulk_transfer:view">
+                    <BulkTransferDetailPage />
                   </RequirePermission>
                 }
               />
@@ -187,7 +213,7 @@ export function App() {
               <Route
                 path="settings/roles"
                 element={
-                  <RequirePermission permission="roles:manage">
+                  <RequirePermission permission="staff:view">
                     <RolesPage />
                   </RequirePermission>
                 }
@@ -203,7 +229,7 @@ export function App() {
               <Route
                 path="settings/approval-rules"
                 element={
-                  <RequirePermission permission="config:view">
+                  <RequirePermission permission="approval_rules:view">
                     <ApprovalRulesPage />
                   </RequirePermission>
                 }
@@ -213,6 +239,14 @@ export function App() {
                 element={
                   <RequirePermission permission="config:view">
                     <PlatformConfigPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="settings/providers"
+                element={
+                  <RequirePermission permission="provider:view">
+                    <ProvidersPage />
                   </RequirePermission>
                 }
               />

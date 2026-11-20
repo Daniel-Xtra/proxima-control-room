@@ -14,9 +14,12 @@ export {
 } from "./model/permissions";
 export type { ModuleId, Permission } from "./model/permissions";
 export { NAV_ACCESS, canAccess } from "./model/navAccess";
+export { toUiPermissions } from "./model/permissionMap";
 export type { NavAccess } from "./model/navAccess";
 export { ROLE_TEMPLATES } from "./model/roleTemplates";
 export type { RoleTemplate } from "./model/roleTemplates";
 export type { SessionUser } from "./model/session";
+export { AcceptInvitationPage } from "./pages/AcceptInvitationPage";
+export { ResetPasswordPage } from "./pages/ResetPasswordPage";
 export { LoginPage } from "./pages/LoginPage";
 export { SecuritySettingsPage } from "./pages/SecuritySettingsPage";

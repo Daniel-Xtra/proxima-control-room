@@ -1,7 +1,7 @@
-import { ShieldSlash, WarningCircle } from "@phosphor-icons/react";
+import { Prohibit, ShieldSlash, WarningCircle } from "@phosphor-icons/react";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import type { ApiError } from "../api/client";
+import { isNoResponse, type ApiError } from "../api/client";
 import { t } from "../i18n/t";
 import { EmptyState } from "./EmptyState";
 import { Button } from "./ui/Button";
@@ -47,6 +47,30 @@ export function AsyncBody<T>({
           icon={ShieldSlash}
           title={t("state.forbidden.title")}
           description={t("state.forbidden.description")}
+        />
+      );
+    }
+    if (query.error?.status === 501) {
+      return (
+        <EmptyState
+          icon={Prohibit}
+          title={t("state.unavailable.title")}
+          description={t("api.unavailable")}
+        />
+      );
+    }
+    // No response at all (server down or unreachable, or a gateway that cannot reach it): there is
+    // no data to show, so use the empty state, with a way to try again.
+    if (isNoResponse(query.error)) {
+      return (
+        <EmptyState
+          title={emptyTitle}
+          description={emptyDescription}
+          action={
+            <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
+              {t("common.retry")}
+            </Button>
+          }
         />
       );
     }

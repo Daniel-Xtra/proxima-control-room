@@ -15,15 +15,19 @@ import { requestStatement } from "../api/transactionsApi";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  customerId: string;
   customerName: string;
 }
 
-export function StatementDialog({ open, onOpenChange, customerName }: Props) {
-  const [format, setFormat] = useState("pdf");
+const dayInput = (daysAgo: number) =>
+  new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10);
+
+export function StatementDialog({ open, onOpenChange, customerId, customerName }: Props) {
+  const [format, setFormat] = useState<"pdf" | "csv">("pdf");
   const [recipient, setRecipient] = useState("owner");
   const [email, setEmail] = useState("");
-  const [start, setStart] = useState("2026-10-15");
-  const [end, setEnd] = useState("2026-11-15");
+  const [start, setStart] = useState(() => dayInput(30));
+  const [end, setEnd] = useState(() => dayInput(0));
   const invalid =
     !start || !end || start > end || (recipient === "third-party" && !email.includes("@"));
 
@@ -35,13 +39,15 @@ export function StatementDialog({ open, onOpenChange, customerName }: Props) {
       description={customerName}
       impact={recipient === "third-party" ? t("statement.thirdPartyImpact") : undefined}
       confirmLabel={t("statement.confirm")}
-      requireTotp={recipient === "third-party"}
       blocked={invalid}
       onConfirm={async ({ reason }) => {
         await requestStatement({
-          customerName,
+          customerId,
           format,
-          recipient: recipient === "owner" ? "account owner" : email,
+          recipient: recipient === "owner" ? "customer" : "third_party",
+          ...(recipient === "owner" ? {} : { email }),
+          from: new Date(`${start}T00:00:00`).toISOString(),
+          to: new Date(`${end}T23:59:59`).toISOString(),
           reason,
         });
         return t("statement.done");
@@ -70,7 +76,7 @@ export function StatementDialog({ open, onOpenChange, customerName }: Props) {
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="statement-format">{t("statement.format")}</Label>
-          <Select value={format} onValueChange={setFormat}>
+          <Select value={format} onValueChange={(value) => setFormat(value as "pdf" | "csv")}>
             <SelectTrigger id="statement-format" className="h-11">
               <SelectValue />
             </SelectTrigger>

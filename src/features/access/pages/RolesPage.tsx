@@ -2,21 +2,25 @@ import { Copy, PencilSimple, Plus, Trash } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useCan } from "@/features/auth";
 import { ActionDialog } from "@/shared/components/ActionDialog";
 import { AsyncBody } from "@/shared/components/AsyncBody";
-import { MoneyText } from "@/shared/components/MoneyText";
+import { FilterBar } from "@/shared/components/FilterBar";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
-import { SimpleTable } from "@/shared/components/SimpleTable";
+import { DataTable } from "@/shared/components/DataTable";
 import { Button } from "@/shared/components/ui/Button";
+import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
 import { retireRole } from "../api/accessApi";
-import { accessKeys, useRoles } from "../api/queries";
+import { accessKeys, useRolesPage } from "../api/queries";
 
 export function RolesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const roles = useRoles();
+  const [filters, setFilter] = useUrlFilters({ q: "", page: "1", limit: "10" });
+  const roles = useRolesPage(Number(filters.page), Number(filters.limit), filters.q);
+  const canManage = useCan()("roles:manage");
   const [retiring, setRetiring] = useState<{ id: string; name: string } | null>(null);
 
   return (
@@ -26,18 +30,36 @@ export function RolesPage() {
         crumbs={[{ label: t("nav.group.settings") }, { label: t("roles.title") }]}
         description={t("roles.description")}
         actions={
-          <Button onClick={() => navigate("/settings/roles/new")}>
-            <Plus aria-hidden="true" />
-            {t("roles.create")}
-          </Button>
+          canManage ? (
+            <Button onClick={() => navigate("/settings/roles/new")}>
+              <Plus aria-hidden="true" />
+              {t("roles.create")}
+            </Button>
+          ) : null
         }
       />
+      <FilterBar
+        onClear={() => setFilter("q", "")}
+        dirty={filters.q !== ""}
+        search={{
+          value: filters.q,
+          onChange: (v) => setFilter("q", v),
+          placeholder: t("roles.search"),
+          label: t("roles.searchLabel"),
+        }}
+      />
       <SectionCard flush>
-        <AsyncBody query={roles}>
-          {(rows) => (
-            <SimpleTable
+        <AsyncBody query={roles} isEmpty={(data) => data.total === 0}>
+          {(data) => (
+            <DataTable
+              page={data.page}
+              limit={data.limit}
+              total={data.total}
+              onPageChange={(page) => setFilter("page", String(page))}
+              onLimitChange={(limit) => setFilter("limit", String(limit))}
+              storageKey="roles"
               caption={t("roles.title")}
-              rows={rows}
+              rows={data.items}
               getRowId={(r) => r.id}
               columns={[
                 {
@@ -46,7 +68,14 @@ export function RolesPage() {
                   sortValue: (r: { name: string }) => r.name,
                   cell: (r) => (
                     <div>
-                      <p className="font-medium">{r.name}</p>
+                      <p className="font-medium">
+                        {r.name}
+                        {r.isSystem ? (
+                          <span className="ml-2 text-xs font-normal text-muted-text">
+                            {t("roles.system")}
+                          </span>
+                        ) : null}
+                      </p>
                       <p className="text-xs text-muted-text">{r.description}</p>
                     </div>
                   ),
@@ -54,9 +83,9 @@ export function RolesPage() {
                 {
                   key: "perms",
                   header: t("roles.col.permissions"),
-                  sortValue: (r: { permissions: unknown[] }) => r.permissions.length,
+                  sortValue: (r: { permissionCodes: unknown[] }) => r.permissionCodes.length,
                   align: "right",
-                  cell: (r) => r.permissions.length,
+                  cell: (r) => r.permissionCodes.length,
                 },
                 {
                   key: "members",
@@ -66,49 +95,39 @@ export function RolesPage() {
                   cell: (r) => r.memberCount,
                 },
                 {
-                  key: "ceiling",
-                  header: t("roles.col.ceiling"),
-                  sortValue: (r: { approvalCeilingKobo?: number }) => r.approvalCeilingKobo ?? 0,
-                  align: "right",
-                  cell: (r) =>
-                    r.approvalCeilingKobo ? (
-                      <MoneyText kobo={r.approvalCeilingKobo} />
-                    ) : (
-                      t("common.notAvailable")
-                    ),
-                },
-                {
                   key: "actions",
                   header: "",
                   align: "right",
-                  cell: (r) => (
-                    <span className="inline-flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon-lg"
-                        aria-label={t("roles.editNamed", { name: r.name })}
-                        onClick={() => navigate(`/settings/roles/${r.id}`)}
-                      >
-                        <PencilSimple aria-hidden="true" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-lg"
-                        aria-label={t("roles.cloneNamed", { name: r.name })}
-                        onClick={() => navigate(`/settings/roles/new?from=${r.id}`)}
-                      >
-                        <Copy aria-hidden="true" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-lg"
-                        aria-label={t("roles.retireNamed", { name: r.name })}
-                        onClick={() => setRetiring({ id: r.id, name: r.name })}
-                      >
-                        <Trash aria-hidden="true" />
-                      </Button>
-                    </span>
-                  ),
+                  cell: (r) =>
+                    !canManage ? null : (
+                      <span className="inline-flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon-lg"
+                          aria-label={t("roles.editNamed", { name: r.name })}
+                          onClick={() => navigate(`/settings/roles/${r.id}`)}
+                        >
+                          <PencilSimple aria-hidden="true" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-lg"
+                          aria-label={t("roles.cloneNamed", { name: r.name })}
+                          onClick={() => navigate(`/settings/roles/new?from=${r.id}`)}
+                        >
+                          <Copy aria-hidden="true" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-lg"
+                          aria-label={t("roles.retireNamed", { name: r.name })}
+                          disabled={r.isSystem}
+                          onClick={() => setRetiring({ id: r.id, name: r.name })}
+                        >
+                          <Trash aria-hidden="true" />
+                        </Button>
+                      </span>
+                    ),
                 },
               ]}
             />

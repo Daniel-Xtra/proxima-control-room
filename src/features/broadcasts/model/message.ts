@@ -2,7 +2,7 @@ import { isScheduleAllowed } from "@/shared/lib/schedule";
 import { LIMITS, type BroadcastDraft, type Channel, type TemplateDraft } from "./types";
 
 /** The variable customers' names fill in. Previews show a sample name. */
-export const NAME_VARIABLE = "{first_name}";
+export const NAME_VARIABLE = "{{first_name}}";
 export const SAMPLE_NAME = "Ada";
 
 export function fillSample(text: string): string {

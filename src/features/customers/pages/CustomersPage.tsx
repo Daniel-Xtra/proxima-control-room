@@ -1,15 +1,11 @@
-import { DownloadSimple } from "@phosphor-icons/react";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { useCan } from "@/features/auth";
 import { AsyncBody } from "@/shared/components/AsyncBody";
 import { DataTable } from "@/shared/components/DataTable";
 import { DateText } from "@/shared/components/DateText";
-import { FilterBar } from "@/shared/components/FilterBar";
-import { MoneyText } from "@/shared/components/MoneyText";
 import { PageHeader } from "@/shared/components/PageHeader";
-import { SectionCard } from "@/shared/components/SectionCard";
+import { RangeFilter } from "@/shared/components/RangeFilter";
+import { SearchBox } from "@/shared/components/SearchBox";
 import { Button } from "@/shared/components/ui/Button";
+import { NativeSelect } from "@/shared/components/ui/NativeSelect";
 import {
   Select,
   SelectContent,
@@ -19,14 +15,17 @@ import {
 } from "@/shared/components/ui/Select";
 import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
-import { maskEmail, maskTail } from "@/shared/lib/format";
-import { CustomerStatusBadge, KycLevelBadge } from "../components/CustomerStatusBadges";
+import { formatCount } from "@/shared/lib/format";
+import { useNavigate } from "react-router-dom";
+import { CustomerAreaTabs } from "../components/CustomerAreaTabs";
+import { CustomerNameCell } from "../components/CustomerListCells";
+import { CustomerStatusBadge } from "../components/CustomerStatusBadges";
 import { useCustomers } from "../api/queries";
 import type { CustomerFilters, CustomerRow } from "../model/types";
 
 const DEFAULTS = {
   q: "",
-  range: "365d",
+  range: "all",
   status: "all",
   kyc: "all",
   page: "1",
@@ -37,7 +36,6 @@ const DEFAULTS = {
 
 export function CustomersPage() {
   const navigate = useNavigate();
-  const can = useCan();
   const [filters, setFilter] = useUrlFilters(DEFAULTS);
 
   const query: CustomerFilters = {
@@ -51,67 +49,103 @@ export function CustomersPage() {
     limit: Number(filters.limit),
   };
   const result = useCustomers(query);
+  const dirty =
+    filters.q !== "" ||
+    filters.range !== "all" ||
+    filters.status !== "all" ||
+    filters.kyc !== "all";
 
   return (
     <>
       <PageHeader
         title={t("customers.title")}
-        description={t("customers.description")}
         crumbs={[{ label: t("nav.group.customers") }, { label: t("customers.title") }]}
       />
-      <FilterBar
-        onClear={() =>
-          (["q", "range", "status", "kyc"] as const).forEach((key) => setFilter(key, DEFAULTS[key]))
-        }
-        dirty={
-          filters.q !== "" ||
-          filters.range !== DEFAULTS.range ||
-          filters.status !== "all" ||
-          filters.kyc !== "all"
-        }
-        search={{
-          value: filters.q,
-          onChange: (value) => setFilter("q", value),
-          placeholder: t("customers.search"),
-          label: t("customers.searchLabel"),
-        }}
-      >
-        <FilterSelect
-          label={t("customers.filter.range")}
-          value={filters.range}
-          onChange={(v) => setFilter("range", v)}
-          options={[
-            ["7d", t("range.7d")],
-            ["30d", t("range.30d")],
-            ["90d", t("range.90d")],
-            ["365d", t("range.365d")],
-          ]}
-        />
-        <FilterSelect
-          label={t("customers.filter.status")}
-          value={filters.status}
-          onChange={(v) => setFilter("status", v)}
-          options={[
-            ["all", t("customers.filter.anyStatus")],
-            ["active", t("customers.status.active")],
-            ["locked", t("customers.status.locked")],
-            ["frozen", t("customers.status.frozen")],
-            ["deactivated", t("customers.status.deactivated")],
-          ]}
-        />
-        <FilterSelect
-          label={t("customers.filter.kyc")}
-          value={filters.kyc}
-          onChange={(v) => setFilter("kyc", v)}
-          options={[
-            ["all", t("customers.filter.anyKyc")],
-            ["0", t("kyc.level.none")],
-            ["1", t("kyc.level.n", { level: 1 })],
-            ["2", t("kyc.level.n", { level: 2 })],
-          ]}
-        />
-      </FilterBar>
-      <SectionCard flush>
+
+      <CustomerAreaTabs current="customers" />
+
+      <h2 className="m-0 mb-4 font-heading text-xl font-semibold text-ink">
+        {t("customers.all")}
+        {result.data ? (
+          <span className="ml-2 font-normal text-muted-text">
+            ({formatCount(result.data.total)})
+          </span>
+        ) : null}
+      </h2>
+
+      <section className="card overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border-soft p-4 [&_button[role=combobox]]:h-12">
+          <SearchBox
+            value={filters.q}
+            onChange={(value) => setFilter("q", value)}
+            placeholder={t("customers.search")}
+            label={t("customers.searchLabel")}
+          />
+          <FilterSelect
+            label={t("customers.filter.status")}
+            value={filters.status}
+            onChange={(v) => setFilter("status", v)}
+            options={[
+              ["all", t("customers.filter.anyStatus")],
+              ["active", t("customers.status.active")],
+              ["locked", t("customers.status.locked")],
+              ["frozen", t("customers.status.frozen")],
+              ["deactivated", t("customers.status.deactivated")],
+            ]}
+          />
+          <FilterSelect
+            label={t("customers.filter.kyc")}
+            value={filters.kyc}
+            onChange={(v) => setFilter("kyc", v)}
+            options={[
+              ["all", t("customers.filter.anyKyc")],
+              ["yes", t("customers.filter.kycDone")],
+              ["no", t("customers.filter.kycPending")],
+              ["1", t("kyc.level.n", { level: 1 })],
+              ["2", t("kyc.level.n", { level: 2 })],
+            ]}
+          />
+          <RangeFilter
+            label={t("customers.filter.range")}
+            value={filters.range}
+            onChange={(v) => setFilter("range", v)}
+            options={[
+              ["all", t("customers.filter.anyRange")],
+              ["7d", t("range.7d")],
+              ["30d", t("range.30d")],
+              ["90d", t("range.90d")],
+              ["365d", t("range.365d")],
+            ]}
+          />
+          {dirty ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                (["q", "range", "status", "kyc"] as const).forEach((key) =>
+                  setFilter(key, DEFAULTS[key]),
+                )
+              }
+            >
+              {t("common.clearFilters")}
+            </Button>
+          ) : null}
+          <label className="ml-auto flex items-center gap-2 text-xs text-muted-text">
+            {t("table.perPage")}
+            <NativeSelect
+              value={filters.limit}
+              onChange={(event) => setFilter("limit", event.target.value)}
+              className="w-20"
+            >
+              {["5", "10", "25", "50"].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </NativeSelect>
+          </label>
+        </div>
+
         <AsyncBody
           query={result}
           isEmpty={(data) => data.total === 0}
@@ -120,6 +154,8 @@ export function CustomersPage() {
         >
           {(data) => (
             <DataTable<CustomerRow>
+              onRowOpen={(row) => navigate(`/customers/${row.id}`)}
+              toolbar={false}
               caption={t("customers.title")}
               rows={data.items}
               getRowId={(row) => row.id}
@@ -128,20 +164,7 @@ export function CustomersPage() {
               total={data.total}
               onPageChange={(page) => setFilter("page", String(page))}
               onLimitChange={(limit) => setFilter("limit", String(limit))}
-              onRowOpen={(row) => navigate(`/customers/${row.id}`)}
               storageKey="customers"
-              toolbarExtra={
-                can("customer:export") ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toast.success(t("customers.exportQueued"))}
-                  >
-                    <DownloadSimple aria-hidden="true" />
-                    {t("common.exportCsv")}
-                  </Button>
-                ) : null
-              }
               sort={
                 filters.sort
                   ? { key: filters.sort, dir: filters.dir === "desc" ? "desc" : "asc" }
@@ -154,51 +177,42 @@ export function CustomersPage() {
               columns={[
                 {
                   key: "name",
-                  header: t("customers.col.name"),
                   sortKey: "name",
-                  cell: (r) => r.name,
+                  primary: true,
+                  header: t("customers.col.name"),
+                  cell: (r) => <CustomerNameCell row={r} />,
                 },
+                { key: "phone", header: t("customers.col.phone"), cell: (r) => r.phone },
                 {
-                  key: "phone",
-                  header: t("customers.col.phone"),
-                  cell: (r) => maskTail(r.phone, 3),
-                },
-                { key: "email", header: t("customers.col.email"), cell: (r) => maskEmail(r.email) },
-                {
-                  key: "account",
-                  header: t("customers.col.account"),
-                  cell: (r) => <span className="tabular">{maskTail(r.reservedAccount, 4)}</span>,
-                },
-                {
-                  key: "limit",
-                  header: t("customers.col.tierLimit"),
-                  sortKey: "limit",
-                  align: "right",
-                  cell: (r) => <MoneyText kobo={r.dailyLimitKobo} />,
+                  key: "email",
+                  sortKey: "email",
+                  header: t("customers.col.email"),
+                  cell: (r) => r.email,
                 },
                 {
                   key: "kyc",
                   header: t("customers.col.kyc"),
-                  sortKey: "kyc",
-                  cell: (r) => <KycLevelBadge level={r.kycLevel} />,
+                  cell: (r) =>
+                    r.kycLevel === 0
+                      ? t("kyc.level.none")
+                      : t("kyc.level.n", { level: r.kycLevel }),
                 },
                 {
                   key: "status",
                   header: t("customers.col.status"),
-                  sortKey: "status",
                   cell: (r) => <CustomerStatusBadge status={r.status} />,
                 },
                 {
                   key: "joined",
-                  header: t("customers.col.joined"),
                   sortKey: "joined",
+                  header: t("customers.col.joined"),
                   cell: (r) => <DateText iso={r.joinedAt} dateOnly />,
                 },
               ]}
             />
           )}
         </AsyncBody>
-      </SectionCard>
+      </section>
     </>
   );
 }
@@ -215,9 +229,9 @@ function FilterSelect({
   options: [string, string][];
 }) {
   return (
-    <div className="w-40">
+    <div className="w-40 max-sm:w-[calc(50%-0.25rem)]">
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger aria-label={label}>
+        <SelectTrigger aria-label={label} className="h-12">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

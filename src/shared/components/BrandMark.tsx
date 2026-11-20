@@ -1,4 +1,4 @@
-import logo from "@/shared/assets/proxima-logo.png";
+import logo from "@/shared/assets/proxima-logo.svg";
 import { cn } from "@/shared/lib/cn";
 
 /** The Proxima logo. Decorative: the product name is always written next to it. */

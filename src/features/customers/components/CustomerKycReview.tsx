@@ -1,0 +1,282 @@
+import { FileText } from "@phosphor-icons/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Can, useCan } from "@/features/auth";
+import { ApiError } from "@/shared/api/client";
+import { DocumentViewer, type ViewedDocument } from "./DocumentViewer";
+import { ActionDialog } from "@/shared/components/ActionDialog";
+import { AsyncBody } from "@/shared/components/AsyncBody";
+import { DateText } from "@/shared/components/DateText";
+import { SectionCard } from "@/shared/components/SectionCard";
+import { StatusBadge } from "@/shared/components/StatusBadge";
+import type { StatusTone } from "@/shared/components/statusTones";
+import { Timeline } from "@/shared/components/Timeline";
+import { Button } from "@/shared/components/ui/Button";
+import { Label } from "@/shared/components/ui/Label";
+import { Switch } from "@/shared/components/ui/Switch";
+import { useApiQuery } from "@/shared/hooks/useApiQuery";
+import { t } from "@/shared/i18n/t";
+import {
+  approveDocument,
+  confirmRejections,
+  getDocumentLink,
+  getKycActivity,
+  getKycReview,
+  rejectDocument,
+  type KycDocument,
+  type KycFile,
+} from "../api/kycReviewApi";
+
+const keys = {
+  review: (id: string) => ["customers", "kyc-review", id] as const,
+  activity: (id: string) => ["customers", "kyc-activity", id] as const,
+};
+
+const TONE: Record<string, StatusTone> = {
+  approved: "success",
+  rejected: "danger",
+  pending_review: "warning",
+};
+
+const statusLabel = (status: string) =>
+  status === "approved"
+    ? t("kyc.status.approved")
+    : status === "rejected"
+      ? t("kyc.status.rejected")
+      : t("kyc.review.pending");
+
+const kb = (bytes: number | null) => (bytes ? `${Math.max(1, Math.round(bytes / 1024))} KB` : "");
+
+/** Reads the customer's uploaded identity and address documents and approves or rejects each one. */
+export function CustomerKycReview({ customerId }: { customerId: string }) {
+  const queryClient = useQueryClient();
+  const can = useCan();
+  const review = useApiQuery(keys.review(customerId), () => getKycReview(customerId), {
+    staleTime: 0,
+  });
+  const activity = useApiQuery(keys.activity(customerId), () => getKycActivity(customerId), {
+    staleTime: 0,
+  });
+  const [deciding, setDeciding] = useState<{ doc: KycDocument; approve: boolean } | null>(null);
+  const [notify, setNotify] = useState(true);
+  const [opening, setOpening] = useState<string>();
+  const [viewing, setViewing] = useState<ViewedDocument | null>(null);
+  const [notifying, setNotifying] = useState(false);
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ["customers"] });
+
+  async function open(doc: KycDocument, file: KycFile) {
+    setOpening(file.reference);
+    try {
+      const url = await getDocumentLink(customerId, doc.id, file.reference);
+      if (url)
+        setViewing({
+          title: doc.name,
+          fileName: file.fileName,
+          fileType: file.fileType,
+          url,
+        });
+      else toast.error(t("kyc.review.noLink"));
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : t("state.error.title"));
+    } finally {
+      setOpening(undefined);
+    }
+  }
+
+  async function sendNotice() {
+    setNotifying(true);
+    try {
+      await confirmRejections(customerId);
+      toast.success(t("kyc.review.noticeSent"));
+      await refresh();
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : t("state.error.title"));
+    } finally {
+      setNotifying(false);
+    }
+  }
+
+  return (
+    <>
+      <SectionCard
+        title={t("kyc.review.title")}
+        description={
+          can("kyc:review") && can("kyc:view_documents")
+            ? t("kyc.review.description")
+            : t("kyc.review.noAccess")
+        }
+        actions={
+          (review.data?.progress.rejected ?? 0) > 0 ? (
+            <Can permission="kyc:review">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={notifying}
+                onClick={() => void sendNotice()}
+              >
+                {t("kyc.review.sendNotice")}
+              </Button>
+            </Can>
+          ) : undefined
+        }
+      >
+        <AsyncBody
+          query={review}
+          isEmpty={(data) => data.documents.length === 0}
+          emptyTitle={t("kyc.review.empty")}
+          emptyDescription={t("kyc.review.emptyDescription")}
+        >
+          {(data) => (
+            <div className="flex flex-col gap-4">
+              <ul className="m-0 flex list-none flex-wrap gap-2 p-0 text-sm">
+                {(["identification", "utility"] as const).map((slot) => (
+                  <li key={slot} className="flex items-center gap-2">
+                    <span className="text-muted-text">{t(`kyc.review.slot.${slot}`)}</span>
+                    <StatusBadge
+                      tone={
+                        data.progress.slots[slot] === "missing"
+                          ? "neutral"
+                          : (TONE[data.progress.slots[slot]] ?? "neutral")
+                      }
+                      label={
+                        data.progress.slots[slot] === "missing"
+                          ? t("kyc.review.missing")
+                          : statusLabel(data.progress.slots[slot])
+                      }
+                    />
+                  </li>
+                ))}
+              </ul>
+              {data.documents.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="flex flex-col gap-2 rounded-md border border-border p-3"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="m-0 flex items-center gap-2 text-sm font-medium text-ink">
+                      {doc.name}
+                      <span className="text-xs font-normal text-muted-text">
+                        {t("kyc.review.version", { version: doc.version })}
+                      </span>
+                      <StatusBadge
+                        tone={TONE[doc.status] ?? "neutral"}
+                        label={statusLabel(doc.status)}
+                      />
+                    </p>
+                    {doc.status === "pending_review" ? (
+                      <Can permission="kyc:review">
+                        <span className="inline-flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setNotify(true);
+                              setDeciding({ doc, approve: false });
+                            }}
+                          >
+                            {t("kyc.review.reject")}
+                          </Button>
+                          <Button size="sm" onClick={() => setDeciding({ doc, approve: true })}>
+                            {t("kyc.review.approve")}
+                          </Button>
+                        </span>
+                      </Can>
+                    ) : null}
+                  </div>
+                  <p className="m-0 text-xs text-muted-text">
+                    {t("kyc.review.submitted")} <DateText iso={doc.submittedAt} />
+                    {doc.reviewedAt ? (
+                      <>
+                        {" · "}
+                        {t("kyc.review.reviewed")} <DateText iso={doc.reviewedAt} />
+                        {doc.reviewedBy ? ` · ${doc.reviewedBy}` : ""}
+                      </>
+                    ) : null}
+                  </p>
+                  {doc.rejectionReason ? (
+                    <p className="m-0 text-sm text-danger-text">
+                      {t("kyc.review.reason", { reason: doc.rejectionReason })}
+                    </p>
+                  ) : null}
+                  {doc.reviewerNotes ? (
+                    <p className="m-0 text-sm text-muted-text">{doc.reviewerNotes}</p>
+                  ) : null}
+                  <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
+                    {doc.files.map((file) => (
+                      <li key={file.reference}>
+                        {can("kyc:view_documents") ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={opening === file.reference}
+                            onClick={() => void open(doc, file)}
+                          >
+                            <FileText aria-hidden="true" />
+                            {file.fileName}
+                            {file.fileSize ? ` · ${kb(file.fileSize)}` : ""}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-text">{file.fileName}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </AsyncBody>
+      </SectionCard>
+
+      <SectionCard title={t("kyc.review.history")}>
+        <AsyncBody
+          query={activity}
+          isEmpty={(rows) => rows.length === 0}
+          emptyTitle={t("kyc.review.historyEmpty")}
+          skeletonRows={3}
+        >
+          {(rows) => (
+            <Timeline
+              entries={rows.map((row) => ({
+                id: row.id,
+                title: `${row.description} · ${row.documentName}`,
+                detail: row.reason ?? undefined,
+                at: row.at,
+                actor: row.actor,
+              }))}
+            />
+          )}
+        </AsyncBody>
+      </SectionCard>
+
+      <DocumentViewer document={viewing} onClose={() => setViewing(null)} />
+
+      <ActionDialog
+        open={deciding !== null}
+        onOpenChange={(open) => !open && setDeciding(null)}
+        title={deciding?.approve ? t("kyc.review.approve") : t("kyc.review.reject")}
+        description={deciding?.doc.name}
+        impact={deciding?.approve ? t("kyc.review.approveImpact") : t("kyc.review.rejectImpact")}
+        confirmLabel={deciding?.approve ? t("kyc.review.approve") : t("kyc.review.reject")}
+        destructive={deciding ? !deciding.approve : false}
+        requireTotp={false}
+        reasonOptional={deciding?.approve}
+        onConfirm={async ({ reason }) => {
+          if (!deciding) return "";
+          if (deciding.approve) await approveDocument(customerId, deciding.doc.id, reason);
+          else await rejectDocument(customerId, deciding.doc.id, reason, notify);
+          await refresh();
+          return deciding.approve ? t("kyc.review.approved") : t("kyc.review.rejected");
+        }}
+      >
+        {deciding && !deciding.approve ? (
+          <div className="flex items-center gap-2">
+            <Switch id="kyc-notify" checked={notify} onCheckedChange={setNotify} />
+            <Label htmlFor="kyc-notify">{t("kyc.review.notifyNow")}</Label>
+          </div>
+        ) : null}
+      </ActionDialog>
+    </>
+  );
+}

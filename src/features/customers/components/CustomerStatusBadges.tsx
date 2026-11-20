@@ -1,7 +1,7 @@
 import { defineStatusBadge } from "@/shared/components/defineStatusBadge";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { t } from "@/shared/i18n/t";
-import type { ComplianceStatus, CustomerStatus, KycLevel } from "../model/types";
+import type { ComplianceStatus, CustomerStatus, KycLevel, UpgradeStatus } from "../model/types";
 
 export const CustomerStatusBadge = defineStatusBadge<CustomerStatus>({
   active: { tone: "success", label: t("customers.status.active") },
@@ -24,3 +24,10 @@ export function KycLevelBadge({ level }: { level: KycLevel }) {
     <StatusBadge tone={level === 2 ? "success" : "info"} label={t("kyc.level.n", { level })} />
   );
 }
+
+export const UpgradeStatusBadge = defineStatusBadge<UpgradeStatus>({
+  pending: { tone: "warning", label: t("customers.upgrade.status.pending") },
+  resubmitted: { tone: "info", label: t("customers.upgrade.status.resubmitted") },
+  approved: { tone: "success", label: t("customers.upgrade.status.approved") },
+  rejected: { tone: "danger", label: t("customers.upgrade.status.rejected") },
+});

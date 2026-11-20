@@ -14,47 +14,61 @@ import { useSession } from "../hooks/useSession";
 const IDLE_MS = 14 * 60 * 1000;
 const GRACE_SECONDS = 60;
 
-/** Warns before the 15 minute idle timeout without discarding form state. */
+/**
+ * Warns before the idle timeout, then signs out when the countdown ends. Time is measured against
+ * the last activity, not by counting ticks, so a throttled background tab still signs out on time.
+ */
 export function IdleGuard() {
   const { signOut } = useSession();
-  const [warning, setWarning] = useState(false);
-  const [seconds, setSeconds] = useState(GRACE_SECONDS);
-  const timer = useRef<number>(undefined);
+  const lastActivity = useRef(0);
+  const [seconds, setSeconds] = useState<number | null>(null);
+  const warning = seconds !== null;
 
   useEffect(() => {
-    function arm() {
-      window.clearTimeout(timer.current);
-      timer.current = window.setTimeout(() => {
-        setSeconds(GRACE_SECONDS);
-        setWarning(true);
-      }, IDLE_MS);
+    lastActivity.current = Date.now();
+    function check() {
+      const idle = Date.now() - lastActivity.current;
+      if (idle >= IDLE_MS + GRACE_SECONDS * 1000) {
+        signOut();
+      } else if (idle >= IDLE_MS) {
+        setSeconds(Math.ceil((IDLE_MS + GRACE_SECONDS * 1000 - idle) / 1000));
+      }
     }
     function onActivity() {
-      if (!warning) arm();
+      // Once the warning shows, only "Stay signed in" keeps the session.
+      if (Date.now() - lastActivity.current < IDLE_MS) lastActivity.current = Date.now();
     }
-    arm();
-    const events = ["pointerdown", "keydown"] as const;
-    events.forEach((name) => window.addEventListener(name, onActivity));
+    const id = window.setInterval(check, 1000);
+    const events = ["pointerdown", "keydown", "scroll"] as const;
+    events.forEach((name) => window.addEventListener(name, onActivity, true));
+    window.addEventListener("focus", check);
+    document.addEventListener("visibilitychange", check);
     return () => {
-      window.clearTimeout(timer.current);
-      events.forEach((name) => window.removeEventListener(name, onActivity));
+      window.clearInterval(id);
+      events.forEach((name) => window.removeEventListener(name, onActivity, true));
+      window.removeEventListener("focus", check);
+      document.removeEventListener("visibilitychange", check);
     };
-  }, [warning]);
+  }, [signOut]);
 
+  // A background tab may run the interval rarely, so also wake exactly when the countdown ends.
   useEffect(() => {
     if (!warning) return;
-    const id = window.setInterval(() => setSeconds((s) => s - 1), 1000);
-    return () => window.clearInterval(id);
-  }, [warning]);
+    const left = IDLE_MS + GRACE_SECONDS * 1000 - (Date.now() - lastActivity.current);
+    const id = window.setTimeout(signOut, Math.max(left, 0));
+    return () => window.clearTimeout(id);
+  }, [warning, signOut]);
 
-  useEffect(() => {
-    if (warning && seconds <= 0) signOut();
-  }, [warning, seconds, signOut]);
+  function stay() {
+    lastActivity.current = Date.now();
+    setSeconds(null);
+  }
 
-  const clock = `${Math.floor(Math.max(seconds, 0) / 60)}:${String(Math.max(seconds, 0) % 60).padStart(2, "0")}`;
+  const left = Math.max(seconds ?? 0, 0);
+  const clock = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
 
   return (
-    <Dialog open={warning} onOpenChange={(open) => !open && setWarning(false)}>
+    <Dialog open={warning}>
       <DialogContent showCloseButton={false} className="sm:max-w-sm">
         <div className="flex flex-col items-center px-6 pt-8 pb-6 text-center">
           <span
@@ -66,7 +80,7 @@ export function IdleGuard() {
           <DialogTitle className="mt-4 text-lg">{t("auth.idle.title")}</DialogTitle>
           <output
             className="tabular mt-3 block text-4xl font-semibold text-ink"
-            aria-label={t("auth.idle.countdownLabel", { seconds })}
+            aria-label={t("auth.idle.countdownLabel", { seconds: left })}
           >
             {clock}
           </output>
@@ -76,7 +90,7 @@ export function IdleGuard() {
           >
             <div
               className="h-full rounded-full bg-warning-solid transition-[width] duration-1000 ease-linear"
-              style={{ width: `${(Math.max(seconds, 0) / GRACE_SECONDS) * 100}%` }}
+              style={{ width: `${(left / GRACE_SECONDS) * 100}%` }}
             />
           </div>
           <DialogDescription className="mt-4 text-sm text-body">
@@ -87,7 +101,7 @@ export function IdleGuard() {
           <Button variant="outline" onClick={signOut}>
             {t("shell.signOut")}
           </Button>
-          <Button onClick={() => setWarning(false)}>{t("auth.idle.stay")}</Button>
+          <Button onClick={stay}>{t("auth.idle.stay")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

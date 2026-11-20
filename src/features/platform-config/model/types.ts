@@ -1,72 +1,66 @@
-export const FEE_IDS = [
-  "transferBank",
-  "transferInternal",
-  "bill",
-  "bulk",
-  "earlyWithdrawal",
-] as const;
-export type FeeId = (typeof FEE_IDS)[number];
+export type FeeMode = "flat" | "percentage" | "flat_plus_percentage";
 
-export type FeeMode = "flat" | "percent";
-
-/** What a service charges. Money is integer kobo, the percentage is in basis points (100 = 1%). */
+/** A fee the platform charges. Money is integer kobo; the percentage is a plain percent (1.5 = 1.5%). */
 export interface FeeRule {
-  id: FeeId;
+  id: number;
+  code: string;
+  name: string;
+  /** What it applies to, such as the transaction type and channel. */
+  scope: string;
   mode: FeeMode;
-  flatKobo: number;
-  percentBps: number;
-  /** The most a percentage fee can reach. 0 means no cap. */
-  capKobo: number;
+  flatKobo: number | null;
+  percent: number | null;
+  minFeeKobo: number | null;
+  maxFeeKobo: number | null;
+  minTransactionKobo: number | null;
+  maxTransactionKobo: number | null;
+  effectiveFrom: string;
 }
 
-export const TIERS = ["none", "level1", "level2"] as const;
-export type Tier = (typeof TIERS)[number];
-
-export interface LimitRule {
-  tier: Tier;
-  singleKobo: number;
+/** The most a customer on a tier can move. */
+export interface TierLimit {
+  /** Identifies the tier in change requests, for example "user:tierOneIndividualUser". */
+  id: string;
+  type: string;
+  tier: string;
+  /** Retail tiers map to a KYC level; business tiers do not. */
+  kycLevel: number | null;
+  perTransactionKobo: number;
   dailyKobo: number;
 }
 
-export const SWITCH_IDS = [
-  "transfers",
-  "bills",
-  "bulk",
-  "savings",
-  "signups",
-  "broadcasts",
-] as const;
-export type SwitchId = (typeof SWITCH_IDS)[number];
-
 export interface KillSwitch {
-  id: SwitchId;
-  /** `true` means the service is running. */
-  enabled: boolean;
-  changedBy: string;
-  changedAt: string;
-  reason: string;
+  id: string;
+  name: string;
+  description: string;
+  /** `true` means the flow is blocked. */
+  engaged: boolean;
+  changedByName: string | null;
+  changedAt: string | null;
+  reason: string | null;
 }
 
-interface PendingBase {
-  proposedBy: string;
-  proposedAt: string;
-  reason: string;
-}
-export interface PendingFees extends PendingBase {
-  fees: FeeRule[];
-}
-export interface PendingLimits extends PendingBase {
-  limits: LimitRule[];
-}
+export type PendingChangeKind = "fee" | "limit" | "other";
 
-export type Section = "fees" | "limits";
+/** A fee or limit change waiting for a second admin. */
+export interface PendingChange {
+  id: string;
+  kind: PendingChangeKind;
+  type: string;
+  targetId: string;
+  makerId: string;
+  makerName: string | null;
+  createdAt: string;
+  reason: string;
+  /** What would change, already worded for display. */
+  summary: string[];
+}
 
 export interface PlatformConfig {
-  /** Goes up every time an approved change lands, so editors reset to the live values. */
-  version: number;
   fees: FeeRule[];
-  limits: LimitRule[];
+  limits: TierLimit[];
+  /** The unit the API reports tier limits in. */
+  limitUnit: string | undefined;
   switches: KillSwitch[];
-  pendingFees: PendingFees | null;
-  pendingLimits: PendingLimits | null;
+  pending: PendingChange[];
 }

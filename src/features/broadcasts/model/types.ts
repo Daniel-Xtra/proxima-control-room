@@ -1,17 +1,24 @@
 export const CHANNELS = ["push", "sms", "email"] as const;
 export type Channel = (typeof CHANNELS)[number];
 
-export type KycRule = "any" | "none" | "level1" | "level2";
-export type SavingsRule = "any" | "yes" | "no";
+export type KycRule = "any" | "level1" | "level2";
+export type FlagRule = "any" | "yes" | "no";
+export type GenderRule = "any" | "male" | "female";
 
-/** Who is in a segment. Every rule must match; "any" or `null` means the rule is not used. */
+/** Who is in a segment. Every rule must match; "any" or empty means the rule is not used. */
 export interface AudienceRules {
   kyc: KycRule;
-  /** Only customers who joined within this many days. */
-  joinedWithinDays: number | null;
-  /** Only customers with no activity for at least this many days. */
-  inactiveDays: number | null;
-  savings: SavingsRule;
+  /** Whether the customer finished KYC. */
+  kycCompleted: FlagRule;
+  gender: GenderRule;
+  /** Joined on or after this date (YYYY-MM-DD), or empty. */
+  joinedFrom: string;
+  /** Joined on or before this date (YYYY-MM-DD), or empty. */
+  joinedTo: string;
+  /** Has an active fixed deposit. */
+  fixedDeposit: FlagRule;
+  /** Has active target savings. */
+  targetSavings: FlagRule;
 }
 
 export interface SegmentDraft {
@@ -22,13 +29,10 @@ export interface SegmentDraft {
 
 export interface AudienceSegment extends SegmentDraft {
   id: string;
-  /** The default "everyone" segment. It cannot be edited or deleted. */
+  /** The "everyone" option. It is not stored, and cannot be edited or deleted. */
   builtIn: boolean;
-  /** Estimated customers in the segment. */
+  /** Customers the rules reach right now. */
   size: number;
-  /** How many broadcasts were sent to, or are waiting to go to, this segment. */
-  broadcastCount: number;
-  updatedBy: string;
   updatedAt: string;
 }
 
@@ -40,25 +44,30 @@ export const ALL_SEGMENT_ID = "segment-all";
 
 export const EMPTY_RULES: AudienceRules = {
   kyc: "any",
-  joinedWithinDays: null,
-  inactiveDays: null,
-  savings: "any",
+  kycCompleted: "any",
+  gender: "any",
+  joinedFrom: "",
+  joinedTo: "",
+  fixedDeposit: "any",
+  targetSavings: "any",
 };
 
 /** Sends to more people than this ask for a typed confirmation. */
 export const LARGE_AUDIENCE = 10_000;
 
 export const LIMITS = {
-  pushTitle: 50,
-  pushBody: 178,
+  pushTitle: 65,
+  pushBody: 240,
   smsBody: 480,
   smsSegment: 160,
   emailSubject: 120,
   emailBody: 5000,
 } as const;
 
-export type BroadcastStatus = "pending_approval" | "scheduled" | "sent" | "rejected";
-export type DeliveryStatus = "delivered" | "failed";
+export type BroadcastStatus =
+  "pending_approval" | "scheduled" | "sending" | "sent" | "failed" | "rejected" | "cancelled";
+/** "queued" means handed to the delivery queue: final delivery to the device is not tracked. */
+export type DeliveryStatus = "queued" | "failed" | "skipped";
 
 export interface DeliveryRecord {
   id: string;
@@ -106,10 +115,7 @@ export interface TemplateDraft {
 
 export interface BroadcastTemplate extends TemplateDraft {
   id: string;
-  updatedBy: string;
   updatedAt: string;
-  /** How many broadcasts started from this template. */
-  usedCount: number;
 }
 
 export interface TemplateFilters {

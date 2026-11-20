@@ -4,62 +4,62 @@
  */
 :root {
   /* Neutrals */
-  --ink: #181d27;
-  --ink-2: #111827;
-  --text-body: #535862;
-  --text-muted: #717680;
-  --text-faint: #a4a7ae;
-  --border: #e9eaeb;
-  --border-control: #d5d7da;
-  --border-soft: #f0f1f3;
+  --ink: #1a202c;
+  --ink-2: #1a202c;
+  --text-body: #4a5568;
+  --text-muted: #718096;
+  --text-faint: #a0aec0;
+  --border: #e2e8f0;
+  --border-control: #cbd5e0;
+  --border-soft: #edf2f7;
   --surface: #ffffff;
   --surface-alt: #f6f6f9;
-  --surface-muted: #f9fafb;
+  --surface-muted: #f7fafc;
   --surface-subtle: #fafafa;
   --on-ink: #ffffff;
 
   /* Brand: one saturated blue for primary actions and links */
-  --blue: #006aff;
+  --blue: #0066ff;
   --blue-hover: #1447e6;
-  --blue-strong: #0569ff;
+  --blue-strong: #0066ff;
   --blue-tab: #1570ef;
-  --blue-ring: #006aff1f;
-  --blue-tint: #006aff0d;
-  --blue-tint-strong: #006aff1a;
+  --blue-ring: #0066ff1f;
+  --blue-tint: #0066ff0d;
+  --blue-tint-strong: #0066ff1a;
   --blue-border: #b2ddff;
   --nav-active: #31b4540d;
 
   /* Semantic status: pale tints with coloured text, never solid fills */
   --success-text: #054f31;
   --success-bg: #d1fadf;
-  --success-solid: #039855;
-  --success-bright: #12b76a;
+  --success-solid: #16a34a;
+  --success-bright: #22c55e;
   --success-border: #6ce9a6;
   --success-soft: #f6fef9;
-  --danger: #d92d20;
+  --danger: #f75555;
   --danger-bg: #fef3f2;
-  --danger-text: #d92d20;
+  --danger-text: #e03c3c;
   --danger-border: #fda29b;
   --danger-soft: #fffbfa;
   --warning-text: #b54708;
   --warning-bg: #fef0c7;
-  --warning-solid: #f79009;
+  --warning-solid: #facc15;
   --warning-border: #fec84b;
   --info-text: #1447e6;
   --info-bg: #d1e9ff;
-  --neutral-text: #414651;
-  --neutral-bg: #f2f4f7;
-  --disabled-bg: #d5d7da;
-  --disabled-border: #98a2b3;
+  --neutral-text: #4a5568;
+  --neutral-bg: #edf2f7;
+  --disabled-bg: #cbd5e0;
+  --disabled-border: #a0aec0;
 
   /* Chart palette, in order. Blue leads; the rest come from the system's accents. */
-  --chart-1: #006aff;
-  --chart-2: #12b76a;
-  --chart-3: #6938ef;
-  --chart-4: #f79009;
+  --chart-1: #0066ff;
+  --chart-2: #22c55e;
+  --chart-3: #936dff;
+  --chart-4: #ff7b4b;
   --chart-5: #b2ddff;
   --chart-6: #d92d20;
-  --chart-axis: #667085;
+  --chart-axis: #718096;
 
   /* Shape */
   --radius: 4px; /* cards, tiles, tabs, nav rows */

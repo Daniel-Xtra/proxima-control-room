@@ -1,403 +1,209 @@
-import { getAuditActor, recordAudit } from "@/shared/api/auditStore";
-import { ApiError, simulate } from "@/shared/api/client";
-import { FIXTURE_CUSTOMERS, daysAgo } from "@/shared/api/mockFixtures";
-import { maskEmail, maskTail } from "@/shared/lib/format";
-import { MAX_SCHEDULE_DAYS, isScheduleAllowed } from "@/shared/lib/schedule";
-import { contentProblems, draftProblems } from "../model/message";
-import { estimateSize } from "../model/audience";
-import { SEGMENT_IDS, findSegment } from "./segmentsStore";
-import {
-  ALL_SEGMENT_ID,
-  type Broadcast,
-  type BroadcastDraft,
-  type BroadcastFilters,
-  type BroadcastRow,
-  type BroadcastStatus,
-  type BroadcastTemplate,
-  type Channel,
-  type TemplateDraft,
-  type TemplateFilters,
-  type DeliveryRecord,
+import { request } from "@/shared/api/client";
+import { t } from "@/shared/i18n/t";
+import { ALL_SEGMENT_ID } from "../model/types";
+import { rulesToApi, type ApiRules } from "../model/audience";
+import type {
+  Broadcast,
+  BroadcastDraft,
+  BroadcastFilters,
+  BroadcastRow,
+  BroadcastStatus,
+  BroadcastTemplate,
+  Channel,
+  DeliveryRecord,
+  DeliveryStatus,
+  TemplateDraft,
+  TemplateFilters,
 } from "../model/types";
 
-const FAILURE_REASONS = ["Number not reachable", "Device token expired", "Mailbox full"];
-
-function buildLog(seed: number, channel: Channel, failedShare: number): DeliveryRecord[] {
-  return Array.from({ length: 30 }, (_, i) => {
-    const customer = FIXTURE_CUSTOMERS[(seed * 5 + i) % FIXTURE_CUSTOMERS.length]!;
-    const failed = (i * 7 + seed) % 100 < failedShare * 100;
-    return {
-      id: `log-${seed}-${i}`,
-      recipient: channel === "email" ? maskEmail(customer.email) : maskTail(customer.phone, 3),
-      status: failed ? "failed" : "delivered",
-      reason: failed ? FAILURE_REASONS[i % FAILURE_REASONS.length] : undefined,
-    };
-  });
+interface BroadcastView {
+  id: string;
+  name: string;
+  channel: Channel;
+  title: string | null;
+  status: BroadcastStatus;
+  audience_size: number;
+  segment_id: string | null;
+  scheduled_for: string | null;
+  created_by_name: string | null;
+  decided_by_name: string | null;
+  decision_reason: string | null;
+  started_at: string | null;
+  failure: string | null;
+  created_at: string;
+  body?: string;
+  delivery_counts?: { queued: number; failed: number; skipped: number };
 }
 
-function seed(
-  index: number,
-  fields: Pick<Broadcast, "name" | "channel" | "subject" | "body" | "segmentId">,
-  status: BroadcastStatus,
-  createdBy: string,
-  days: number,
-): Broadcast {
-  const segment = findSegment(fields.segmentId)!;
-  const recipientCount = estimateSize(segment.rules);
-  const sent = status === "sent";
-  const failedShare = 0.04;
-  const failed = sent ? Math.round(recipientCount * failedShare) : 0;
-  const decided = status !== "pending_approval";
+interface DeliveryRow {
+  id: number | string;
+  customer_name: string | null;
+  customer_id: string;
+  status: DeliveryStatus;
+  error: string | null;
+}
+
+function toRow(view: BroadcastView, segmentNames: Map<string, string>): BroadcastRow {
   return {
-    id: `00000000-0000-4000-8000-0008${index.toString(16).padStart(8, "0")}`,
-    ...fields,
-    segmentName: segment.name,
-    recipientCount,
-    status,
-    scheduledFor: status === "scheduled" ? daysAgo(-2, 9) : undefined,
-    createdBy,
-    createdAt: daysAgo(days, 10),
-    reason: "Planned customer communication.",
-    ...(decided
-      ? {
-          decidedBy: "Chuka Obi",
-          decidedAt: daysAgo(days, 12),
-          decisionComment: status === "rejected" ? "Wording needs compliance review." : "Approved.",
-        }
-      : {}),
-    delivered: sent ? recipientCount - failed : 0,
-    failed,
-    log: sent ? buildLog(index, fields.channel, failedShare) : [],
+    id: view.id,
+    name: view.name,
+    channel: view.channel,
+    subject: view.title ?? "",
+    body: view.body ?? "",
+    segmentId: view.segment_id ?? ALL_SEGMENT_ID,
+    // Saved segments are named; anything else was sent to a custom set of rules.
+    segmentName: view.segment_id
+      ? (segmentNames.get(view.segment_id) ?? "")
+      : t("segments.rule.everyone"),
+    recipientCount: view.audience_size,
+    status: view.status,
+    ...(view.scheduled_for ? { scheduledFor: view.scheduled_for } : {}),
+    createdBy: view.created_by_name ?? "",
+    createdAt: view.created_at,
+    // The API does not send the reason a broadcast was raised with.
+    reason: "",
+    ...(view.decided_by_name ? { decidedBy: view.decided_by_name } : {}),
+    ...(view.started_at ? { decidedAt: view.started_at } : {}),
+    ...(view.decision_reason ? { decisionComment: view.decision_reason } : {}),
+    delivered: view.delivery_counts?.queued ?? 0,
+    failed: view.delivery_counts?.failed ?? 0,
   };
 }
 
-let store: Broadcast[] | null = null;
+async function segmentNames(): Promise<Map<string, string>> {
+  const segments = await request<{ id: string; name: string }[]>("/admin/audience-segments");
+  return new Map(segments.map((segment) => [segment.id, segment.name]));
+}
 
-function all(): Broadcast[] {
-  store ??= [
-    seed(
-      1,
-      {
-        name: "Weekend maintenance notice",
-        channel: "push",
-        subject: "Scheduled maintenance",
-        body: "Hi {first_name}, transfers pause Sunday 1am to 3am while we upgrade. Thanks for your patience.",
-        segmentId: ALL_SEGMENT_ID,
+export async function listBroadcasts(filters: BroadcastFilters): Promise<BroadcastRow[]> {
+  const [page, names] = await Promise.all([
+    request<{ data: BroadcastView[] }>("/admin/broadcasts", {
+      query: {
+        status: filters.status === "all" ? undefined : filters.status,
+        channel: filters.channel === "all" ? undefined : filters.channel,
+        limit: 100,
       },
-      "pending_approval",
-      "Seyi Martins",
-      0,
-    ),
-    seed(
-      2,
-      {
-        name: "Finish your verification",
-        channel: "sms",
-        subject: "",
-        body: "Hi {first_name}, finish your Proxima verification to raise your limits. Open the app to continue.",
-        segmentId: SEGMENT_IDS.kyc1,
-      },
-      "scheduled",
-      "Seyi Martins",
-      1,
-    ),
-    seed(
-      3,
-      {
-        name: "Fixed deposit promo",
-        channel: "email",
-        subject: "Earn up to 14% on your savings",
-        body: "Hi {first_name}, lock away savings for 90 days or more and earn up to 14% a year. Open a fixed deposit in the app.",
-        segmentId: SEGMENT_IDS.savings,
-      },
-      "sent",
-      "Seyi Martins",
-      6,
-    ),
-    seed(
-      4,
-      {
-        name: "Welcome back",
-        channel: "push",
-        subject: "We missed you",
-        body: "Hi {first_name}, your wallet is ready when you are. Top up in seconds from the app.",
-        segmentId: SEGMENT_IDS.inactive60,
-      },
-      "sent",
-      "Tolu Adebayo",
-      12,
-    ),
-    seed(
-      5,
-      {
-        name: "Referral reminder",
-        channel: "sms",
-        subject: "",
-        body: "Hi {first_name}, invite a friend and you both earn a reward after their first transfer.",
-        segmentId: SEGMENT_IDS.new30,
-      },
-      "rejected",
-      "Seyi Martins",
-      18,
-    ),
-  ];
-  return store;
+    }),
+    segmentNames(),
+  ]);
+  const needle = filters.search.trim().toLowerCase();
+  return page.data
+    .map((view) => toRow(view, names))
+    .filter((row) => !needle || `${row.name} ${row.createdBy}`.toLowerCase().includes(needle));
 }
 
-export function listBroadcasts(filters: BroadcastFilters): Promise<BroadcastRow[]> {
-  return simulate(() => {
-    const needle = filters.search.trim().toLowerCase();
-    return all()
-      .filter((b) => filters.status === "all" || b.status === filters.status)
-      .filter((b) => filters.channel === "all" || b.channel === filters.channel)
-      .filter((b) => !needle || `${b.name} ${b.createdBy}`.toLowerCase().includes(needle))
-      .map(({ log, ...row }) => {
-        void log;
-        return row;
-      })
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  });
+export async function getBroadcast(id: string): Promise<Broadcast> {
+  const [view, deliveries, names] = await Promise.all([
+    request<BroadcastView>(`/admin/broadcasts/${encodeURIComponent(id)}`),
+    request<{ data: DeliveryRow[] }>(`/admin/broadcasts/${encodeURIComponent(id)}/deliveries`, {
+      query: { limit: 100 },
+    }),
+    segmentNames(),
+  ]);
+  const log: DeliveryRecord[] = deliveries.data.map((row) => ({
+    id: String(row.id),
+    recipient: row.customer_name ?? row.customer_id,
+    status: row.status,
+    ...(row.error ? { reason: row.error } : {}),
+  }));
+  return { ...toRow(view, names), log };
 }
 
-export function getBroadcast(id: string): Promise<Broadcast> {
-  return simulate(() => {
-    const found = all().find((b) => b.id === id);
-    if (!found) throw new ApiError(404, "Broadcast not found.");
-    return { ...found, log: found.log.map((r) => ({ ...r })) };
-  });
+export interface NewBroadcastInput {
+  draft: BroadcastDraft;
+  reason: string;
 }
 
-let templates: BroadcastTemplate[] | null = null;
-
-function allTemplates(): BroadcastTemplate[] {
-  const make = (
-    index: number,
-    name: string,
-    channel: Channel,
-    subject: string,
-    body: string,
-    usedCount: number,
-    days: number,
-  ): BroadcastTemplate => ({
-    id: `00000000-0000-4000-8000-0009${index.toString(16).padStart(8, "0")}`,
-    name,
-    channel,
-    subject,
-    body,
-    usedCount,
-    updatedBy: index % 2 ? "Seyi Martins" : "Tolu Adebayo",
-    updatedAt: daysAgo(days, 11),
-  });
-  templates ??= [
-    make(
-      1,
-      "Maintenance notice",
-      "push",
-      "Scheduled maintenance",
-      "Hi {first_name}, some features will be unavailable briefly while we upgrade our systems. Your money stays safe. Thanks for your patience.",
-      4,
-      30,
-    ),
-    make(
-      2,
-      "Maintenance notice (email)",
-      "email",
-      "Scheduled maintenance on our platform",
-      "Hi {first_name}, some features will be unavailable briefly while we upgrade our systems. Your money stays safe and your balance is unaffected. Thanks for your patience.",
-      2,
-      30,
-    ),
-    make(
-      3,
-      "Verification reminder",
-      "sms",
-      "",
-      "Hi {first_name}, finish verifying your Proxima account to raise your limits. It only takes a few minutes in the app.",
-      7,
-      21,
-    ),
-    make(
-      4,
-      "Verification reminder (push)",
-      "push",
-      "Finish your verification",
-      "Hi {first_name}, finish verifying your account to raise your limits. It only takes a few minutes in the app.",
-      3,
-      21,
-    ),
-    make(
-      5,
-      "Savings promotion",
-      "email",
-      "Put your money to work",
-      "Hi {first_name}, lock away savings for 90 days or more and earn up to 14% a year. Open a fixed deposit in the app.",
-      5,
-      9,
-    ),
-    make(
-      6,
-      "Welcome back",
-      "push",
-      "We missed you",
-      "Hi {first_name}, your wallet is ready when you are. Top up in seconds from the app.",
-      1,
-      4,
-    ),
-  ];
-  return templates;
-}
-
-export function listTemplates(filters: TemplateFilters): Promise<BroadcastTemplate[]> {
-  return simulate(() => {
-    const needle = filters.search.trim().toLowerCase();
-    return allTemplates()
-      .filter((tpl) => filters.channel === "all" || tpl.channel === filters.channel)
-      .filter((tpl) => !needle || `${tpl.name} ${tpl.subject}`.toLowerCase().includes(needle))
-      .map((tpl) => ({ ...tpl }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  });
-}
-
-export function saveTemplate(
-  draft: TemplateDraft,
-  id: string | null,
-  reason: string,
-): Promise<BroadcastTemplate> {
-  return simulate(() => {
-    if (contentProblems(draft).length > 0) {
-      throw new ApiError(422, "Fix the template before saving it.");
-    }
-    const actor = getAuditActor();
-    const content = {
-      name: draft.name.trim(),
-      channel: draft.channel,
-      subject: draft.channel === "sms" ? "" : draft.subject.trim(),
-      body: draft.body.trim(),
-    };
-    if (id) {
-      const existing = allTemplates().find((tpl) => tpl.id === id);
-      if (!existing) throw new ApiError(404, "Template not found.");
-      Object.assign(existing, content, { updatedBy: actor, updatedAt: new Date().toISOString() });
-      recordAudit({ action: "broadcast_template.update", target: existing.name, reason });
-      return { ...existing };
-    }
-    const created: BroadcastTemplate = {
-      id: crypto.randomUUID(),
-      ...content,
-      usedCount: 0,
-      updatedBy: actor,
-      updatedAt: new Date().toISOString(),
-    };
-    allTemplates().push(created);
-    recordAudit({ action: "broadcast_template.create", target: created.name, reason });
-    return { ...created };
-  });
-}
-
-export function deleteTemplate(id: string, reason: string): Promise<void> {
-  return simulate(() => {
-    const existing = allTemplates().find((tpl) => tpl.id === id);
-    if (!existing) throw new ApiError(404, "Template not found.");
-    templates = allTemplates().filter((tpl) => tpl.id !== id);
-    recordAudit({ action: "broadcast_template.delete", target: existing.name, reason });
-  });
-}
-
-/** How many broadcasts used each segment, and how many of those have not gone out yet. */
-export function broadcastUsage(): Record<string, { total: number; open: number }> {
-  const usage: Record<string, { total: number; open: number }> = {};
-  for (const broadcast of all()) {
-    const entry = (usage[broadcast.segmentId] ??= { total: 0, open: 0 });
-    entry.total += 1;
-    if (broadcast.status === "pending_approval" || broadcast.status === "scheduled")
-      entry.open += 1;
-  }
-  return usage;
-}
-
-export function createBroadcast(
+export async function createBroadcast(
   draft: BroadcastDraft,
   reason: string,
-  templateId?: string,
+  _templateId?: string,
 ): Promise<Broadcast> {
-  return simulate(() => {
-    if (draftProblems(draft, new Date()).length > 0) {
-      throw new ApiError(422, "Fix the message before submitting it.");
-    }
-    const segment = findSegment(draft.segmentId);
-    if (!segment) throw new ApiError(422, "That audience segment no longer exists.");
-    if (draft.timing === "scheduled" && !isScheduleAllowed(new Date(draft.when), new Date())) {
-      throw new ApiError(
-        422,
-        `The send time must be in the future and within ${MAX_SCHEDULE_DAYS} days.`,
-      );
-    }
-    const broadcast: Broadcast = {
-      id: crypto.randomUUID(),
+  const everyone = draft.segmentId === ALL_SEGMENT_ID;
+  const created = await request<BroadcastView>("/admin/broadcasts", {
+    method: "POST",
+    body: {
       name: draft.name.trim(),
       channel: draft.channel,
-      subject: draft.channel === "sms" ? "" : draft.subject.trim(),
+      title: draft.channel === "sms" ? undefined : draft.subject.trim(),
       body: draft.body.trim(),
-      segmentId: segment.id,
-      segmentName: segment.name,
-      recipientCount: estimateSize(segment.rules),
-      status: "pending_approval",
-      scheduledFor: draft.timing === "scheduled" ? new Date(draft.when).toISOString() : undefined,
-      createdBy: getAuditActor(),
-      createdAt: new Date().toISOString(),
+      ...(everyone ? { audience_rules: {} satisfies ApiRules } : { segment_id: draft.segmentId }),
+      ...(draft.timing === "scheduled" && draft.when
+        ? { scheduled_for: new Date(draft.when).toISOString() }
+        : {}),
       reason,
-      delivered: 0,
-      failed: 0,
-      log: [],
-    };
-    all().unshift(broadcast);
-    const used = allTemplates().find((tpl) => tpl.id === templateId);
-    if (used && used.channel === draft.channel) used.usedCount += 1;
-    recordAudit({
-      action: "broadcast.submit",
-      target: broadcast.name,
-      reason,
-      after: `${broadcast.channel} to ${broadcast.recipientCount} customers`,
-    });
-    return broadcast;
-  }, 600);
+    },
+  });
+  return { ...toRow(created, new Map()), log: [] };
 }
 
-export function decideBroadcast(input: {
+export async function decideBroadcast(input: {
   id: string;
   decision: "approved" | "rejected";
   comment: string;
 }): Promise<Broadcast> {
-  return simulate(() => {
-    const broadcast = all().find((b) => b.id === input.id);
-    if (!broadcast) throw new ApiError(404, "Broadcast not found.");
-    if (broadcast.status !== "pending_approval") {
-      throw new ApiError(409, "This broadcast has already been decided.");
-    }
-    const actor = getAuditActor();
-    if (broadcast.createdBy === actor) {
-      throw new ApiError(403, "You cannot decide a broadcast you created.");
-    }
-    broadcast.decidedBy = actor;
-    broadcast.decidedAt = new Date().toISOString();
-    broadcast.decisionComment = input.comment;
-    if (input.decision === "rejected") {
-      broadcast.status = "rejected";
-    } else if (broadcast.scheduledFor && new Date(broadcast.scheduledFor).getTime() > Date.now()) {
-      broadcast.status = "scheduled";
-    } else {
-      broadcast.status = "sent";
-      broadcast.failed = Math.round(broadcast.recipientCount * 0.04);
-      broadcast.delivered = broadcast.recipientCount - broadcast.failed;
-      broadcast.log = buildLog(7, broadcast.channel, 0.04);
-    }
-    recordAudit({
-      action: `broadcast.${input.decision}`,
-      target: broadcast.name,
-      reason: input.comment,
-      before: "pending_approval",
-      after: broadcast.status,
-    });
-    return broadcast;
-  }, 700);
+  const path = input.decision === "approved" ? "approve" : "reject";
+  await request(`/admin/broadcasts/${encodeURIComponent(input.id)}/${path}`, {
+    method: "POST",
+    ...(input.decision === "rejected" ? { body: { reason: input.comment } } : {}),
+  });
+  return getBroadcast(input.id);
 }
+
+interface TemplateRow {
+  id: string;
+  name: string;
+  channel: Channel;
+  title: string | null;
+  body: string;
+  updated_at: string;
+}
+
+const toTemplate = (row: TemplateRow): BroadcastTemplate => ({
+  id: row.id,
+  name: row.name,
+  channel: row.channel,
+  subject: row.title ?? "",
+  body: row.body,
+  updatedAt: row.updated_at,
+});
+
+export async function listTemplates(filters: TemplateFilters): Promise<BroadcastTemplate[]> {
+  const rows = await request<TemplateRow[]>("/admin/broadcast-templates", {
+    query: { channel: filters.channel === "all" ? undefined : filters.channel },
+  });
+  const needle = filters.search.trim().toLowerCase();
+  return rows
+    .map(toTemplate)
+    .filter((row) => !needle || `${row.name} ${row.body}`.toLowerCase().includes(needle));
+}
+
+/** Templates cannot change channel once created. */
+export async function saveTemplate(
+  draft: TemplateDraft,
+  id: string | null,
+  _reason: string,
+): Promise<BroadcastTemplate> {
+  const title = draft.channel === "sms" ? undefined : draft.subject.trim();
+  const row = id
+    ? await request<TemplateRow>(`/admin/broadcast-templates/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: { name: draft.name.trim(), title, body: draft.body.trim() },
+      })
+    : await request<TemplateRow>("/admin/broadcast-templates", {
+        method: "POST",
+        body: {
+          name: draft.name.trim(),
+          channel: draft.channel,
+          title,
+          body: draft.body.trim(),
+        },
+      });
+  return toTemplate(row);
+}
+
+export async function deleteTemplate(id: string, _reason: string): Promise<void> {
+  await request(`/admin/broadcast-templates/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export { rulesToApi };
