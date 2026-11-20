@@ -1,5 +1,5 @@
-import { BrandMark } from "@/shared/components/BrandMark";
-import { ArrowLeft, DeviceMobile, ShieldCheck } from "@phosphor-icons/react";
+import { BrandWordmark } from "@/shared/components/BrandWordmark";
+import { ArrowLeft, DeviceMobile, Key, Lock, ShieldCheck } from "@phosphor-icons/react";
 import { useState, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { ApiError } from "@/shared/api/client";
@@ -11,17 +11,25 @@ import { Input } from "@/shared/components/ui/Input";
 import { Label } from "@/shared/components/ui/Label";
 import { t } from "@/shared/i18n/t";
 import {
-  MAX_CODE_ATTEMPTS,
   activateMfa,
   beginEnrolment,
   fetchSessionUser,
   login,
+  sendEmailCode,
   verifyMfa,
 } from "../api/authApi";
 import { AuthBackdrop } from "../components/AuthBackdrop";
+import { LockoutCountdown } from "../components/LockoutCountdown";
+import { RecoveryCodes } from "../components/RecoveryCodes";
+import { ResendCode } from "../components/ResendCode";
 import { useSession } from "../hooks/useSession";
 
-type Step = "credentials" | "totp" | "enrol" | "confirm";
+type Step = "credentials" | "deviceLocked" | "totp" | "enrol" | "confirm" | "recovery" | "done";
+type Method = "app" | "recovery" | "email";
+
+const METHODS: Method[] = ["app", "recovery", "email"];
+/** The wait shown when the server locks something but does not say for how long. */
+const FALLBACK_LOCK_SECONDS = 15 * 60;
 
 /** Groups the secret in fours so it is easy to type into an authenticator app. */
 function groupKey(secret: string) {
@@ -41,13 +49,41 @@ export function LoginPage() {
   const [setupKey, setSetupKey] = useState("");
   const [otpauthUri, setOtpauthUri] = useState("");
   const [code, setCode] = useState("");
+  const [method, setMethod] = useState<Method>("app");
+  const [emailCodeAvailable, setEmailCodeAvailable] = useState(false);
+  const [emailSent, setEmailSent] = useState<{ to: string; resendAt: number } | null>(null);
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [saved, setSaved] = useState(false);
+  /** Set by the server: verification, or the whole sign-in, is refused until this time. */
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const [error, setError] = useState<string>();
-  const [failures, setFailures] = useState(0);
+  const [attemptsLeft, setAttemptsLeft] = useState<number>();
   const [pending, setPending] = useState(false);
 
   if (user) return <Navigate to="/" replace />;
 
-  const locked = failures >= MAX_CODE_ATTEMPTS;
+  const verificationLocked = step === "totp" && lockedUntil !== null;
+  const locked = verificationLocked || step === "deviceLocked";
+  const alternatives = METHODS.filter(
+    (candidate) => candidate !== method && (candidate !== "email" || emailCodeAvailable),
+  );
+
+  /** Keeps what the server said: a wait, tries left, or just the message. */
+  function explain(caught: unknown) {
+    if (!(caught instanceof ApiError)) {
+      setError(t("state.error.title"));
+      return;
+    }
+    const wait = (caught.details.retryAfterSeconds ?? FALLBACK_LOCK_SECONDS) * 1000;
+    if (caught.status === 423) {
+      setLockedUntil(Date.now() + wait);
+      setStep(caught.details.deviceLocked ? "deviceLocked" : "totp");
+      return;
+    }
+    setError(caught.message);
+    setAttemptsLeft(caught.details.attemptsRemaining);
+  }
 
   async function run(action: () => Promise<void>) {
     setPending(true);
@@ -55,7 +91,7 @@ export function LoginPage() {
     try {
       await action();
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : t("state.error.title"));
+      explain(caught);
     } finally {
       setPending(false);
     }
@@ -67,14 +103,21 @@ export function LoginPage() {
     navigate("/", { replace: true });
   }
 
-  async function checkCode(value: string, confirm: (value: string) => Promise<void>) {
+  /** Runs a check that can fail on a wrong code. Enrolment returns recovery codes, shown before the app opens. */
+  async function submit(confirm: () => Promise<string[] | void>) {
     await run(async () => {
+      let codes: string[] | void;
       try {
-        await confirm(value);
+        codes = await confirm();
       } catch (caught) {
-        setFailures((n) => n + 1);
         setCode("");
+        setRecoveryCode("");
         throw caught;
+      }
+      if (codes && codes.length > 0) {
+        setRecoveryCodes(codes);
+        setStep("recovery");
+        return;
       }
       await finish();
     });
@@ -86,8 +129,39 @@ export function LoginPage() {
     setMfaToken("");
     setPassword("");
     setCode("");
-    setFailures(0);
+    setRecoveryCode("");
+    setMethod("app");
+    setEmailSent(null);
+    setLockedUntil(null);
+    setAttemptsLeft(undefined);
     setError(undefined);
+  }
+
+  /** The wait is over: the server will accept a try again. */
+  function unlock() {
+    if (step === "deviceLocked") {
+      backToSignIn();
+      return;
+    }
+    setLockedUntil(null);
+    setAttemptsLeft(undefined);
+    setError(undefined);
+  }
+
+  async function requestEmailCode() {
+    await run(async () => {
+      const sent = await sendEmailCode(mfaToken);
+      setEmailSent({ to: sent.sentTo, resendAt: Date.now() + sent.resendInSeconds * 1000 });
+    });
+  }
+
+  function chooseMethod(next: Method) {
+    setMethod(next);
+    setError(undefined);
+    setAttemptsLeft(undefined);
+    setCode("");
+    setRecoveryCode("");
+    if (next === "email" && !emailSent) void requestEmailCode();
   }
 
   function onCredentials(event: FormEvent) {
@@ -96,8 +170,11 @@ export function LoginPage() {
       const result = await login(email, password);
       if (result.kind === "session") return finish();
       setMfaToken(result.mfaToken);
+      setEmailCodeAvailable(result.emailCodeAvailable);
       setCode("");
-      setFailures(0);
+      setMethod("app");
+      setEmailSent(null);
+      setAttemptsLeft(undefined);
       if (result.enrolled) {
         setStep("totp");
         return;
@@ -109,12 +186,31 @@ export function LoginPage() {
     });
   }
 
+  const problem = error
+    ? attemptsLeft === undefined
+      ? error
+      : `${error} ${t("auth.totp.remaining", { count: attemptsLeft })}`
+    : undefined;
+  const readyToVerify =
+    method === "recovery"
+      ? recoveryCode.length >= 10
+      : code.length === 6 && (method !== "email" || emailSent !== null);
+
+  function verifyNow() {
+    if (method === "recovery") {
+      void submit(() => verifyMfa(mfaToken, { recoveryCode }));
+    } else if (method === "email") {
+      void submit(() => verifyMfa(mfaToken, { emailCode: code }));
+    } else {
+      void submit(() => verifyMfa(mfaToken, { code }));
+    }
+  }
+
   return (
     <main className="auth-backdrop relative flex min-h-screen flex-col items-center justify-center gap-5 p-4">
       <AuthBackdrop />
-      <div className="relative z-10 flex items-center gap-2.5">
-        <BrandMark />
-        <span className="text-base font-semibold tracking-tight text-ink">{t("app.name")}</span>
+      <div className="relative z-10">
+        <BrandWordmark className="h-12" />
       </div>
       <Card className="auth-card relative z-10 w-full max-w-md gap-0 py-6 px-6">
         {step === "credentials" ? (
@@ -124,21 +220,41 @@ export function LoginPage() {
         ) : (
           <div className="mb-6 flex flex-col items-center text-center">
             <span className="mb-3 flex size-12 items-center justify-center rounded-full bg-info-bg text-info-text">
-              {step === "totp" || step === "confirm" ? (
+              {locked ? (
+                <Lock aria-hidden="true" className="size-6" weight="duotone" />
+              ) : step === "recovery" ? (
+                <Key aria-hidden="true" className="size-6" weight="duotone" />
+              ) : step === "done" ? (
+                <ShieldCheck aria-hidden="true" className="size-6" weight="fill" />
+              ) : step === "totp" || step === "confirm" ? (
                 <ShieldCheck aria-hidden="true" className="size-6" weight="duotone" />
               ) : (
                 <DeviceMobile aria-hidden="true" className="size-6" weight="duotone" />
               )}
             </span>
             <h1 className="text-xl font-semibold text-ink">
-              {step === "totp" && t("auth.totp.title")}
+              {step === "deviceLocked" && t("auth.deviceLock.title")}
+              {step === "totp" &&
+                (verificationLocked ? t("auth.lock.title") : t("auth.totp.title"))}
               {step === "enrol" && t("auth.enrol.title")}
               {step === "confirm" && t("auth.enrol.confirmTitle")}
+              {step === "recovery" && t("auth.recovery.title")}
+              {step === "done" && t("auth.done.title")}
             </h1>
             <p className="m-0 mt-1 text-sm text-muted-text">
-              {step === "totp" && t("auth.totp.description")}
+              {step === "deviceLocked" && t("auth.deviceLock.description")}
+              {step === "totp" &&
+                (verificationLocked
+                  ? t("auth.lock.description")
+                  : method === "recovery"
+                    ? t("auth.totp.descriptionRecovery")
+                    : method === "email"
+                      ? t("auth.totp.descriptionEmail")
+                      : t("auth.totp.description"))}
               {step === "enrol" && t("auth.enrol.description")}
               {step === "confirm" && t("auth.enrol.confirmDescription")}
+              {step === "recovery" && t("auth.recovery.description")}
+              {step === "done" && t("auth.done.description")}
             </p>
           </div>
         )}
@@ -176,32 +292,124 @@ export function LoginPage() {
           </form>
         ) : null}
 
+        {step === "deviceLocked" && lockedUntil !== null ? (
+          <div className="flex flex-col items-center gap-4 text-center">
+            <span className="inline-flex items-center gap-1.5 rounded-pill border border-danger-border bg-danger-bg px-3 py-1 text-xs font-medium text-danger-text">
+              <Lock aria-hidden="true" className="size-3.5" weight="fill" />
+              {t("auth.deviceLock.badge")}
+            </span>
+            <LockoutCountdown
+              until={lockedUntil}
+              onElapsed={unlock}
+              label={(time) => t("auth.deviceLock.retry", { time })}
+            />
+          </div>
+        ) : null}
+
         {step === "totp" ? (
           <div className="flex flex-col gap-4">
-            {locked ? (
-              <p role="alert" className="rounded-md bg-danger-bg p-3 text-sm text-danger-text">
-                {t("auth.totp.locked")}
-              </p>
+            {verificationLocked && lockedUntil !== null ? (
+              <div className="flex flex-col items-center gap-4 text-center">
+                <span className="inline-flex items-center gap-1.5 rounded-pill border border-danger-border bg-danger-bg px-3 py-1 text-xs font-medium text-danger-text">
+                  <Lock aria-hidden="true" className="size-3.5" weight="fill" />
+                  {t("auth.lock.badge")}
+                </span>
+                <LockoutCountdown until={lockedUntil} onElapsed={unlock} />
+                <Button type="button" variant="outline" onClick={backToSignIn}>
+                  {t("auth.backToSignIn")}
+                </Button>
+              </div>
             ) : (
               <>
-                <TotpInput
-                  hideLabel
-                  value={code}
-                  onChange={setCode}
-                  error={
-                    error
-                      ? `${error} ${t("auth.totp.remaining", { count: MAX_CODE_ATTEMPTS - failures })}`
-                      : undefined
-                  }
-                  onComplete={(value) => void checkCode(value, (v) => verifyMfa(mfaToken, v))}
-                />
-                <Button
-                  size="lg"
-                  disabled={pending || code.length !== 6}
-                  onClick={() => void checkCode(code, (v) => verifyMfa(mfaToken, v))}
-                >
-                  {pending ? t("common.working") : t("auth.totp.verify")}
-                </Button>
+                {method === "recovery" ? (
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="recovery-code">{t("auth.totp.recoveryLabel")}</Label>
+                    <Input
+                      id="recovery-code"
+                      autoComplete="off"
+                      autoCapitalize="characters"
+                      spellCheck={false}
+                      maxLength={11}
+                      placeholder={t("auth.totp.recoveryPlaceholder")}
+                      value={recoveryCode}
+                      onChange={(event) => setRecoveryCode(event.target.value.toUpperCase())}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && readyToVerify && !pending) verifyNow();
+                      }}
+                      className="tabular font-mono"
+                    />
+                    {problem ? (
+                      <p role="alert" className="m-0 text-xs text-danger-text">
+                        {problem}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : method === "email" && !emailSent ? (
+                  <>
+                    {problem ? (
+                      <p role="alert" className="m-0 text-sm text-danger-text">
+                        {problem}
+                      </p>
+                    ) : null}
+                    <Button size="lg" disabled={pending} onClick={() => void requestEmailCode()}>
+                      {pending ? t("common.working") : t("auth.email.send")}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    {method === "email" && emailSent ? (
+                      <p className="m-0 text-center text-sm text-muted-text">
+                        {t("auth.email.sent", { email: emailSent.to })}
+                      </p>
+                    ) : null}
+                    <TotpInput
+                      hideLabel
+                      value={code}
+                      onChange={setCode}
+                      label={method === "email" ? t("auth.totp.emailLabel") : undefined}
+                      error={problem}
+                      onComplete={(value) =>
+                        void submit(() =>
+                          method === "email"
+                            ? verifyMfa(mfaToken, { emailCode: value })
+                            : verifyMfa(mfaToken, { code: value }),
+                        )
+                      }
+                    />
+                  </>
+                )}
+                {method !== "email" || emailSent ? (
+                  <Button size="lg" disabled={pending || !readyToVerify} onClick={verifyNow}>
+                    {pending ? t("common.working") : t("auth.totp.verify")}
+                  </Button>
+                ) : null}
+                {method === "email" && emailSent ? (
+                  <ResendCode
+                    until={emailSent.resendAt}
+                    disabled={pending}
+                    onResend={() => void requestEmailCode()}
+                  />
+                ) : null}
+                {alternatives.length > 0 ? (
+                  <div className="flex flex-col gap-1.5 rounded-md border border-border-soft bg-surface-muted px-3 py-3 text-sm">
+                    <span className="text-ink">{t("auth.totp.handy")}</span>
+                    {alternatives.map((candidate) => (
+                      <button
+                        key={candidate}
+                        type="button"
+                        disabled={pending}
+                        onClick={() => chooseMethod(candidate)}
+                        className="cursor-pointer self-start text-sm font-medium text-blue-strong hover:underline disabled:opacity-50"
+                      >
+                        {candidate === "app"
+                          ? t("auth.totp.useApp")
+                          : candidate === "recovery"
+                            ? t("auth.totp.useRecovery")
+                            : t("auth.totp.useEmail")}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </>
             )}
           </div>
@@ -240,19 +448,52 @@ export function LoginPage() {
               onChange={setCode}
               error={error}
               label={t("auth.enrol.confirm")}
-              onComplete={(value) => void checkCode(value, (v) => activateMfa(mfaToken, v))}
+              onComplete={(value) => void submit(() => activateMfa(mfaToken, value))}
             />
             <Button
               size="lg"
               disabled={pending || code.length !== 6}
-              onClick={() => void checkCode(code, (v) => activateMfa(mfaToken, v))}
+              onClick={() => void submit(() => activateMfa(mfaToken, code))}
             >
               {pending ? t("common.working") : t("auth.enrol.submit")}
             </Button>
           </div>
         ) : null}
 
-        {step !== "credentials" ? (
+        {step === "recovery" ? (
+          <div className="flex flex-col gap-4">
+            <RecoveryCodes codes={recoveryCodes} />
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                checked={saved}
+                onChange={(event) => setSaved(event.target.checked)}
+                className="size-4"
+              />
+              {t("auth.recovery.saved")}
+            </label>
+            <Button size="lg" disabled={!saved} onClick={() => setStep("done")}>
+              {t("auth.recovery.continue")}
+            </Button>
+          </div>
+        ) : null}
+
+        {step === "done" ? (
+          <div className="flex flex-col gap-4">
+            <p className="m-0 rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-sm text-warning-text">
+              {t("auth.done.note")}
+            </p>
+            <Button size="lg" disabled={pending} onClick={() => void run(finish)}>
+              {pending ? t("common.working") : t("auth.done.go")}
+            </Button>
+          </div>
+        ) : null}
+
+        {step !== "credentials" &&
+        step !== "recovery" &&
+        step !== "done" &&
+        step !== "deviceLocked" &&
+        !verificationLocked ? (
           <div className="mt-6 flex justify-center border-t border-border-soft pt-4">
             <button
               type="button"

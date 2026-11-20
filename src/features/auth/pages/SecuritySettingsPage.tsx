@@ -11,16 +11,25 @@ import { StatusBadge } from "@/shared/components/StatusBadge";
 import { Button } from "@/shared/components/ui/Button";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { t } from "@/shared/i18n/t";
+import { fetchRecoveryCodesRemaining } from "../api/authApi";
 import { listSessions, revokeOtherSessions, type SessionRow } from "../api/sessionsApi";
+import { ReplaceRecoveryCodesDialog } from "../components/ReplaceRecoveryCodesDialog";
 import { useCurrentUser } from "../hooks/useSession";
 
 const SESSIONS_KEY = ["auth", "sessions"];
+const RECOVERY_KEY = ["auth", "recovery-remaining"];
 
 export function SecuritySettingsPage() {
   const user = useCurrentUser();
   const queryClient = useQueryClient();
   const sessions = useApiQuery(SESSIONS_KEY, listSessions, { staleTime: 0 });
+  const remaining = useApiQuery(RECOVERY_KEY, fetchRecoveryCodesRemaining, {
+    enabled: user.twoFactorEnrolled,
+    staleTime: 0,
+  });
+  const left = remaining.data ?? 0;
   const [signOutOpen, setSignOutOpen] = useState(false);
+  const [codesOpen, setCodesOpen] = useState(false);
 
   return (
     <>
@@ -46,6 +55,24 @@ export function SecuritySettingsPage() {
             label={user.twoFactorEnrolled ? t("security.enrolled") : t("security.notEnrolled")}
           />
         </SectionCard>
+
+        {user.twoFactorEnrolled ? (
+          <SectionCard
+            title={t("security.recovery.title")}
+            description={t("security.recovery.hint")}
+            actions={
+              <Button variant="outline" onClick={() => setCodesOpen(true)}>
+                {t("security.recovery.generate")}
+              </Button>
+            }
+          >
+            <p className="m-0 text-sm text-muted-text">
+              {remaining.data === undefined
+                ? t("security.recovery.hint")
+                : t("security.recovery.left", { count: left })}
+            </p>
+          </SectionCard>
+        ) : null}
 
         <SectionCard
           title={t("security.sessions")}
@@ -87,6 +114,13 @@ export function SecuritySettingsPage() {
           </AsyncBody>
         </SectionCard>
       </div>
+
+      <ReplaceRecoveryCodesDialog
+        open={codesOpen}
+        onOpenChange={setCodesOpen}
+        remaining={remaining.data}
+        onReplaced={() => void queryClient.invalidateQueries({ queryKey: RECOVERY_KEY })}
+      />
 
       <ActionDialog
         open={signOutOpen}

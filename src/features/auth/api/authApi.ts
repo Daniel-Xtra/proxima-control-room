@@ -14,6 +14,7 @@ interface MfaChallenge {
   mfa_required: true;
   mfa_enrolled: boolean;
   mfa_token: string;
+  email_code_available?: boolean;
 }
 
 interface MeData {
@@ -21,11 +22,13 @@ interface MeData {
   role_code: string | null;
   permissions: string[];
   mfa_enrolled: boolean;
+  recovery_codes_remaining?: number;
 }
 
 /** `session` means tokens are stored and the user can be loaded; `mfa` needs a code (or enrolment) first. */
 export type LoginResult =
-  { kind: "session" } | { kind: "mfa"; mfaToken: string; enrolled: boolean };
+  | { kind: "session" }
+  | { kind: "mfa"; mfaToken: string; enrolled: boolean; emailCodeAvailable: boolean };
 
 function keepTokens(data: LoginData) {
   setTokens({ accessToken: data.access_token, refreshToken: data.refresh_token });
@@ -38,16 +41,32 @@ export async function login(email: string, password: string): Promise<LoginResul
     auth: false,
   });
   if ("mfa_required" in data) {
-    return { kind: "mfa", mfaToken: data.mfa_token, enrolled: data.mfa_enrolled };
+    return {
+      kind: "mfa",
+      mfaToken: data.mfa_token,
+      enrolled: data.mfa_enrolled,
+      emailCodeAvailable: data.email_code_available ?? false,
+    };
   }
   keepTokens(data);
   return { kind: "session" };
 }
 
-export async function verifyMfa(mfaToken: string, code: string) {
+/** Signs in with an authenticator code, a one-time recovery code, or a code that was emailed. */
+export async function verifyMfa(
+  mfaToken: string,
+  proof: { code: string } | { recoveryCode: string } | { emailCode: string },
+) {
   const data = await request<LoginData>("/admin/auth/mfa/verify", {
     method: "POST",
-    body: { mfa_token: mfaToken, code },
+    body: {
+      mfa_token: mfaToken,
+      ...("code" in proof
+        ? { code: proof.code }
+        : "emailCode" in proof
+          ? { email_code: proof.emailCode }
+          : { recovery_code: proof.recoveryCode }),
+    },
     auth: false,
   });
   keepTokens(data);
@@ -63,13 +82,46 @@ export async function beginEnrolment(mfaToken: string) {
   return { secret: data.secret, otpauthUri: data.otpauth_uri };
 }
 
-export async function activateMfa(mfaToken: string, code: string) {
-  const data = await request<{ session?: LoginData }>("/admin/auth/mfa/activate", {
+/** Confirms enrolment. The recovery codes come back once, and are never sent again. */
+export async function activateMfa(mfaToken: string, code: string): Promise<string[]> {
+  const data = await request<{ session?: LoginData; recovery_codes?: string[] }>(
+    "/admin/auth/mfa/activate",
+    { method: "POST", body: { mfa_token: mfaToken, code }, auth: false },
+  );
+  if (data.session) keepTokens(data.session);
+  return data.recovery_codes ?? [];
+}
+
+/** Emails a one-time sign-in code to the admin. The address comes back masked. */
+export async function sendEmailCode(mfaToken: string) {
+  const data = await request<{
+    sent_to: string;
+    expires_in_seconds: number;
+    resend_in_seconds: number;
+  }>("/admin/auth/mfa/email-code", {
     method: "POST",
-    body: { mfa_token: mfaToken, code },
+    body: { mfa_token: mfaToken },
     auth: false,
   });
-  if (data.session) keepTokens(data.session);
+  return {
+    sentTo: data.sent_to,
+    expiresInSeconds: data.expires_in_seconds,
+    resendInSeconds: data.resend_in_seconds,
+  };
+}
+
+/** How many recovery codes the signed-in admin can still use. */
+export async function fetchRecoveryCodesRemaining(): Promise<number> {
+  const me = await request<MeData>("/admin/auth/me");
+  return me.recovery_codes_remaining ?? 0;
+}
+
+/** Replaces the signed-in admin's recovery codes. The old ones stop working. Needs a fresh step-up first. */
+export async function regenerateRecoveryCodes(): Promise<string[]> {
+  const data = await request<{ recovery_codes: string[] }>("/admin/auth/mfa/recovery-codes", {
+    method: "POST",
+  });
+  return data.recovery_codes;
 }
 
 function titleCase(code: string) {

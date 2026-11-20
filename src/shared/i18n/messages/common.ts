@@ -2,6 +2,7 @@ export const common = {
   "app.name": "Proxima Control Room",
   "common.back": "Back",
   "common.cancel": "Cancel",
+  "common.done": "Done",
   "common.close": "Close",
   "common.clearFilters": "Clear filters",
   "common.continue": "Continue",

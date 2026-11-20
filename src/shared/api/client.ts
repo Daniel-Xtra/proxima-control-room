@@ -11,13 +11,25 @@ export interface Envelope<T> {
   data?: T;
   /** Validation failures arrive as a single joined string. */
   errors?: string;
+  retryAfterSeconds?: number;
+  attemptsRemaining?: number;
+  deviceLocked?: boolean;
+}
+
+/** What a refused sign-in attempt adds to the message: a wait, tries left, or that the device is locked. */
+export interface ApiErrorDetails {
+  retryAfterSeconds?: number;
+  attemptsRemaining?: number;
+  deviceLocked?: boolean;
 }
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  details: ApiErrorDetails;
+  constructor(status: number, message: string, details: ApiErrorDetails = {}) {
     super(message);
     this.status = status;
+    this.details = details;
   }
 }
 
@@ -91,6 +103,11 @@ async function execute<T>(path: string, options: RequestOptions, token: string |
     throw new ApiError(
       response.status,
       envelope?.errors ?? envelope?.message ?? t("state.error.title"),
+      {
+        retryAfterSeconds: envelope?.retryAfterSeconds,
+        attemptsRemaining: envelope?.attemptsRemaining,
+        deviceLocked: envelope?.deviceLocked,
+      },
     );
   }
   return envelope?.data as T;
