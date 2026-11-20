@@ -85,3 +85,28 @@ export interface CustomerFilters {
   page: number;
   limit: number;
 }
+
+export type UpgradeStatus = "pending" | "resubmitted" | "approved" | "rejected";
+
+/** A customer who finished uploading documents, and where the review for their next tier stands. */
+export interface UpgradeRequest {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  currentTier: number;
+  targetTier: number;
+  status: UpgradeStatus;
+  /** Documents submitted, and how many of them still wait for a decision. */
+  documents: number;
+  awaitingDocuments: number;
+  submittedAt: string;
+}
+
+export interface UpgradeRequestFilters {
+  search: string;
+  /** "all", or one of the statuses above. */
+  status: string;
+  page: number;
+  limit: number;
+}

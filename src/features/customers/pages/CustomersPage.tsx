@@ -1,6 +1,3 @@
-import { NavLink } from "react-router-dom";
-import { useCan } from "@/features/auth";
-import { usePendingRequestCount } from "@/features/requests";
 import { AsyncBody } from "@/shared/components/AsyncBody";
 import { DataTable } from "@/shared/components/DataTable";
 import { DateText } from "@/shared/components/DateText";
@@ -19,6 +16,7 @@ import {
 import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
 import { formatCount } from "@/shared/lib/format";
+import { CustomerAreaTabs } from "../components/CustomerAreaTabs";
 import { CustomerNameCell, CustomerRowMenu } from "../components/CustomerListCells";
 import { CustomerStatusBadge } from "../components/CustomerStatusBadges";
 import { useCustomers } from "../api/queries";
@@ -35,13 +33,8 @@ const DEFAULTS = {
   dir: "asc",
 };
 
-const TAB =
-  "relative -mb-px inline-flex items-center gap-2 border-b-2 px-1 pb-3 text-sm font-medium whitespace-nowrap";
-
 export function CustomersPage() {
-  const can = useCan();
   const [filters, setFilter] = useUrlFilters(DEFAULTS);
-  const pending = usePendingRequestCount(can("request:view_all")).data ?? 0;
 
   const query: CustomerFilters = {
     search: filters.q,
@@ -67,27 +60,7 @@ export function CustomersPage() {
         crumbs={[{ label: t("nav.group.customers") }, { label: t("customers.title") }]}
       />
 
-      {can("request:view_all") ? (
-        <nav
-          aria-label={t("customers.title")}
-          className="mb-5 flex items-end gap-6 border-b border-border"
-        >
-          <span aria-current="page" className={`${TAB} border-primary text-primary`}>
-            {t("customers.all")}
-          </span>
-          <NavLink
-            to="/requests"
-            className={`${TAB} border-transparent text-muted-text hover:text-ink`}
-          >
-            {t("customers.nav.requests")}
-            {pending > 0 ? (
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold text-on-ink">
-                {pending > 9 ? "9+" : pending}
-              </span>
-            ) : null}
-          </NavLink>
-        </nav>
-      ) : null}
+      <CustomerAreaTabs current="customers" />
 
       <h2 className="m-0 mb-4 font-heading text-xl font-semibold text-ink">
         {t("customers.all")}

@@ -23,7 +23,7 @@ import {
   PlatformWalletsPage,
 } from "@/features/bulk-transfers";
 import { BannersPage } from "@/features/content";
-import { CustomerDetailPage, CustomersPage } from "@/features/customers";
+import { CustomerDetailPage, CustomersPage, UpgradeRequestsPage } from "@/features/customers";
 import { OverviewPage } from "@/features/overview";
 import { RequestsPage } from "@/features/requests";
 import { AuditLogPage, LockPolicyPage, WebhookWhitelistPage } from "@/features/risk";
@@ -52,6 +52,14 @@ export function App() {
                 element={
                   <RequirePermission permission="customer:view">
                     <CustomersPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="customers/upgrade-requests"
+                element={
+                  <RequirePermission permission="kyc:view">
+                    <UpgradeRequestsPage />
                   </RequirePermission>
                 }
               />
