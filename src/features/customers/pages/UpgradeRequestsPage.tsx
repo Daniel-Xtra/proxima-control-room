@@ -18,7 +18,7 @@ import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
 import { useUpgradeRequests } from "../api/queries";
 import { CustomerAreaTabs } from "../components/CustomerAreaTabs";
-import { UpgradeNameCell, UpgradeRowMenu } from "../components/UpgradeListCells";
+import { UpgradeNameCell } from "../components/UpgradeListCells";
 import { UpgradeStatusBadge } from "../components/CustomerStatusBadges";
 import type { UpgradeRequest } from "../model/types";
 
@@ -109,7 +109,7 @@ export function UpgradeRequestsPage() {
         >
           {(data) => (
             <DataTable<UpgradeRequest>
-              numbered
+              toolbar={false}
               caption={t("customers.nav.requests")}
               rows={data.items}
               getRowId={(row) => row.id}
@@ -118,8 +118,8 @@ export function UpgradeRequestsPage() {
               total={data.total}
               onPageChange={(page) => setFilter("page", String(page))}
               onLimitChange={(limit) => setFilter("limit", String(limit))}
-              onRowOpen={(row) => navigate(`/customers/${row.id}?tab=kyc`)}
               storageKey="upgrade-requests"
+              onRowOpen={(row) => navigate(`/customers/${row.id}?tab=kyc`)}
               columns={[
                 {
                   key: "name",
@@ -152,13 +152,6 @@ export function UpgradeRequestsPage() {
                   key: "submitted",
                   header: t("customers.upgrade.col.submitted"),
                   cell: (r) => <DateText iso={r.submittedAt} dateOnly />,
-                },
-                {
-                  key: "actions",
-                  header: "",
-                  alwaysVisible: true,
-                  className: "w-12 text-right",
-                  cell: (r) => <UpgradeRowMenu row={r} />,
                 },
               ]}
             />

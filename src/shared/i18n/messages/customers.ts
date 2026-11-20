@@ -4,7 +4,6 @@ export const customers = {
   "customers.search": "Search name, email or phone",
   "customers.all": "All customers",
   "customers.nav.requests": "Account upgrade requests",
-  "customers.view": "View details",
   "customers.upgrade.description":
     "Customers who have uploaded their documents and are waiting for a higher tier.",
   "customers.upgrade.searchLabel": "Search upgrade requests",
@@ -15,7 +14,6 @@ export const customers = {
   "customers.upgrade.col.tier": "Tier",
   "customers.upgrade.col.submitted": "Submitted",
   "customers.upgrade.documents": "{count} documents",
-  "customers.upgrade.review": "Review documents",
   "customers.upgrade.empty.title": "No upgrade requests",
   "customers.upgrade.empty.description":
     "Customers appear here once they finish uploading documents.",

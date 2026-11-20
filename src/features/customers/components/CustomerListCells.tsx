@@ -1,11 +1,4 @@
-import { DotsThreeVertical } from "@phosphor-icons/react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/DropdownMenu";
+import { Link } from "react-router-dom";
 import { t } from "@/shared/i18n/t";
 import { initials } from "@/shared/lib/format";
 import type { CustomerRow } from "../model/types";
@@ -16,7 +9,7 @@ export function CustomerNameCell({ row }: { row: CustomerRow }) {
     <Link to={`/customers/${row.id}`} className="group flex min-w-0 items-center gap-3">
       <span
         aria-hidden="true"
-        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-success-bg text-xs font-semibold text-success-text"
+        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-success-bg text-xs font-semibold text-success-text"
       >
         {initials(row.name)}
       </span>
@@ -29,28 +22,5 @@ export function CustomerNameCell({ row }: { row: CustomerRow }) {
         </span>
       </span>
     </Link>
-  );
-}
-
-/** The three-dot menu at the end of a row. */
-export function CustomerRowMenu({ row }: { row: CustomerRow }) {
-  const navigate = useNavigate();
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label={`${t("customers.actions")}: ${row.name}`}
-          className="inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-text hover:bg-surface-muted hover:text-ink"
-        >
-          <DotsThreeVertical aria-hidden="true" size={18} weight="bold" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => navigate(`/customers/${row.id}`)}>
-          {t("customers.view")}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }

@@ -1,11 +1,4 @@
-import { DotsThreeVertical } from "@phosphor-icons/react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/DropdownMenu";
+import { Link } from "react-router-dom";
 import { t } from "@/shared/i18n/t";
 import type { UpgradeRequest } from "../model/types";
 
@@ -27,31 +20,5 @@ export function UpgradeNameCell({ row }: { row: UpgradeRequest }) {
         </span>
       </span>
     </Link>
-  );
-}
-
-/** The three-dot menu at the end of a row. */
-export function UpgradeRowMenu({ row }: { row: UpgradeRequest }) {
-  const navigate = useNavigate();
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label={`${t("customers.actions")}: ${row.name}`}
-          className="inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-text hover:bg-surface-muted hover:text-ink"
-        >
-          <DotsThreeVertical aria-hidden="true" size={18} weight="bold" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => navigate(reviewPath(row))}>
-          {t("customers.upgrade.review")}
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => navigate(`/customers/${row.id}`)}>
-          {t("customers.view")}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }

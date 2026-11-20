@@ -38,7 +38,7 @@ export function CustomerAreaTabs({ current }: { current: "customers" | "upgrades
   return (
     <nav
       aria-label={t("customers.title")}
-      className="mb-5 flex items-end gap-6 overflow-x-auto border-b border-border"
+      className="mb-5 flex items-end gap-6 overflow-x-auto overflow-y-hidden border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {link("/customers", "customers", t("customers.all"))}
       {link("/customers/upgrade-requests", "upgrades", t("customers.nav.requests"), awaiting)}

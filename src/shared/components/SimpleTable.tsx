@@ -219,6 +219,7 @@ export function SimpleTable<T>({
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="size-8"
                     aria-label={`${t("table.open")}: ${getRowId(row)}`}
                     title={t("table.open")}
                     onClick={() => onRowOpen(row)}

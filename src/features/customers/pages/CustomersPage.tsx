@@ -16,8 +16,9 @@ import {
 import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
 import { formatCount } from "@/shared/lib/format";
+import { useNavigate } from "react-router-dom";
 import { CustomerAreaTabs } from "../components/CustomerAreaTabs";
-import { CustomerNameCell, CustomerRowMenu } from "../components/CustomerListCells";
+import { CustomerNameCell } from "../components/CustomerListCells";
 import { CustomerStatusBadge } from "../components/CustomerStatusBadges";
 import { useCustomers } from "../api/queries";
 import type { CustomerFilters, CustomerRow } from "../model/types";
@@ -34,6 +35,7 @@ const DEFAULTS = {
 };
 
 export function CustomersPage() {
+  const navigate = useNavigate();
   const [filters, setFilter] = useUrlFilters(DEFAULTS);
 
   const query: CustomerFilters = {
@@ -152,7 +154,8 @@ export function CustomersPage() {
         >
           {(data) => (
             <DataTable<CustomerRow>
-              numbered
+              onRowOpen={(row) => navigate(`/customers/${row.id}`)}
+              toolbar={false}
               caption={t("customers.title")}
               rows={data.items}
               getRowId={(row) => row.id}
@@ -204,13 +207,6 @@ export function CustomersPage() {
                   sortKey: "joined",
                   header: t("customers.col.joined"),
                   cell: (r) => <DateText iso={r.joinedAt} dateOnly />,
-                },
-                {
-                  key: "actions",
-                  header: "",
-                  alwaysVisible: true,
-                  className: "w-12 text-right",
-                  cell: (r) => <CustomerRowMenu row={r} />,
                 },
               ]}
             />
