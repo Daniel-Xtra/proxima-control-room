@@ -15,7 +15,10 @@ export function Sparkline({ values }: { values: number[] }) {
   return (
     <svg aria-hidden="true" width={width} height={height} className="text-blue">
       <polyline
+        key={points}
         points={points}
+        pathLength="1"
+        className="chart-line"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"

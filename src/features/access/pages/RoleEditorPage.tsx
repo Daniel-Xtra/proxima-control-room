@@ -136,6 +136,13 @@ function RoleEditor({
   const rows = (searching ? modules.flatMap(([, group]) => group) : activeGroup).filter(matches);
   const activeHeld = activeGroup.filter((p) => held.has(p.code)).length;
 
+  // What is still needed before Save turns on, so a disabled button is never a mystery.
+  const missing = [
+    !name.trim() ? t("roles.editor.missingName") : null,
+    !codeOk ? t("roles.editor.missingCode") : null,
+    held.size === 0 ? t("roles.editor.missingPermission") : null,
+  ].filter((item): item is string => item !== null);
+
   return (
     <>
       <PageHeader
@@ -148,15 +155,18 @@ function RoleEditor({
             <Button variant="outline" onClick={() => navigate("/settings/roles")}>
               {t("common.cancel")}
             </Button>
-            <Button
-              disabled={!name.trim() || !codeOk || held.size === 0}
-              onClick={() => setConfirmOpen(true)}
-            >
+            <Button disabled={missing.length > 0} onClick={() => setConfirmOpen(true)}>
               {t("common.save")}
             </Button>
           </>
         }
       />
+
+      {missing.length > 0 ? (
+        <output className="mb-4 block rounded-md bg-info-bg p-3 text-sm text-info-text">
+          {t("roles.editor.missing", { what: missing.join(", ") })}
+        </output>
+      ) : null}
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="flex min-w-0 flex-col gap-4">

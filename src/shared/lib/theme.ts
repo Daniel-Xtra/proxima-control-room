@@ -35,8 +35,19 @@ export function applyStoredTheme() {
   });
 }
 
+/**
+ * A theme change fades the whole page at once. Components that happen to have their own colour transitions would
+ * otherwise fade while the rest snaps, so the browser cross-fades a before-and-after picture instead.
+ */
+function applyWithFade(theme: Theme) {
+  const doc = document as Document & { startViewTransition?: (update: () => void) => unknown };
+  const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!doc.startViewTransition || calm) apply(theme);
+  else doc.startViewTransition(() => apply(theme));
+}
+
 export function setTheme(theme: Theme) {
-  apply(theme);
+  applyWithFade(theme);
   try {
     if (theme === "system") window.localStorage.removeItem(KEY);
     else window.localStorage.setItem(KEY, theme);

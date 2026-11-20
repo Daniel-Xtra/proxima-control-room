@@ -1,7 +1,6 @@
-import { ArrowRight } from "@phosphor-icons/react";
 import { useState } from "react";
 import { MoneyText } from "@/shared/components/MoneyText";
-import { Input } from "@/shared/components/ui/Input";
+import { DateRangePicker } from "@/shared/components/DateRangePicker";
 import { t } from "@/shared/i18n/t";
 import { cn } from "@/shared/lib/cn";
 import { lagosDay } from "@/shared/lib/dateRange";
@@ -19,28 +18,12 @@ export function TransactionInsights() {
     <section className="card mb-4 p-4" aria-label={t("transactions.insights.title")}>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <span className="text-sm text-muted-text">{t("transactions.insights.title")}</span>
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-card px-2">
-          <Input
-            type="date"
-            aria-label={t("range.from")}
-            className="h-10 w-36 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0"
-            value={days.from}
-            max={days.to}
-            onChange={(event) =>
-              event.target.value && setDays({ ...days, from: event.target.value })
-            }
-          />
-          <ArrowRight aria-hidden="true" className="size-3.5 shrink-0 text-muted-text" />
-          <Input
-            type="date"
-            aria-label={t("range.to")}
-            className="h-10 w-36 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0"
-            value={days.to}
-            min={days.from}
-            max={today}
-            onChange={(event) => event.target.value && setDays({ ...days, to: event.target.value })}
-          />
-        </div>
+        <DateRangePicker
+          from={days.from}
+          to={days.to}
+          maxSpanDays={92}
+          onChange={(from, to) => setDays({ from, to })}
+        />
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         <InsightCard label={t("transactions.insights.total")} kobo={data?.totalKobo} />

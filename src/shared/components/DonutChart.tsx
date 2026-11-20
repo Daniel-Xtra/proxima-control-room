@@ -51,7 +51,7 @@ export function DonutChart({
           className="stroke-neutral-bg"
         />
         {total > 0
-          ? arcs.map(({ segment, length, start }) => (
+          ? arcs.map(({ segment, length, start }, index) => (
               <circle
                 key={segment.label}
                 cx={SIZE / 2}
@@ -61,7 +61,8 @@ export function DonutChart({
                 strokeWidth={STROKE}
                 strokeDasharray={`${length} ${CIRCUMFERENCE - length}`}
                 strokeDashoffset={-start}
-                className={`stroke-current ${TONE[segment.tone]}`}
+                className={`chart-sweep stroke-current ${TONE[segment.tone]}`}
+                style={{ animationDelay: `${index * 120}ms` }}
               />
             ))
           : null}

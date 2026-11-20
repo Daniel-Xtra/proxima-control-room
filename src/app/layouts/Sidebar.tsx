@@ -65,7 +65,11 @@ function SidebarContent({
       </div>
       <nav
         aria-label={t("shell.navigation")}
-        className="flex-1 overflow-x-hidden overflow-y-auto px-3 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className={cn(
+          "flex-1 overflow-x-hidden overflow-y-auto pb-4",
+          // Collapsed, the gutter is kept on both sides so the bar shows without pushing the icons off-centre.
+          collapsed ? "px-0.5 [scrollbar-gutter:stable_both-edges]" : "px-3",
+        )}
       >
         {NAV_GROUPS.map((group, groupIndex) => {
           const items = group.items.filter((item) => allowed.has(item.id));

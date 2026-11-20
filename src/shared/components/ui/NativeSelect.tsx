@@ -90,10 +90,7 @@ export const NativeSelect = React.forwardRef<HTMLButtonElement, SelectProps>(
           aria-label={ariaLabel}
           aria-invalid={invalid}
           aria-describedby={describedBy}
-          className={cn(
-            "rounded-md px-4 text-sm data-[size=default]:h-[52px] focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/15 data-[state=open]:border-primary data-[state=open]:ring-4 data-[state=open]:ring-primary/15",
-            className,
-          )}
+          className={cn("data-[size=default]:h-10", className)}
         >
           <SelectValue />
         </SelectTrigger>

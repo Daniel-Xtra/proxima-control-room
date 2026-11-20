@@ -98,6 +98,7 @@ function CustomerDetail({ customer }: { customer: Customer }) {
           { label: customer.name },
         ]}
         title={t("customers.title")}
+        hideTitle
       />
 
       <CustomerHeader

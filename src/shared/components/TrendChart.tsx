@@ -80,6 +80,8 @@ export function TrendChart({
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
+  // A new set of values draws itself again; a resize only redraws the same picture.
+  const dataKey = values.join(",");
   const WIDTH = width;
   const HEIGHT = width < 480 ? 220 : 280;
   if (values.length < 2) return null;
@@ -141,9 +143,17 @@ export function TrendChart({
             </text>
           </g>
         ))}
-        <path d={area} fill={`url(#${gradientId})`} />
         <path
+          key={`area-${dataKey}`}
+          d={area}
+          fill={`url(#${gradientId})`}
+          className="chart-fade"
+        />
+        <path
+          key={`line-${dataKey}`}
           d={line}
+          pathLength="1"
+          className="chart-line"
           fill="none"
           stroke="currentColor"
           strokeWidth="2.25"
@@ -155,7 +165,7 @@ export function TrendChart({
           x2={WIDTH - PAD.right}
           y1={y(average)}
           y2={y(average)}
-          className="stroke-muted-text"
+          className="chart-fade stroke-muted-text"
           strokeDasharray="4 4"
           strokeWidth="1"
         />

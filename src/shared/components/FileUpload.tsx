@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type DragEvent } from "react";
-import { XIcon } from "@phosphor-icons/react";
+import { CheckCircleIcon, TrashIcon, WarningCircleIcon, XIcon } from "@phosphor-icons/react";
 import { t } from "@/shared/i18n/t";
 import { formatBytes } from "@/shared/lib/format";
 import { cn } from "@/shared/lib/cn";
@@ -95,11 +95,11 @@ export function FileUpload({
             onDragLeave={() => setOver(false)}
             onDrop={drop}
             className={cn(
-              "mt-1 flex cursor-pointer flex-col items-center gap-1 rounded-md border border-dashed border-border bg-surface px-4 py-5 text-center hover:bg-surface-muted focus-within:ring-2 focus-within:ring-blue-ring",
-              over && "border-blue bg-info-bg",
+              "mt-1 flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed border-border bg-card px-4 py-6 text-center transition-colors hover:border-blue focus-within:border-blue",
+              over && "border-blue bg-blue-tint",
             )}
           >
-            <AppIcon icon="cloud-upload" className="size-10" />
+            <AppIcon icon="cloud-upload" className="size-9" />
             <span className="text-sm text-ink">
               {t(single ? "upload.dropOne" : "upload.drop")}{" "}
               <span className="text-blue-strong underline">{t("upload.browse")}</span>
@@ -125,34 +125,53 @@ export function FileUpload({
             <li
               key={f.id}
               className={cn(
-                "flex items-center gap-3 rounded-md border p-2 text-xs",
+                "flex items-center gap-3 rounded-md border border-dashed p-3 text-xs",
                 f.status === "error"
-                  ? "border-danger bg-danger-bg"
-                  : "border-border-soft bg-surface",
+                  ? "border-danger-border bg-danger-soft"
+                  : "border-success-border bg-success-soft",
               )}
             >
-              <AppIcon
-                icon={f.status === "done" ? "upload-success" : "upload-error"}
-                className="size-8"
-              />
+              {f.status === "done" ? (
+                <CheckCircleIcon
+                  weight="fill"
+                  aria-hidden="true"
+                  className="size-5 shrink-0 text-success-solid"
+                />
+              ) : (
+                <WarningCircleIcon
+                  aria-hidden="true"
+                  className="size-5 shrink-0 text-danger-text"
+                />
+              )}
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm text-ink">{f.name}</span>
                 <span
                   className={cn(
-                    "block",
+                    "block truncate text-sm font-medium",
+                    f.status === "error" ? "text-danger-text" : "text-ink",
+                  )}
+                >
+                  {f.status === "done" ? f.name : t("upload.errorTitle")}
+                </span>
+                <span
+                  className={cn(
+                    "block truncate",
                     f.status === "error" ? "text-danger-text" : "text-muted-text",
                   )}
                 >
-                  {f.status === "done" ? `${formatBytes(f.size)} · ${t("upload.done")}` : f.error}
+                  {f.status === "done" ? formatBytes(f.size) : `${f.name} · ${f.error}`}
                 </span>
               </span>
               <button
                 type="button"
                 aria-label={t("upload.remove", { name: f.name })}
-                className="cursor-pointer rounded-md p-1 hover:bg-surface-muted"
+                className="cursor-pointer rounded-md p-1.5 text-muted-text hover:bg-surface-muted hover:text-ink"
                 onClick={() => setItems((c) => c.filter((x) => x.id !== f.id))}
               >
-                <XIcon size={12} weight="bold" aria-hidden="true" />
+                {f.status === "done" ? (
+                  <TrashIcon size={14} aria-hidden="true" />
+                ) : (
+                  <XIcon size={14} weight="bold" aria-hidden="true" />
+                )}
               </button>
             </li>
           ))}

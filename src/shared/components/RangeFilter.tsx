@@ -6,7 +6,7 @@ import {
   lagosDay,
   parseCustomRange,
 } from "../lib/dateRange";
-import { Input } from "./ui/Input";
+import { DateRangePicker } from "./DateRangePicker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/Select";
 
 interface Props {
@@ -21,7 +21,6 @@ interface Props {
 export function RangeFilter({ label, value, onChange, options }: Props) {
   const custom = isCustomRange(value);
   const days = parseCustomRange(value) ?? { from: lagosDay(-6), to: lagosDay() };
-  const today = lagosDay();
 
   return (
     <>
@@ -46,29 +45,11 @@ export function RangeFilter({ label, value, onChange, options }: Props) {
         </Select>
       </div>
       {custom ? (
-        <>
-          <Input
-            type="date"
-            aria-label={t("range.from")}
-            className="h-12 w-40"
-            value={days.from}
-            max={days.to}
-            onChange={(event) =>
-              event.target.value && onChange(customRange(event.target.value, days.to))
-            }
-          />
-          <Input
-            type="date"
-            aria-label={t("range.to")}
-            className="h-12 w-40"
-            value={days.to}
-            min={days.from}
-            max={today}
-            onChange={(event) =>
-              event.target.value && onChange(customRange(days.from, event.target.value))
-            }
-          />
-        </>
+        <DateRangePicker
+          from={days.from}
+          to={days.to}
+          onChange={(from, to) => onChange(customRange(from, to))}
+        />
       ) : null}
     </>
   );

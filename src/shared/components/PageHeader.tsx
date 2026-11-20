@@ -19,6 +19,8 @@ interface PageHeaderProps {
   logo?: ReactNode;
   /** Badges shown under the title. */
   meta?: ReactNode;
+  /** Keeps the breadcrumb but shows no page name in the page, for screens whose own heading says it. */
+  hideTitle?: boolean;
 }
 
 /** Group › page, with the current page last. Earlier steps are hidden on phones, where the title says where you are. */
@@ -61,9 +63,26 @@ function Breadcrumbs({ crumbs, label }: { crumbs: Crumb[]; label: string }) {
 }
 
 /** In the app shell the breadcrumb sits in the top bar; the page name, description, badges and actions stay in the page. */
-export function PageHeader({ title, description, actions, crumbs, logo, meta }: PageHeaderProps) {
+export function PageHeader({
+  title,
+  description,
+  actions,
+  crumbs,
+  logo,
+  meta,
+  hideTitle,
+}: PageHeaderProps) {
   const slot = useContext(CrumbSlotContext);
   const trail = crumbs?.length ? <Breadcrumbs crumbs={crumbs} label={title} /> : null;
+
+  if (hideTitle) {
+    return (
+      <>
+        {slot ? createPortal(trail, slot) : null}
+        <h1 className="sr-only">{title}</h1>
+      </>
+    );
+  }
 
   return (
     <>
