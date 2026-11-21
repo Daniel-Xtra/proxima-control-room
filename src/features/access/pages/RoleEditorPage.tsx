@@ -22,6 +22,19 @@ import { moduleLabel } from "../model/moduleLabels";
 
 const CODE_PATTERN = /^[A-Z][A-Z0-9_]{2,39}$/;
 
+/** "Disputes Lead" becomes DISPUTES_LEAD. Accents are dropped and anything else becomes an underscore. */
+function roleCodeFromName(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^[^A-Z]+/, "")
+    .replace(/_+$/, "")
+    .slice(0, 40)
+    .replace(/_+$/, "");
+}
+
 export function RoleEditorPage() {
   const { id = "new" } = useParams();
   const [params] = useSearchParams();
@@ -88,7 +101,6 @@ function RoleEditor({
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [code, setCode] = useState("");
   const [name, setName] = useState(role ? (cloned ? `${role.name} (copy)` : role.name) : "");
   const [description, setDescription] = useState(role?.description ?? "");
   const [held, setHeld] = useState<Set<string>>(new Set(role?.permissionCodes ?? []));
@@ -103,6 +115,8 @@ function RoleEditor({
   const visible = NAV_ACCESS.filter((entry) =>
     canAccess(entry, new Set(toUiPermissions([...held]))),
   );
+  // The code is made from the name when the role is created, and never changes afterwards.
+  const code = roleId ?? roleCodeFromName(name);
   const codeOk = roleId !== null || CODE_PATTERN.test(code);
   const title = roleId ? (role?.name ?? roleId) : cloned ? t("roles.clone") : t("roles.create");
   const share = permissions.length ? Math.round((held.size / permissions.length) * 100) : 0;
@@ -184,12 +198,7 @@ function RoleEditor({
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="role-code">{t("roles.editor.code")}</Label>
-                <Input
-                  id="role-code"
-                  value={roleId ?? code}
-                  disabled={roleId !== null}
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
-                />
+                <Input id="role-code" value={code} readOnly disabled />
                 <p className="m-0 text-xs text-muted-text">{t("roles.editor.codeHint")}</p>
               </div>
               <div className="flex flex-col gap-1.5 sm:col-span-2">

@@ -179,7 +179,7 @@ export const access = {
   "roles.system": "Built-in",
   "roles.editor.code": "Role code",
   "roles.editor.codeHint":
-    "Capital letters, digits and underscores, such as DISPUTES_LEAD. It cannot be changed later.",
+    "Made from the role name, such as DISPUTES_LEAD. It cannot be changed later.",
   "roles.editor.systemNote":
     "Built-in roles keep their permissions. You can change the name and description, or copy the role to start a custom one.",
   "roles.title": "Roles",
@@ -206,7 +206,7 @@ export const access = {
   "roles.editor.selectAll": "Select all",
   "roles.editor.missing": "To save this role, add: {what}.",
   "roles.editor.missingName": "a role name",
-  "roles.editor.missingCode": "a valid role code",
+  "roles.editor.missingCode": "a role name of at least 3 letters",
   "roles.editor.missingPermission": "at least one permission",
   "roles.editor.noDescription": "No description yet",
   "roles.editor.access": "Permissions",
