@@ -10,6 +10,7 @@ export const common = {
   "common.exportCsv": "Export CSV",
   "common.no": "No",
   "common.notAvailable": "Not available",
+  "common.copyright": "© {year} Proxima. All Rights Reserved.",
   "common.retry": "Try again",
   "common.save": "Save",
   "common.status": "Status",

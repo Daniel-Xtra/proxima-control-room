@@ -62,7 +62,7 @@ export function DonutChart({
                 strokeDasharray={`${length} ${CIRCUMFERENCE - length}`}
                 strokeDashoffset={-start}
                 className={`chart-sweep stroke-current ${TONE[segment.tone]}`}
-                style={{ animationDelay: `${index * 120}ms` }}
+                style={{ animationDelay: `${index * 250}ms` }}
               />
             ))
           : null}

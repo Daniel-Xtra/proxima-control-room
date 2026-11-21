@@ -8,8 +8,9 @@ import {
   Buildings,
 } from "@phosphor-icons/react";
 import { useState } from "react";
-import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { IdleGuard, useSession } from "@/features/auth";
+import { Outlet, useNavigate } from "react-router-dom";
+import { CopyrightFooter } from "@/shared/components/CopyrightFooter";
+import { IdleGuard, LoginPage, useSession } from "@/features/auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,11 +26,11 @@ import { Sidebar } from "./Sidebar";
 export function AppShell() {
   const { user, signOut } = useSession();
   const navigate = useNavigate();
-  const location = useLocation();
   const [navOpen, setNavOpen] = useState(false);
   const [crumbSlot, setCrumbSlot] = useState<HTMLElement | null>(null);
 
-  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  // Signed out: the sign-in screen is shown at whatever address was asked for, and the page opens after sign-in.
+  if (!user) return <LoginPage />;
 
   return (
     <>
@@ -135,7 +136,7 @@ export function AppShell() {
                       className="mt-2 h-10 justify-center gap-2 rounded-lg border border-danger-border bg-danger-soft text-sm font-medium text-danger-text focus:bg-danger-bg focus:text-danger-text"
                       onSelect={() => {
                         signOut();
-                        navigate("/login");
+                        navigate("/", { replace: true });
                       }}
                     >
                       {t("shell.signOut")}
@@ -152,6 +153,9 @@ export function AppShell() {
               <Outlet />
             </CrumbSlotContext.Provider>
           </main>
+          <footer className="px-4 pb-4 md:px-6">
+            <CopyrightFooter />
+          </footer>
         </div>
       </div>
       <IdleGuard />

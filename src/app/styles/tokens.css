@@ -2,7 +2,8 @@
  * Single source of colour. Components use these tokens only (see scripts/check-colors.mjs).
  * Values follow the Proxima Business design system. Light mode only.
  */
-:root {
+:root,
+.auth-card {
   /* Neutrals */
   --ink: #1a202c;
   --ink-2: #1a202c;
@@ -28,6 +29,7 @@
   --blue-tint-strong: #0066ff1a;
   --blue-border: #b2ddff;
   --nav-active: #31b4540d;
+  --nav-icon-active: #07bc0c;
 
   /* Semantic status: pale tints with coloured text, never solid fills */
   --success-text: #054f31;
@@ -49,7 +51,7 @@
   --info-bg: #d1e9ff;
   --neutral-text: #4a5568;
   --neutral-bg: #edf2f7;
-  --disabled-bg: #cbd5e0;
+  --disabled-bg: #d5d7da;
   --disabled-border: #a0aec0;
 
   /* Chart palette, in order. Blue leads; the rest come from the system's accents. */
@@ -122,6 +124,7 @@
   --blue-tint-strong: #006aff33;
   --blue-border: #1d4f9c;
   --nav-active: #31b45426;
+  --nav-icon-active: #3fe045;
 
   --success-text: #75e0a7;
   --success-bg: #053321;

@@ -1,5 +1,5 @@
 import { cn } from "../lib/cn";
-import { toneClasses, toneGlyphs, type StatusTone } from "./statusTones";
+import { toneClasses, toneDots, type StatusTone } from "./statusTones";
 
 interface StatusBadgeProps {
   tone: StatusTone;
@@ -7,7 +7,7 @@ interface StatusBadgeProps {
   className?: string;
 }
 
-/** Status is never colour alone: every badge pairs a glyph with its label. */
+/** A soft pill: a round dot in the status colour, then the label. Status is never colour alone, the label always names it. */
 export function StatusBadge({ tone, label, className }: StatusBadgeProps) {
   return (
     <span
@@ -17,9 +17,7 @@ export function StatusBadge({ tone, label, className }: StatusBadgeProps) {
         className,
       )}
     >
-      <span aria-hidden="true" className="text-[9px] leading-none">
-        {toneGlyphs[tone]}
-      </span>
+      <span aria-hidden="true" className={cn("size-2 shrink-0 rounded-full", toneDots[tone])} />
       {label}
     </span>
   );

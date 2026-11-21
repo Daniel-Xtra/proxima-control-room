@@ -1,4 +1,5 @@
 import { ApiError, request, type Page } from "@/shared/api/client";
+import { toNigerianE164 } from "@/shared/lib/phone";
 
 export type TwoFactorState = "enrolled" | "not-enrolled" | "reset-pending" | "unknown";
 
@@ -244,7 +245,7 @@ export async function inviteStaff(input: InviteInput) {
       email: input.email.trim(),
       first_name: input.firstName.trim(),
       last_name: input.lastName.trim(),
-      phone_number: input.phone.trim(),
+      phone_number: toNigerianE164(input.phone),
       role_code: input.roleCode,
     },
   });

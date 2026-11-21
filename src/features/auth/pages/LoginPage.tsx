@@ -1,7 +1,6 @@
 import { BrandWordmark } from "@/shared/components/BrandWordmark";
 import { ArrowLeft, DeviceMobile, Key, Lock, ShieldCheck } from "@phosphor-icons/react";
 import { useState, type FormEvent } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
 import { ApiError } from "@/shared/api/client";
 import { QrCode } from "@/shared/components/QrCode";
 import { TotpInput } from "@/shared/components/TotpInput";
@@ -18,6 +17,7 @@ import {
   sendEmailCode,
   verifyMfa,
 } from "../api/authApi";
+import { CopyrightFooter } from "@/shared/components/CopyrightFooter";
 import { AuthBackdrop } from "../components/AuthBackdrop";
 import { LockoutCountdown } from "../components/LockoutCountdown";
 import { RecoveryCodes } from "../components/RecoveryCodes";
@@ -40,8 +40,7 @@ function groupKey(secret: string) {
 }
 
 export function LoginPage() {
-  const { user, signIn } = useSession();
-  const navigate = useNavigate();
+  const { signIn } = useSession();
   const [step, setStep] = useState<Step>("credentials");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -60,8 +59,6 @@ export function LoginPage() {
   const [error, setError] = useState<string>();
   const [attemptsLeft, setAttemptsLeft] = useState<number>();
   const [pending, setPending] = useState(false);
-
-  if (user) return <Navigate to="/" replace />;
 
   const verificationLocked = step === "totp" && lockedUntil !== null;
   const locked = verificationLocked || step === "deviceLocked";
@@ -100,7 +97,6 @@ export function LoginPage() {
   /** Tokens are stored by now: load the profile and permissions, then enter the app. */
   async function finish() {
     signIn(await fetchSessionUser());
-    navigate("/", { replace: true });
   }
 
   /** Runs a check that can fail on a wrong code. Enrolment returns recovery codes, shown before the app opens. */
@@ -207,10 +203,10 @@ export function LoginPage() {
   }
 
   return (
-    <main className="auth-backdrop relative flex min-h-screen flex-col items-center justify-center gap-5 p-4">
+    <main className="relative flex min-h-screen flex-col items-center justify-center gap-5 p-4">
       <AuthBackdrop />
       <div className="relative z-10">
-        <BrandWordmark className="h-12" />
+        <BrandWordmark className="h-12" onDarkBackground />
       </div>
       <Card className="auth-card relative z-10 w-full max-w-md gap-0 py-6 px-6">
         {step === "credentials" ? (
@@ -514,6 +510,7 @@ export function LoginPage() {
           </div>
         ) : null}
       </Card>
+      <CopyrightFooter className="absolute inset-x-0 bottom-4 z-10 text-white/70" />
     </main>
   );
 }

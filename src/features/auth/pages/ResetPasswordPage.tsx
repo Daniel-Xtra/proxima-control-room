@@ -8,6 +8,7 @@ import { Input } from "@/shared/components/ui/Input";
 import { Label } from "@/shared/components/ui/Label";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { t } from "@/shared/i18n/t";
+import { CopyrightFooter } from "@/shared/components/CopyrightFooter";
 import { completePasswordReset, previewPasswordReset } from "../api/authApi";
 import { AuthBackdrop } from "../components/AuthBackdrop";
 import { passwordProblem } from "../model/password";
@@ -50,10 +51,10 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <main className="auth-backdrop relative flex min-h-screen flex-col items-center justify-center gap-5 p-4">
+    <main className="relative flex min-h-screen flex-col items-center justify-center gap-5 p-4">
       <AuthBackdrop />
       <div className="relative z-10">
-        <BrandWordmark className="h-12" />
+        <BrandWordmark className="h-12" onDarkBackground />
       </div>
       <Card className="auth-card relative z-10 w-full max-w-md gap-0 px-6 py-6">
         <h1 className="mb-1 text-2xl font-semibold text-ink">{t("auth.reset.title")}</h1>
@@ -62,7 +63,7 @@ export function ResetPasswordPage() {
           <div className="mt-3 flex flex-col gap-4">
             <p className="text-sm text-muted-text">{t("auth.reset.done")}</p>
             <Button asChild size="lg">
-              <Link to="/login">{t("auth.signIn.submit")}</Link>
+              <Link to="/">{t("auth.signIn.submit")}</Link>
             </Button>
           </div>
         ) : invalid ? (
@@ -71,7 +72,7 @@ export function ResetPasswordPage() {
               {t("auth.reset.invalid")}
             </p>
             <Button asChild variant="outline" size="lg">
-              <Link to="/login">{t("auth.backToSignIn")}</Link>
+              <Link to="/">{t("auth.backToSignIn")}</Link>
             </Button>
           </div>
         ) : invitation.data ? (
@@ -129,6 +130,7 @@ export function ResetPasswordPage() {
           <p className="mt-3 text-sm text-muted-text">{t("common.working")}</p>
         )}
       </Card>
+      <CopyrightFooter className="absolute inset-x-0 bottom-4 z-10 text-white/70" />
     </main>
   );
 }
