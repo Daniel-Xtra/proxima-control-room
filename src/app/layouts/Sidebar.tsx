@@ -118,7 +118,7 @@ function SidebarContent({
                             <item.icon
                               size={20}
                               weight={isActive ? "duotone" : "regular"}
-                              className="shrink-0"
+                              className={cn("shrink-0", isActive && "text-nav-icon-active")}
                               aria-hidden="true"
                             />
                             <span

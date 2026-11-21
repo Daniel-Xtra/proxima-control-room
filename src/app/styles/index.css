@@ -26,6 +26,7 @@
   --color-blue-tint-strong: var(--blue-tint-strong);
   --color-blue-border: var(--blue-border);
   --color-nav-active: var(--nav-active);
+  --color-nav-icon-active: var(--nav-icon-active);
   --color-faint: var(--text-faint);
   --color-surface-subtle: var(--surface-subtle);
   --color-border-control: var(--border-control);
@@ -202,13 +203,13 @@
 }
 .chart-line {
   stroke-dasharray: 1;
-  animation: chart-draw 1000ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: chart-draw 2200ms cubic-bezier(0.45, 0, 0.2, 1) both;
 }
 .chart-fade {
-  animation: chart-fade 900ms ease-out 250ms both;
+  animation: chart-fade 1800ms ease-out 600ms both;
 }
 .chart-sweep {
-  animation: chart-sweep 900ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: chart-sweep 1800ms cubic-bezier(0.45, 0, 0.2, 1) both;
 }
 
 /* Theme change: the page cross-fades between its old and new look (see shared/lib/theme.ts). */
@@ -241,23 +242,10 @@
   background: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
 }
 
-/* Signed-out screens: flat surface with a faint dot pattern. Colours come from tokens only. */
+/* Signed-out screens: the design's background artwork, covering the screen. */
 @layer components {
   .auth-backdrop {
-    background-color: color-mix(in srgb, var(--blue) 12%, var(--surface-alt));
-    background-image: radial-gradient(
-      color-mix(in srgb, var(--ink) 14%, transparent) 1px,
-      transparent 1px
-    );
-    background-size: 22px 22px;
-  }
-  /* Flat tint laid over the icons so they show through softly. */
-  .auth-overlay {
-    position: absolute;
-    inset: 0;
-    background-color: color-mix(in srgb, var(--blue) 12%, var(--surface-alt));
-    opacity: 0.78;
-    pointer-events: none;
+    background: url("../../features/auth/assets/auth-background.svg") center / cover no-repeat;
   }
   .auth-card {
     box-shadow: var(--shadow-overlay);

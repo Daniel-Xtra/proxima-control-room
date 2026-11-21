@@ -18,7 +18,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/DropdownMenu";
+import { PhoneInput } from "@/shared/components/PhoneInput";
 import { Input } from "@/shared/components/ui/Input";
+import { NG_NUMBER_LENGTH } from "@/shared/lib/phone";
 import { Label } from "@/shared/components/ui/Label";
 import {
   Select,
@@ -73,7 +75,7 @@ export function StaffPage() {
     EMAIL.test(invite.email.trim()) &&
     invite.firstName.trim() !== "" &&
     invite.lastName.trim() !== "" &&
-    invite.phone.trim().length >= 7 &&
+    invite.phone.length === NG_NUMBER_LENGTH &&
     invite.roleCode !== "";
   const refresh = () => queryClient.invalidateQueries({ queryKey: accessKeys.staff });
   // Staff changes become approval requests, so the pending count and requests list change too.
@@ -394,11 +396,11 @@ export function StaffPage() {
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="invite-phone">{t("staff.invite.phone")}</Label>
-          <Input
+          <PhoneInput
             id="invite-phone"
-            type="tel"
             value={invite.phone}
-            onChange={(e) => setField({ phone: e.target.value })}
+            onValueChange={(phone) => setField({ phone })}
+            placeholder="8025030357"
           />
         </div>
         <div className="flex flex-col gap-1.5">

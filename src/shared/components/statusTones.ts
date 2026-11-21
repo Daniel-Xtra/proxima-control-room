@@ -9,12 +9,12 @@ export const toneClasses: Record<StatusTone, string> = {
   neutral: "bg-neutral-bg text-neutral-text",
 };
 
-/** Colour is never the only signal: each tone has its own glyph. */
-export const toneGlyphs: Record<StatusTone, string> = {
-  success: "✓",
-  danger: "!",
-  warning: "◐",
-  info: "●",
-  locked: "■",
-  neutral: "○",
+/** The round dot before the label. The label always says what the status is, so colour is never the only signal. */
+export const toneDots: Record<StatusTone, string> = {
+  success: "bg-success-solid",
+  danger: "bg-danger",
+  warning: "bg-warning-solid",
+  info: "bg-info-text",
+  locked: "bg-locked",
+  neutral: "bg-neutral-text",
 };
