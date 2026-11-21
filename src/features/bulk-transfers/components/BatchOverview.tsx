@@ -55,12 +55,20 @@ export function BatchOverview({ batch }: { batch: BulkBatch }) {
           </p>
         </div>
         <div aria-hidden="true" className="flex h-2.5 overflow-hidden rounded-full bg-neutral-bg">
-          <span className="bg-success-solid" style={{ width: `${share(counts.success)}%` }} />
-          <span className="bg-danger" style={{ width: `${share(counts.failed)}%` }} />
-          <span
-            className="bg-info-text"
-            style={{ width: `${share(counts.processing + counts.unknown)}%` }}
-          />
+          <div className="bar-reveal flex h-full w-full">
+            <span
+              className="bg-success-solid transition-[width] duration-1000"
+              style={{ width: `${share(counts.success)}%` }}
+            />
+            <span
+              className="bg-danger transition-[width] duration-1000"
+              style={{ width: `${share(counts.failed)}%` }}
+            />
+            <span
+              className="bar-moving bg-info-text transition-[width] duration-1000"
+              style={{ width: `${share(counts.processing + counts.unknown)}%` }}
+            />
+          </div>
         </div>
         <ul className="m-0 mt-3 flex list-none flex-wrap gap-x-5 gap-y-1 p-0 text-xs text-muted-text">
           {legend.map((entry) => (

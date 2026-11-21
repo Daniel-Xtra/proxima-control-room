@@ -208,8 +208,29 @@
 .chart-fade {
   animation: chart-fade 1800ms ease-out 600ms both;
 }
-.chart-sweep {
-  animation: chart-sweep 1800ms cubic-bezier(0.45, 0, 0.2, 1) both;
+@keyframes bar-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+/* Progress bars wipe in from the left when first shown. */
+.bar-reveal {
+  animation: bar-reveal 3200ms cubic-bezier(0.45, 0, 0.2, 1) both;
+}
+/* A part of a bar that is still being worked on: slanted stripes keep sliding along it. */
+@keyframes bar-stripes {
+  to {
+    background-position: 22.63px 0;
+  }
+}
+.bar-moving {
+  background-image: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, white 30%, transparent) 0 8px,
+    transparent 8px 16px
+  );
+  background-size: 22.63px 22.63px;
+  animation: bar-stripes 1600ms linear infinite;
 }
 
 /* Theme change: the page cross-fades between its old and new look (see shared/lib/theme.ts). */

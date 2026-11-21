@@ -27,10 +27,10 @@ interface PageHeaderProps {
 function Breadcrumbs({ crumbs, label }: { crumbs: Crumb[]; label: string }) {
   return (
     <nav aria-label={label} className="hidden min-w-0 sm:block">
-      <ol className="m-0 flex min-w-0 list-none items-center gap-1 p-0 text-xs">
+      <ol className="m-0 flex min-w-0 list-none items-center gap-1 p-0 text-sm">
         <li className="flex items-center gap-1 text-muted-text">
-          <House aria-hidden="true" className="size-3.5 shrink-0" />
-          <CaretRight aria-hidden="true" className="size-3 shrink-0" />
+          <House aria-hidden="true" className="size-4 shrink-0" />
+          <CaretRight aria-hidden="true" className="size-3.5 shrink-0" />
         </li>
         {crumbs.map((crumb, index) => {
           const last = index === crumbs.length - 1;
@@ -52,7 +52,7 @@ function Breadcrumbs({ crumbs, label }: { crumbs: Crumb[]; label: string }) {
                 </span>
               )}
               {last ? null : (
-                <CaretRight aria-hidden="true" className="size-3 shrink-0 text-muted-text" />
+                <CaretRight aria-hidden="true" className="size-3.5 shrink-0 text-muted-text" />
               )}
             </li>
           );
