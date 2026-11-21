@@ -6,7 +6,6 @@ import {
   AuthProvider,
   AcceptInvitationPage,
   ResetPasswordPage,
-  LoginPage,
   RequirePermission,
   SecuritySettingsPage,
 } from "@/features/auth";
@@ -44,7 +43,6 @@ export function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/login" element={<LoginPage />} />
             <Route path="/accept-invite" element={<AcceptInvitationPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route element={<AppShell />}>

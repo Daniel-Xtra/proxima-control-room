@@ -1,6 +1,6 @@
 export const auth = {
-  "auth.signIn.title": "Sign in",
-  "auth.signIn.submit": "Sign in",
+  "auth.signIn.title": "Welcome Back",
+  "auth.signIn.submit": "Continue",
   "auth.email": "Work email",
   "auth.password": "Password",
 

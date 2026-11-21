@@ -64,7 +64,7 @@ export function TotpInput({
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? errorId : undefined}
             value={value[index] ?? ""}
-            className="tabular h-11 w-full min-w-0 rounded-md border border-border bg-surface text-center text-lg font-medium text-ink outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring aria-invalid:border-danger-text"
+            className="tabular h-11 w-full min-w-0 rounded-md border border-border bg-surface text-center text-lg font-medium text-ink outline-none transition-colors focus:border-primary focus:shadow-none! focus-visible:shadow-none! aria-invalid:border-danger-text"
             onFocus={(event) => event.target.select()}
             onChange={(event) => fill(index, event.target.value)}
             onPaste={(event) => {
