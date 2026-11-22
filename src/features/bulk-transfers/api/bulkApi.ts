@@ -1,5 +1,4 @@
 import { ApiError, request, type Page } from "@/shared/api/client";
-import type { TemplatePayee } from "../model/payeeRows";
 import type {
   BatchFilters,
   BatchRow,
@@ -364,16 +363,4 @@ export async function verifyBatchAccounts(id: string): Promise<Map<number, Payee
     for (const [row, check] of await verifyPayees(drafts)) checks.set(row, check);
     if (page * items.limit >= items.total) return checks;
   }
-}
-
-/** Real platform customers for the template's internal rows. Empty when there are none or they cannot be read. */
-export async function listTemplatePayees(): Promise<TemplatePayee[]> {
-  const result = await request<{
-    data: { name: string; account_number: string; bank_name: string }[];
-  }>("/admin/bulk-transfers/template-payees", { query: { limit: 25 } });
-  return result.data.map((row) => ({
-    name: row.name,
-    accountNumber: row.account_number,
-    bank: row.bank_name,
-  }));
 }

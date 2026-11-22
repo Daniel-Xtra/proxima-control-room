@@ -1,18 +1,5 @@
 import type { MessageKey } from "@/shared/i18n/t";
 
-export const BANKS = [
-  "Access Bank",
-  "GTBank",
-  "First Bank",
-  "UBA",
-  "Zenith Bank",
-  "Kuda",
-  "Opay",
-  "Moniepoint",
-  "Wema Bank",
-  "Sterling Bank",
-] as const;
-
 /** A payout source reported by the API (an id such as the settlement account). */
 export type SourceAccount = string;
 /** What the form knows about the selected account's balance. */
