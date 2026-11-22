@@ -59,6 +59,11 @@ export function BatchPayeesTable({ batch }: { batch: BulkBatch }) {
         query={result}
         isEmpty={(data) => data.total === 0}
         emptyTitle={t("bulk.payees.empty")}
+        filtered={filter !== "all"}
+        onClearFilters={() => {
+          setFilter("all");
+          setPaging((current) => ({ ...current, page: 1 }));
+        }}
       >
         {(data) => (
           <DataTable<BulkItem>

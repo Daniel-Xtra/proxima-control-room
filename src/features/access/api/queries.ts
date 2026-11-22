@@ -15,7 +15,7 @@ export const useStaff = (page: number, limit: number, search = "") =>
     [...accessKeys.staff, page, limit, search],
     () => listStaffPage(page, limit, search),
     {
-      placeholderData: (previous) => previous,
+      keepPreviousPage: true,
     },
   );
 export const useRole = (id: string) =>
@@ -25,6 +25,6 @@ export const useRolesPage = (page: number, limit: number, search = "") =>
     [...accessKeys.roles, "page", page, limit, search],
     () => listRolesPage(page, limit, search),
     {
-      placeholderData: (previous) => previous,
+      keepPreviousPage: true,
     },
   );

@@ -10,7 +10,7 @@ export const transactionKeys = {
 
 export function useTransactions(filters: TransactionFilters) {
   return useApiQuery(transactionKeys.list(filters), () => listTransactions(filters), {
-    placeholderData: (previous) => previous,
+    keepPreviousPage: true,
   });
 }
 

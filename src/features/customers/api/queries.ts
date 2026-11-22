@@ -15,7 +15,7 @@ export const customerKeys = {
 
 export function useCustomers(filters: CustomerFilters) {
   return useApiQuery(customerKeys.list(filters), () => listCustomers(filters), {
-    placeholderData: (previous) => previous,
+    keepPreviousPage: true,
   });
 }
 
@@ -34,7 +34,7 @@ export function useCustomerTransactionSummary(id: string, range: string, purpose
 
 export function useUpgradeRequests(filters: UpgradeRequestFilters) {
   return useApiQuery(customerKeys.upgrades(filters), () => listUpgradeRequests(filters), {
-    placeholderData: (previous) => previous,
+    keepPreviousPage: true,
   });
 }
 

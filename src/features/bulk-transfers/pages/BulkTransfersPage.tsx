@@ -27,7 +27,7 @@ const DEFAULTS = { q: "", status: "all", page: "1", limit: "10" };
 
 export function BulkTransfersPage() {
   const navigate = useNavigate();
-  const [filters, setFilter] = useUrlFilters(DEFAULTS);
+  const [filters, setFilter, { resetFilters }] = useUrlFilters(DEFAULTS);
   const result = useBatches({
     search: filters.q,
     status: filters.status,
@@ -51,7 +51,7 @@ export function BulkTransfersPage() {
         }
       />
       <FilterBar
-        onClear={() => (["q", "status"] as const).forEach((key) => setFilter(key, DEFAULTS[key]))}
+        onClear={() => resetFilters(["q", "status"])}
         dirty={filters.q !== "" || filters.status !== "all"}
         search={{
           value: filters.q,
@@ -71,6 +71,7 @@ export function BulkTransfersPage() {
               <SelectItem value="pending_approval">{t("bulk.status.pending_approval")}</SelectItem>
               <SelectItem value="approved">{t("bulk.status.approved")}</SelectItem>
               <SelectItem value="processing">{t("bulk.status.processing")}</SelectItem>
+              <SelectItem value="reconciling">{t("bulk.status.reconciling")}</SelectItem>
               <SelectItem value="failed">{t("bulk.status.failed")}</SelectItem>
               <SelectItem value="cancelled">{t("bulk.status.cancelled")}</SelectItem>
               <SelectItem value="completed">{t("bulk.status.completed")}</SelectItem>
@@ -83,7 +84,8 @@ export function BulkTransfersPage() {
       <SectionCard flush>
         <AsyncBody
           query={result}
-          isEmpty={(data) => data.total === 0}
+          // The server counts a filtered status before it narrows the rows, so an empty page can still report a total.
+          isEmpty={(data) => data.total === 0 || data.items.length === 0}
           emptyTitle={t("bulk.empty.title")}
           emptyDescription={t("bulk.empty.description")}
         >

@@ -18,6 +18,9 @@ export const common = {
   "common.yes": "Yes",
 
   "state.empty.title": "Nothing to show",
+  "state.noMatches.title": "No results match your filters",
+  "state.noMatches.description":
+    "Try a different search or a wider date range, or clear the filters.",
   "state.error.title": "Something went wrong",
   "state.unavailable.title": "Not available yet",
   "api.unreachable": "Cannot reach the server. Check your connection and try again.",

@@ -36,7 +36,7 @@ const DEFAULTS = {
 
 export function CustomersPage() {
   const navigate = useNavigate();
-  const [filters, setFilter] = useUrlFilters(DEFAULTS);
+  const [filters, setFilter, { resetFilters, setFilters }] = useUrlFilters(DEFAULTS);
 
   const query: CustomerFilters = {
     search: filters.q,
@@ -121,11 +121,7 @@ export function CustomersPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() =>
-                (["q", "range", "status", "kyc"] as const).forEach((key) =>
-                  setFilter(key, DEFAULTS[key]),
-                )
-              }
+              onClick={() => resetFilters(["q", "range", "status", "kyc"])}
             >
               {t("common.clearFilters")}
             </Button>
@@ -171,8 +167,7 @@ export function CustomersPage() {
                   : null
               }
               onSortChange={(next) => {
-                setFilter("sort", next?.key ?? "");
-                setFilter("dir", next?.dir ?? "asc");
+                setFilters({ sort: next?.key ?? "", dir: next?.dir ?? "asc" });
               }}
               columns={[
                 {

@@ -26,7 +26,7 @@ const DEFAULTS = { q: "", status: "all", channel: "all" };
 
 export function BroadcastsPage() {
   const navigate = useNavigate();
-  const [filters, setFilter] = useUrlFilters(DEFAULTS);
+  const [filters, setFilter, { resetFilters }] = useUrlFilters(DEFAULTS);
   const result = useBroadcasts({
     search: filters.q,
     status: filters.status,
@@ -57,9 +57,7 @@ export function BroadcastsPage() {
         }
       />
       <FilterBar
-        onClear={() =>
-          (["q", "status", "channel"] as const).forEach((key) => setFilter(key, DEFAULTS[key]))
-        }
+        onClear={() => resetFilters(["q", "status", "channel"])}
         dirty={filters.q !== "" || filters.status !== "all" || filters.channel !== "all"}
         search={{
           value: filters.q,
