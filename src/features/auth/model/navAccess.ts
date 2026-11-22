@@ -39,6 +39,7 @@ export const NAV_ACCESS: NavAccess[] = [
   { id: "providers", label: "nav.providers", anyOf: ["provider:view"] },
   { id: "approval-rules", label: "nav.approvalRules", anyOf: ["approval_rules:view"] },
   { id: "platform-config", label: "nav.platformConfig", anyOf: ["config:view"] },
+  { id: "savings-settings", label: "nav.savingsSettings", anyOf: ["savings:config_view"] },
 ];
 
 export function canAccess(entry: NavAccess, held: ReadonlySet<Permission>): boolean {

@@ -99,7 +99,9 @@ export function PageHeader({
             </div>
           </div>
         </div>
-        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+        {actions ? (
+          <div className="flex flex-wrap items-center gap-2 max-sm:w-full">{actions}</div>
+        ) : null}
       </header>
     </>
   );

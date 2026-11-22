@@ -57,6 +57,9 @@ export const PERMISSION_SOURCES: Record<Permission, readonly string[]> = {
 
   "savings:view": ["savings.view"],
   "savings:liquidate": [],
+  "savings:config_view": ["savings.config.view"],
+  "savings:config_edit": ["savings.config.change.request"],
+  "savings:config_approve": ["savings.config.change.approve"],
 
   "bulk_transfer:view": ["bulk_transfer.view"],
   "bulk_transfer:initiate": ["bulk_transfer.initiate"],

@@ -87,6 +87,8 @@ export function TransactionsView({ customerId, filters, defaults, setFilter }: P
           label={t("transactions.filter.range")}
           value={filters.range}
           onChange={(v) => setFilter("range", v)}
+          // The server refuses a search over more than 92 days unless it is for one customer.
+          maxSpanDays={customerId ? undefined : 92}
           options={[
             ["7d", t("range.7d")],
             ["30d", t("range.30d")],

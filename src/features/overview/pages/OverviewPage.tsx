@@ -13,6 +13,9 @@ import { TrendCard } from "../components/TrendCard";
 
 const DEFAULTS = { range: "30d" };
 
+/** The server refuses a custom period longer than this many days (MAX_CUSTOM_DAYS), so the picker does not offer one. */
+const MAX_CUSTOM_DAYS = 366;
+
 /** The time of day in Lagos picks the wording and the emoji. */
 function greetingFor(now: Date) {
   const hour = Number(
@@ -46,12 +49,13 @@ export function OverviewPage() {
         description={t("overview.welcome")}
         crumbs={[{ label: t("overview.crumb") }, { label: t("overview.title") }]}
         actions={
-          <div className="flex items-center gap-2 text-sm text-muted-text">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-text max-sm:w-full">
             <span>{t("overview.showing")}</span>
             <RangeFilter
               label={t("overview.range")}
               value={filters.range}
               onChange={(v) => setFilter("range", v)}
+              maxSpanDays={MAX_CUSTOM_DAYS}
               options={[
                 ["7d", t("range.7d")],
                 ["30d", t("range.30d")],

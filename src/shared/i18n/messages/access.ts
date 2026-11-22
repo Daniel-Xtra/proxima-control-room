@@ -45,6 +45,9 @@ export const access = {
   "perm.kyc:reject": "Reject KYC items",
   "perm.kyc:override": "Override KYC decisions",
   "perm.savings:view": "View savings",
+  "perm.savings:config_view": "View savings settings",
+  "perm.savings:config_edit": "Edit savings settings",
+  "perm.savings:config_approve": "Approve savings settings changes",
   "perm.savings:liquidate": "Liquidate savings",
   "perm.bulk_transfer:view": "View bulk transfer batches",
   "perm.bulk_transfer:initiate": "Upload bulk transfer batches (payees only)",
@@ -165,6 +168,10 @@ export const access = {
   "staff.reset2fa.impact":
     "The staff member must enrol an authenticator again at their next login. A second admin has to approve this reset.",
   "staff.reset2fa.done": "2FA reset sent for approval",
+  "staff.resetPassword": "Reset password",
+  "staff.resetPassword.impact":
+    "Once a second admin approves, a set-password link is emailed to the staff member. They are signed out everywhere and any sign-in lock is cleared when they set the new password.",
+  "staff.resetPassword.done": "Password reset sent for approval",
   "staff.disable": "Disable access",
   "staff.disable.impact":
     "Once a second admin approves, their sessions end and they cannot sign in until re-enabled.",
@@ -179,7 +186,7 @@ export const access = {
   "roles.system": "Built-in",
   "roles.editor.code": "Role code",
   "roles.editor.codeHint":
-    "Capital letters, digits and underscores, such as DISPUTES_LEAD. It cannot be changed later.",
+    "Made from the role name, such as DISPUTES_LEAD. It cannot be changed later.",
   "roles.editor.systemNote":
     "Built-in roles keep their permissions. You can change the name and description, or copy the role to start a custom one.",
   "roles.title": "Roles",
@@ -206,7 +213,7 @@ export const access = {
   "roles.editor.selectAll": "Select all",
   "roles.editor.missing": "To save this role, add: {what}.",
   "roles.editor.missingName": "a role name",
-  "roles.editor.missingCode": "a valid role code",
+  "roles.editor.missingCode": "a role name of at least 3 letters",
   "roles.editor.missingPermission": "at least one permission",
   "roles.editor.noDescription": "No description yet",
   "roles.editor.access": "Permissions",
@@ -248,9 +255,13 @@ export const access = {
   "approvalRules.type.CUSTOMER_UNLOCK_LOGIN": "Unlock customer login",
   "approvalRules.type.CUSTOMER_PASSWORD_RESET": "Reset customer password",
   "approvalRules.type.STAFF_DISABLE": "Disable staff access",
+  "approvalRules.type.FIXED_DEPOSIT_TERM_CREATE": "Add a fixed deposit term",
+  "approvalRules.type.FIXED_DEPOSIT_TERM_CHANGE": "Change a fixed deposit term",
+  "approvalRules.type.SAVINGS_PRODUCT_CHANGE": "Change savings product rates",
   "approvalRules.type.STAFF_ENABLE": "Enable staff access",
   "approvalRules.type.STAFF_ROLE_CHANGE": "Change staff role",
   "approvalRules.type.STAFF_MFA_RESET": "Reset staff 2FA",
+  "approvalRules.type.STAFF_PASSWORD_RESET": "Reset staff password",
   "approvalRules.type.STAFF_SELF_MFA_RESET": "Reset your own 2FA",
   "approvalRules.type.STAFF_SELF_PASSWORD_RESET": "Send yourself a password reset link",
   "approvalRules.type.TXN_REVERSAL": "Reverse a transaction",

@@ -7,6 +7,7 @@ import { TotpInput } from "@/shared/components/TotpInput";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
+import { PasswordInput } from "@/shared/components/ui/PasswordInput";
 import { Label } from "@/shared/components/ui/Label";
 import { t } from "@/shared/i18n/t";
 import {
@@ -269,9 +270,9 @@ export function LoginPage() {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="password">{t("auth.password")}</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
+                placeholder={t("auth.password.placeholder")}
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

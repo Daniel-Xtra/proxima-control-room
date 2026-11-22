@@ -27,7 +27,7 @@ import { CustomerDetailPage, CustomersPage, UpgradeRequestsPage } from "@/featur
 import { OverviewPage } from "@/features/overview";
 import { RequestsPage } from "@/features/requests";
 import { AuditLogPage, LockPolicyPage, WebhookWhitelistPage } from "@/features/risk";
-import { SavingsPage } from "@/features/savings";
+import { SavingsPage, SavingsSettingsPage } from "@/features/savings";
 import { BankOneRepairPage } from "@/features/system-health";
 import { TransactionsPage } from "@/features/transactions";
 import { Toaster } from "@/shared/components/ui/Sonner";
@@ -237,6 +237,14 @@ export function App() {
                 element={
                   <RequirePermission permission="config:view">
                     <PlatformConfigPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="settings/savings"
+                element={
+                  <RequirePermission permission="savings:config_view">
+                    <SavingsSettingsPage />
                   </RequirePermission>
                 }
               />
