@@ -246,7 +246,7 @@ export const access = {
   "approvalRules.col.changed": "Last changed",
   "approvalRules.hours": "{hours} hours",
   "approvalRules.default": "default",
-  "approvalRules.change": "Change",
+  "approvalRules.changeNamed": "Change how long {name} stays open",
   "approvalRules.expiryLabel": "Hours a pending request stays open",
   "approvalRules.expiryHelp": "Between {min} and {max} hours. After that the request expires.",
   "approvalRules.type.CUSTOMER_FREEZE": "Freeze customer account",

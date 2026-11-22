@@ -1,4 +1,4 @@
-import { FileText } from "@phosphor-icons/react";
+import { Eye, FileText } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -117,30 +117,27 @@ export function CustomerKycReview({ customerId }: { customerId: string }) {
         >
           {(data) => (
             <div className="flex flex-col gap-4">
-              <ul className="m-0 flex list-none flex-wrap gap-2 p-0 text-sm">
-                {(["identification", "utility"] as const).map((slot) => (
-                  <li key={slot} className="flex items-center gap-2">
-                    <span className="text-muted-text">{t(`kyc.review.slot.${slot}`)}</span>
-                    <StatusBadge
-                      tone={
-                        data.progress.slots[slot] === "missing"
-                          ? "neutral"
-                          : (TONE[data.progress.slots[slot]] ?? "neutral")
-                      }
-                      label={
-                        data.progress.slots[slot] === "missing"
-                          ? t("kyc.review.missing")
-                          : statusLabel(data.progress.slots[slot])
-                      }
-                    />
-                  </li>
+              {(["identification", "utility"] as const)
+                .filter((slot) => data.progress.slots[slot] === "missing")
+                .map((slot) => (
+                  <p
+                    key={slot}
+                    className="m-0 flex items-center gap-2 rounded-md border border-dashed border-border p-3 text-sm text-muted-text"
+                  >
+                    {t(`kyc.review.slot.${slot}`)}
+                    <StatusBadge tone="neutral" label={t("kyc.review.missing")} />
+                  </p>
                 ))}
-              </ul>
               {data.documents.map((doc) => (
                 <div
                   key={doc.id}
                   className="flex flex-col gap-2 rounded-md border border-border p-3"
                 >
+                  {doc.category === "identification" || doc.category === "utility" ? (
+                    <p className="m-0 text-xs font-medium tracking-wide text-muted-text uppercase">
+                      {t(`kyc.review.slot.${doc.category}`)}
+                    </p>
+                  ) : null}
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="m-0 flex items-center gap-2 text-sm font-medium text-ink">
                       {doc.name}
@@ -194,16 +191,23 @@ export function CustomerKycReview({ customerId }: { customerId: string }) {
                     {doc.files.map((file) => (
                       <li key={file.reference}>
                         {can("kyc:view_documents") ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={opening === file.reference}
-                            onClick={() => openFile.mutate({ doc, file })}
-                          >
-                            <FileText aria-hidden="true" />
+                          <span className="inline-flex items-center gap-3 text-sm text-ink">
+                            <FileText aria-hidden="true" className="text-muted-text" />
                             {file.fileName}
-                            {file.fileSize ? ` · ${kb(file.fileSize)}` : ""}
-                          </Button>
+                            {file.fileSize ? (
+                              <span className="text-xs text-muted-text">{kb(file.fileSize)}</span>
+                            ) : null}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={opening === file.reference}
+                              aria-label={t("kyc.review.viewNamed", { name: file.fileName })}
+                              onClick={() => openFile.mutate({ doc, file })}
+                            >
+                              <Eye aria-hidden="true" />
+                              {t("kyc.review.view")}
+                            </Button>
+                          </span>
                         ) : (
                           <span className="text-xs text-muted-text">{file.fileName}</span>
                         )}

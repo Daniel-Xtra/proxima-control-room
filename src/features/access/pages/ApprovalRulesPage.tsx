@@ -1,3 +1,4 @@
+import { PencilSimple } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useCan } from "@/features/auth";
@@ -132,14 +133,15 @@ export function ApprovalRulesPage() {
                   cell: (r) =>
                     editable ? (
                       <Button
-                        variant="outline"
-                        size="xs"
+                        variant="ghost"
+                        size="icon-lg"
+                        aria-label={t("approvalRules.changeNamed", { name: typeLabel(r.type) })}
                         onClick={() => {
                           setHours(String(r.expiryHours));
                           setEditing(r);
                         }}
                       >
-                        {t("approvalRules.change")}
+                        <PencilSimple aria-hidden="true" />
                       </Button>
                     ) : null,
                 },

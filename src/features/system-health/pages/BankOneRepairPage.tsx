@@ -1,4 +1,4 @@
-import { Heartbeat } from "@phosphor-icons/react";
+import { Heartbeat, Wrench } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -184,8 +184,13 @@ export function BankOneRepairPage() {
                     align: "right",
                     cell: (r) =>
                       canRepair ? (
-                        <Button variant="outline" size="xs" onClick={() => setSingle(r)}>
-                          {t("bankone.repairOne")}
+                        <Button
+                          variant="ghost"
+                          size="icon-lg"
+                          aria-label={t("bankone.repairNamed", { name: r.customerName })}
+                          onClick={() => setSingle(r)}
+                        >
+                          <Wrench aria-hidden="true" />
                         </Button>
                       ) : null,
                   },
