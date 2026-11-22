@@ -2,10 +2,8 @@ import { DeviceMobile, Key, Password } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AsyncBody } from "@/shared/components/AsyncBody";
-import { DateText } from "@/shared/components/DateText";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
-import { SimpleTable } from "@/shared/components/SimpleTable";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { ActionDialog } from "@/shared/components/ActionDialog";
 import { ThemeSwitch } from "@/shared/components/ThemeSwitch";
@@ -13,10 +11,11 @@ import { Button } from "@/shared/components/ui/Button";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { t } from "@/shared/i18n/t";
 import { fetchRecoveryCodesRemaining, requestOwnReset } from "../api/authApi";
-import { listSessions, type SessionRow } from "../api/sessionsApi";
+import { listSessions } from "../api/sessionsApi";
 import { AccountIdentityCard } from "../components/AccountIdentityCard";
 import { ReplaceRecoveryCodesDialog } from "../components/ReplaceRecoveryCodesDialog";
 import { SecurityRow } from "../components/SecurityRow";
+import { SessionList } from "../components/SessionList";
 import { SignOutOthersDialog } from "../components/SignOutOthersDialog";
 import { useCan, useCurrentUser } from "../hooks/useSession";
 
@@ -46,15 +45,9 @@ export function SecuritySettingsPage() {
         crumbs={[{ label: t("nav.group.settings") }, { label: t("security.title") }]}
         description={t("security.description")}
       />
-      <div className="grid items-start gap-4 lg:grid-cols-3">
-        <div className="flex flex-col gap-4">
-          <AccountIdentityCard name={user.name} email={user.email} roles={user.roleNames} />
-          <SectionCard title={t("security.appearance")} description={t("security.appearanceHint")}>
-            <ThemeSwitch />
-          </SectionCard>
-        </div>
-
-        <div className="flex flex-col gap-4 lg:col-span-2">
+      <div className="flex flex-col gap-4">
+        <AccountIdentityCard name={user.name} email={user.email} roles={user.roleNames} />
+        <div className="grid items-start gap-4 lg:grid-cols-2">
           <SectionCard title={t("security.signIn")} flush>
             <div className="divide-y divide-border-soft">
               <SecurityRow
@@ -105,51 +98,32 @@ export function SecuritySettingsPage() {
               ) : null}
             </div>
           </SectionCard>
-
-          <SectionCard
-            title={t("security.sessions")}
-            description={t("security.sessionsHint")}
-            flush
-            actions={
-              <Button
-                variant="outline"
-                disabled={!sessions.data?.some((row) => !row.current)}
-                onClick={() => setSignOutOpen(true)}
-              >
-                {t("security.signOutOthers")}
-              </Button>
-            }
-          >
-            <AsyncBody query={sessions} isEmpty={(rows) => rows.length === 0}>
-              {(rows) => (
-                <SimpleTable<SessionRow>
-                  storageKey="sessions"
-                  caption={t("security.sessions")}
-                  rows={rows}
-                  getRowId={(row) => row.id}
-                  columns={[
-                    { key: "device", header: t("security.device"), cell: (r) => r.device },
-                    { key: "ip", header: t("audit.ip"), cell: (r) => r.ip },
-                    {
-                      key: "active",
-                      header: t("security.lastActive"),
-                      cell: (r) => <DateText iso={r.lastActive} />,
-                    },
-                    {
-                      key: "current",
-                      header: t("common.status"),
-                      cell: (r) =>
-                        r.current ? (
-                          <StatusBadge tone="info" label={t("security.thisDevice")} />
-                        ) : (
-                          <StatusBadge tone="neutral" label={t("security.signedIn")} />
-                        ),
-                    },
-                  ]}
-                />
-              )}
-            </AsyncBody>
-          </SectionCard>
+          <div className="flex flex-col gap-4">
+            <SectionCard
+              title={t("security.sessions")}
+              description={t("security.sessionsHint")}
+              flush
+              actions={
+                <Button
+                  variant="outline"
+                  disabled={!sessions.data?.some((row) => !row.current)}
+                  onClick={() => setSignOutOpen(true)}
+                >
+                  {t("security.signOutOthers")}
+                </Button>
+              }
+            >
+              <AsyncBody query={sessions} isEmpty={(rows) => rows.length === 0}>
+                {(rows) => <SessionList rows={rows} />}
+              </AsyncBody>
+            </SectionCard>
+            <SectionCard
+              title={t("security.appearance")}
+              description={t("security.appearanceHint")}
+            >
+              <ThemeSwitch />
+            </SectionCard>
+          </div>
         </div>
       </div>
 

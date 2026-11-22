@@ -96,6 +96,7 @@ export const auth = {
   "security.profile": "Profile",
   "security.signIn": "Sign-in and security",
   "security.appearance": "Appearance",
+  "security.identity.access": "Access",
   "security.appearanceHint": "Choose how the console looks on this device.",
   "security.password.title": "Password",
   "security.password.hint":

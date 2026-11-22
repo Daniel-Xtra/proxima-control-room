@@ -1,12 +1,4 @@
-import {
-  CaretDown,
-  CaretRight,
-  GearSix,
-  ShieldCheck,
-  List,
-  SignOut,
-  Buildings,
-} from "@phosphor-icons/react";
+import { CaretDown, GearSix, ShieldCheck, List, SignOut, Buildings } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { CopyrightFooter } from "@/shared/components/CopyrightFooter";
@@ -15,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/DropdownMenu";
 import { ThemeSwitch } from "@/shared/components/ThemeSwitch";
@@ -73,7 +66,7 @@ export function AppShell() {
                   >
                     <span
                       aria-hidden="true"
-                      className="flex size-10 items-center justify-center rounded-lg bg-info-bg text-sm font-semibold text-info-text"
+                      className="flex size-10 items-center justify-center rounded-lg bg-surface-muted text-sm font-semibold text-ink"
                     >
                       {initials(user.name)}
                     </span>
@@ -93,54 +86,54 @@ export function AppShell() {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
-                  sideOffset={12}
-                  className="relative w-80 overflow-visible rounded-xl p-0 shadow-lg"
+                  align="end"
+                  sideOffset={8}
+                  className="w-72 rounded-xl p-0 shadow-lg"
                 >
-                  <span
-                    aria-hidden="true"
-                    className="absolute -top-1.5 right-6 size-3 rotate-45 rounded-xs bg-info-bg"
-                  />
-                  <div
-                    aria-hidden="true"
-                    className="h-16 rounded-t-xl bg-linear-to-br from-info-bg via-blue-tint-strong to-blue-tint"
-                  />
-                  <div className="px-4 pb-4">
+                  <div className="flex items-center gap-3 p-4">
                     <span
                       aria-hidden="true"
-                      className="-mt-8 flex size-16 items-center justify-center rounded-2xl bg-primary font-heading text-2xl font-semibold text-on-ink ring-4 ring-popover"
+                      className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-surface-muted font-heading text-base font-semibold text-ink"
                     >
                       {initials(user.name)}
                     </span>
-                    <p className="m-0 mt-3 truncate font-heading text-base font-semibold text-ink">
-                      {user.name}
-                    </p>
-                    <p className="m-0 truncate text-xs text-muted-text">{user.email}</p>
-                    <span className="mt-2 inline-flex items-center gap-1 rounded-pill border border-blue-border bg-blue-tint px-2.5 py-0.5 text-xs font-medium text-ink">
-                      <ShieldCheck aria-hidden="true" className="size-3.5" />
-                      {user.roleNames.join(", ")}
-                    </span>
-
-                    <ThemeSwitch className="mt-4" />
-
+                    <div className="min-w-0">
+                      <p className="m-0 truncate text-sm font-semibold text-ink">{user.name}</p>
+                      <p className="m-0 truncate text-xs text-muted-text">{user.email}</p>
+                      <p className="m-0 mt-1 flex items-center gap-1 truncate text-xs font-medium text-muted-text">
+                        <ShieldCheck aria-hidden="true" className="size-3.5 shrink-0" />
+                        {user.roleNames.join(", ")}
+                      </p>
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator className="my-0" />
+                  <div className="p-2">
                     <DropdownMenuItem
-                      className="mt-3 h-10 justify-between px-2 text-sm"
+                      className="h-10 gap-3 px-2 text-sm"
                       onSelect={() => navigate("/settings/security")}
                     >
-                      <span className="flex items-center gap-3">
-                        <GearSix aria-hidden="true" className="size-4" />
-                        {t("shell.accountSettings")}
-                      </span>
-                      <CaretRight aria-hidden="true" className="size-3.5 text-muted-text" />
+                      <GearSix aria-hidden="true" className="size-4 text-muted-text" />
+                      {t("shell.accountSettings")}
                     </DropdownMenuItem>
+                  </div>
+                  <DropdownMenuSeparator className="my-0" />
+                  <div className="p-3">
+                    <p className="m-0 mb-2 text-xs font-medium text-muted-text">
+                      {t("security.appearance")}
+                    </p>
+                    <ThemeSwitch />
+                  </div>
+                  <DropdownMenuSeparator className="my-0" />
+                  <div className="p-2">
                     <DropdownMenuItem
-                      className="mt-2 h-10 justify-center gap-2 rounded-lg border border-danger-border bg-danger-soft text-sm font-medium text-danger-text focus:bg-danger-bg focus:text-danger-text"
+                      className="h-10 gap-3 px-2 text-sm text-danger-text focus:bg-danger-soft focus:text-danger-text"
                       onSelect={() => {
                         signOut();
                         navigate("/", { replace: true });
                       }}
                     >
+                      <SignOut aria-hidden="true" className="size-4" />
                       {t("shell.signOut")}
-                      <SignOut aria-hidden="true" />
                     </DropdownMenuItem>
                   </div>
                 </DropdownMenuContent>
