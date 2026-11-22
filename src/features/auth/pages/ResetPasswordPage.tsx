@@ -5,12 +5,14 @@ import { BrandWordmark } from "@/shared/components/BrandWordmark";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
+import { PasswordInput } from "@/shared/components/ui/PasswordInput";
 import { Label } from "@/shared/components/ui/Label";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { t } from "@/shared/i18n/t";
 import { CopyrightFooter } from "@/shared/components/CopyrightFooter";
 import { completePasswordReset, previewPasswordReset } from "../api/authApi";
 import { AuthBackdrop } from "../components/AuthBackdrop";
+import { PasswordRules } from "../components/PasswordRules";
 import { passwordProblem } from "../model/password";
 
 /** Where the emailed link lands after another admin approved a password reset: the person sets a new password. */
@@ -86,24 +88,20 @@ export function ResetPasswordPage() {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="reset-password">{t("auth.password")}</Label>
-              <Input
+              <PasswordInput
                 id="reset-password"
-                type="password"
+                placeholder={t("auth.password.newPlaceholder")}
                 autoComplete="new-password"
                 value={password}
-                aria-invalid={password !== "" && problem ? true : undefined}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <p className="text-xs text-muted-text">{t("auth.invite.rules")}</p>
-              {password !== "" && problem ? (
-                <p className="text-sm text-danger-text">{t(problem)}</p>
-              ) : null}
+              <PasswordRules password={password} />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="reset-confirm">{t("auth.invite.confirm")}</Label>
-              <Input
+              <PasswordInput
                 id="reset-confirm"
-                type="password"
+                placeholder={t("auth.password.confirmPlaceholder")}
                 autoComplete="new-password"
                 value={confirm}
                 aria-invalid={mismatch ? true : undefined}

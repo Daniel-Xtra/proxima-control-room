@@ -10,3 +10,16 @@ export function passwordProblem(password: string): MessageKey | null {
   if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) return "auth.invite.rule.symbol";
   return null;
 }
+
+export type PasswordCheck = { key: MessageKey; met: boolean };
+
+/** Each rule on its own, so the form can show which ones are already met. */
+export function passwordChecks(password: string): PasswordCheck[] {
+  return [
+    { key: "auth.rule.length", met: password.length >= 8 && password.length <= 20 },
+    { key: "auth.rule.upper", met: /[A-Z]/.test(password) },
+    { key: "auth.rule.lower", met: /[a-z]/.test(password) },
+    { key: "auth.rule.digit", met: /\d/.test(password) },
+    { key: "auth.rule.symbol", met: /[!@#$%^&*(),.?":{}|<>]/.test(password) },
+  ];
+}

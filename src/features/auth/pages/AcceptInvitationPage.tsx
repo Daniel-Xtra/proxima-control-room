@@ -5,13 +5,14 @@ import { BrandWordmark } from "@/shared/components/BrandWordmark";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
+import { PasswordInput } from "@/shared/components/ui/PasswordInput";
 import { Label } from "@/shared/components/ui/Label";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
-import { humanize } from "@/shared/lib/format";
 import { t } from "@/shared/i18n/t";
 import { CopyrightFooter } from "@/shared/components/CopyrightFooter";
 import { acceptInvitation, previewInvitation } from "../api/authApi";
 import { AuthBackdrop } from "../components/AuthBackdrop";
+import { PasswordRules } from "../components/PasswordRules";
 import { passwordProblem } from "../model/password";
 
 /** Where the emailed invitation link lands: the invitee sets their own password. */
@@ -74,36 +75,26 @@ export function AcceptInvitationPage() {
           </div>
         ) : invitation.data ? (
           <form className="mt-3 flex flex-col gap-4" onSubmit={onSubmit}>
-            <p className="text-sm text-muted-text">
-              {t("auth.invite.welcome", {
-                name: `${invitation.data.firstName} ${invitation.data.lastName}`.trim(),
-                role: humanize(invitation.data.roleCode),
-              })}
-            </p>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="invite-email">{t("auth.email")}</Label>
               <Input id="invite-email" value={invitation.data.email} readOnly disabled />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="invite-password">{t("auth.password")}</Label>
-              <Input
+              <PasswordInput
                 id="invite-password"
-                type="password"
+                placeholder={t("auth.password.newPlaceholder")}
                 autoComplete="new-password"
                 value={password}
-                aria-invalid={password !== "" && problem ? true : undefined}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <p className="text-xs text-muted-text">{t("auth.invite.rules")}</p>
-              {password !== "" && problem ? (
-                <p className="text-sm text-danger-text">{t(problem)}</p>
-              ) : null}
+              <PasswordRules password={password} />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="invite-confirm">{t("auth.invite.confirm")}</Label>
-              <Input
+              <PasswordInput
                 id="invite-confirm"
-                type="password"
+                placeholder={t("auth.password.confirmPlaceholder")}
                 autoComplete="new-password"
                 value={confirm}
                 aria-invalid={mismatch ? true : undefined}
