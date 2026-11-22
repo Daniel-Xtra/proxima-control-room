@@ -220,6 +220,10 @@ export async function resetTwoFactor(staffId: string, reason: string) {
   await staffRequest(staffId, "mfa/reset", { reason });
 }
 
+export async function resetStaffPassword(staffId: string, reason: string) {
+  await staffRequest(staffId, "password/reset", { reason });
+}
+
 export async function setStaffActive(staffId: string, active: boolean, reason: string) {
   await staffRequest(staffId, active ? "enable" : "disable", { reason });
 }

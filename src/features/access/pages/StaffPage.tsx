@@ -35,6 +35,7 @@ import {
   assignRole,
   inviteStaff,
   resetTwoFactor,
+  resetStaffPassword,
   revokeStaffSessions,
   setStaffActive,
   type StaffMember,
@@ -51,7 +52,7 @@ const TwoFactorBadge = defineStatusBadge<TwoFactorState>({
 });
 
 type Dialog = {
-  kind: "role" | "2fa" | "toggle" | "sessions" | "resend" | "revoke-invite";
+  kind: "role" | "2fa" | "password" | "toggle" | "sessions" | "resend" | "revoke-invite";
   member: StaffMember;
 } | null;
 
@@ -255,6 +256,12 @@ export function StaffPage() {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled={!canRequest}
+                                onSelect={() => setDialog({ kind: "password", member: r })}
+                              >
+                                {t("staff.resetPassword")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={!canRequest}
                                 onSelect={() => setDialog({ kind: "toggle", member: r })}
                               >
                                 {r.active ? t("staff.disable") : t("staff.enable")}
@@ -320,6 +327,20 @@ export function StaffPage() {
           if (dialog) await resetTwoFactor(dialog.member.id, reason);
           await refreshRequests();
           return t("staff.reset2fa.done");
+        }}
+      />
+
+      <ActionDialog
+        open={dialog?.kind === "password"}
+        onOpenChange={close}
+        title={t("staff.resetPassword")}
+        description={dialog?.member.name}
+        impact={t("staff.resetPassword.impact")}
+        confirmLabel={t("staff.resetPassword")}
+        onConfirm={async ({ reason }) => {
+          if (dialog) await resetStaffPassword(dialog.member.id, reason);
+          await refreshRequests();
+          return t("staff.resetPassword.done");
         }}
       />
 
