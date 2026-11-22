@@ -1,4 +1,5 @@
 import { humanize } from "@/shared/lib/format";
+import { PencilSimple } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActionDialog } from "@/shared/components/ActionDialog";
@@ -75,15 +76,16 @@ export function LimitsPanel({ limits, unit, editable }: Props) {
             cell: (r) =>
               editable ? (
                 <Button
-                  variant="outline"
-                  size="xs"
+                  variant="ghost"
+                  size="icon-lg"
+                  aria-label={t("config.editNamed", { name: tierName(r) })}
                   onClick={() => {
                     setSingle(koboToNaira(r.perTransactionKobo));
                     setDaily(koboToNaira(r.dailyKobo));
                     setEditing(r);
                   }}
                 >
-                  {t("config.edit")}
+                  <PencilSimple aria-hidden="true" />
                 </Button>
               ) : null,
           },

@@ -1,3 +1,4 @@
+import { PencilSimple } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActionDialog } from "@/shared/components/ActionDialog";
@@ -68,15 +69,16 @@ export function ProductsPanel({ products, editable }: Props) {
             cell: (r) =>
               editable ? (
                 <Button
-                  variant="outline"
-                  size="xs"
+                  variant="ghost"
+                  size="icon-lg"
+                  aria-label={t("savingsSettings.editNamed", { name: r.name })}
                   onClick={() => {
                     setRate(String(r.interestPercent));
                     setBreakage(String(r.breakagePercent));
                     setEditing(r);
                   }}
                 >
-                  {t("savingsSettings.edit")}
+                  <PencilSimple aria-hidden="true" />
                 </Button>
               ) : null,
           },

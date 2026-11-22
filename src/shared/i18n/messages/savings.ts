@@ -39,6 +39,8 @@ export const savings = {
   "savingsSettings.col.status": "Status",
   "savingsSettings.col.product": "Product",
   "savingsSettings.col.breakage": "Early-break share of interest",
+  "savingsSettings.actionsFor": "Actions for {name}",
+  "savingsSettings.editNamed": "Edit {name}",
   "savingsSettings.edit": "Edit",
   "savingsSettings.switchOff": "Switch off",
   "savingsSettings.switchOn": "Switch on",

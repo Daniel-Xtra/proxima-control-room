@@ -20,6 +20,7 @@ export const config = {
 
   "config.fees.description": "Charged to the customer on top of the amount.",
   "config.edit": "Change",
+  "config.editNamed": "Change {name}",
   "config.field.name": "Name",
   "config.field.mode": "Charged as",
   "config.field.flat": "Flat fee (₦)",

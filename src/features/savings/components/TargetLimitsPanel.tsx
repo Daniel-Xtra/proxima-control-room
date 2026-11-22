@@ -92,7 +92,7 @@ export function TargetLimitsPanel({ product, editable }: Props) {
       flush
       actions={
         editable && limits ? (
-          <Button size="xs" onClick={begin}>
+          <Button variant="outline" onClick={begin}>
             {t("savingsSettings.edit")}
           </Button>
         ) : null
