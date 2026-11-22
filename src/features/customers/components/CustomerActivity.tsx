@@ -40,6 +40,8 @@ export function CustomerActivity({ customer }: { customer: Customer }) {
           value={range}
           onChange={setRange}
           options={RANGES}
+          // The same server limit as the dashboard: a custom period is at most 366 days.
+          maxSpanDays={366}
         />
       </div>
 

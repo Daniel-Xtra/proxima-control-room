@@ -108,7 +108,7 @@ function SidebarContent({
                         aria-label={collapsed ? t(item.label) : undefined}
                         className={({ isActive }) =>
                           cn(
-                            "relative flex h-10 items-center gap-3 overflow-hidden rounded-sm pl-[15.5px] text-sm font-medium whitespace-nowrap text-body hover:bg-surface-muted",
+                            "relative flex h-10 items-center gap-3 overflow-hidden rounded-sm pr-3 pl-[15.5px] text-sm font-medium whitespace-nowrap text-body hover:bg-surface-muted",
                             isActive && "bg-nav-active text-ink",
                           )
                         }

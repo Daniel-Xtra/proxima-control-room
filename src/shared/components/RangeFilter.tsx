@@ -15,10 +15,12 @@ interface Props {
   onChange: (value: string) => void;
   /** The fixed choices, as [value, text]. A "Custom range" choice is added after them. */
   options: [string, string][];
+  /** The longest custom range the page can load, in days. Longer quick choices such as "All time" are left out. */
+  maxSpanDays?: number;
 }
 
 /** A date-range dropdown with a custom range: choosing it shows From and To dates beside the dropdown. */
-export function RangeFilter({ label, value, onChange, options }: Props) {
+export function RangeFilter({ label, value, onChange, options, maxSpanDays }: Props) {
   const custom = isCustomRange(value);
   const days = parseCustomRange(value) ?? { from: lagosDay(-6), to: lagosDay() };
 
@@ -48,6 +50,7 @@ export function RangeFilter({ label, value, onChange, options }: Props) {
         <DateRangePicker
           from={days.from}
           to={days.to}
+          maxSpanDays={maxSpanDays}
           onChange={(from, to) => onChange(customRange(from, to))}
         />
       ) : null}

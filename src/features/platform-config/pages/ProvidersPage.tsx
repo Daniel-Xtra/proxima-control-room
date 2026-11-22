@@ -15,7 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/DropdownMenu";
-import { Input } from "@/shared/components/ui/Input";
+import { ComboInput } from "@/shared/components/ui/ComboInput";
 import { Label } from "@/shared/components/ui/Label";
 import {
   Select,
@@ -229,19 +229,12 @@ export function ProvidersPage() {
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="provider-type">{t("providers.col.type")}</Label>
-          <Input
+          <ComboInput
             id="provider-type"
-            list="provider-types"
             value={type}
-            onChange={(event) => setType(event.target.value)}
+            onValueChange={setType}
+            options={(types.data ?? []).map((value) => ({ value, label: humanize(value) }))}
           />
-          <datalist id="provider-types">
-            {(types.data ?? []).map((value) => (
-              <option key={value} value={value}>
-                {humanize(value)}
-              </option>
-            ))}
-          </datalist>
         </div>
       </ActionDialog>
     </>
