@@ -1,7 +1,7 @@
+import { useMutation } from "@tanstack/react-query";
 import { ArrowsClockwise, CheckCircle, EnvelopeSimple, UserMinus } from "@phosphor-icons/react";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { ApiError } from "@/shared/api/client";
 import { stepUp } from "@/shared/api/stepUp";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { TotpInput } from "@/shared/components/TotpInput";
@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/Dialog";
 import { t } from "@/shared/i18n/t";
+import { errorMessage } from "@/shared/lib/errorMessage";
 import { initials } from "@/shared/lib/format";
 import { resendInvitation, revokeInvitation, type StaffMember } from "../api/accessApi";
 
@@ -57,8 +58,30 @@ const COPY = {
 /** Resends or revokes a staff invitation: who it affects, what happens, and the authenticator code. */
 export function InvitationDialog({ mode, member, roleName, onClose, onDone }: Props) {
   const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
+  const send = useMutation({
+    mutationFn: async ({
+      id,
+      kind,
+      confirmation,
+    }: {
+      id: string;
+      kind: string;
+      confirmation: string;
+    }) => {
+      await stepUp(confirmation);
+      if (kind === "resend") await resendInvitation(id);
+      else await revokeInvitation(id);
+    },
+    onSuccess: async () => {
+      if (copy) toast.success(t(copy.done));
+      await onDone();
+      setCode("");
+      onClose();
+    },
+    onError: () => setCode(""),
+  });
+  const busy = send.isPending;
+  const error = send.isError ? errorMessage(send.error) : undefined;
   const copy = mode ? COPY[mode] : null;
   const Icon = copy?.icon ?? EnvelopeSimple;
   const revoke = mode === "revoke";
@@ -66,29 +89,14 @@ export function InvitationDialog({ mode, member, roleName, onClose, onDone }: Pr
   function close() {
     if (busy) return;
     setCode("");
-    setError(undefined);
+    send.reset();
     onClose();
   }
 
-  async function submit(event?: FormEvent) {
+  function submit(event?: FormEvent) {
     event?.preventDefault();
-    if (!member || !copy || code.length !== 6 || busy) return;
-    setBusy(true);
-    setError(undefined);
-    try {
-      await stepUp(code);
-      if (mode === "resend") await resendInvitation(member.id);
-      else await revokeInvitation(member.id);
-      toast.success(t(copy.done));
-      await onDone();
-      setCode("");
-      onClose();
-    } catch (caught) {
-      setCode("");
-      setError(caught instanceof ApiError ? caught.message : t("state.error.title"));
-    } finally {
-      setBusy(false);
-    }
+    if (!member || !copy || !mode || code.length !== 6 || busy) return;
+    send.mutate({ id: member.id, kind: mode, confirmation: code });
   }
 
   return (

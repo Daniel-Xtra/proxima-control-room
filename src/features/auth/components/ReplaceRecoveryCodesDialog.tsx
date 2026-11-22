@@ -1,5 +1,5 @@
+import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
-import { ApiError } from "@/shared/api/client";
 import { stepUp } from "@/shared/api/stepUp";
 import { TotpInput } from "@/shared/components/TotpInput";
 import { Button } from "@/shared/components/ui/Button";
@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/Dialog";
 import { t } from "@/shared/i18n/t";
+import { errorMessage } from "@/shared/lib/errorMessage";
 import { regenerateRecoveryCodes } from "../api/authApi";
 import { RecoveryCodes } from "./RecoveryCodes";
 
@@ -35,15 +36,25 @@ export function ReplaceRecoveryCodesDialog({
   const [code, setCode] = useState("");
   const [codes, setCodes] = useState<string[] | null>(null);
   const [saved, setSaved] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
+  const replaceCodes = useMutation({
+    mutationFn: async (confirmation: string) => {
+      await stepUp(confirmation);
+      return regenerateRecoveryCodes();
+    },
+    onSuccess: (fresh) => {
+      setCodes(fresh);
+      onReplaced();
+    },
+    onError: () => setCode(""),
+  });
+  const busy = replaceCodes.isPending;
+  const error = replaceCodes.isError ? errorMessage(replaceCodes.error) : undefined;
 
   function reset() {
     setCode("");
     setCodes(null);
     setSaved(false);
-    setBusy(false);
-    setError(undefined);
+    replaceCodes.reset();
   }
 
   function handleOpenChange(next: boolean) {
@@ -54,21 +65,10 @@ export function ReplaceRecoveryCodesDialog({
     onOpenChange(next);
   }
 
-  async function replace(event: FormEvent) {
+  function replace(event: FormEvent) {
     event.preventDefault();
     if (code.length !== 6 || busy) return;
-    setBusy(true);
-    setError(undefined);
-    try {
-      await stepUp(code);
-      setCodes(await regenerateRecoveryCodes());
-      onReplaced();
-    } catch (caught) {
-      setCode("");
-      setError(caught instanceof ApiError ? caught.message : t("state.error.title"));
-    } finally {
-      setBusy(false);
-    }
+    replaceCodes.mutate(code);
   }
 
   return (

@@ -1,4 +1,5 @@
 import { DownloadSimple, SealCheck, Trash } from "@phosphor-icons/react";
+import { useMutation } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { FileUpload, type EvidenceFile } from "@/shared/components/FileUpload";
 import { MoneyText } from "@/shared/components/MoneyText";
@@ -49,7 +50,8 @@ async function templateParts() {
   return [banks, internal] as const;
 }
 
-async function downloadTemplate() {
+/** Builds the sample file from the live bank list and platform customers, then saves it. */
+async function buildTemplate() {
   const url = URL.createObjectURL(
     buildXlsx(templateRows(...(await templateParts())), TEMPLATE_WIDTHS),
   );
@@ -65,16 +67,15 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
   const read = useRef(new Set<File>());
   const totals = draftTotals(payees, useBulkFee(payees).feeKobo);
-  const [verifying, setVerifying] = useState(false);
+  const template = useMutation({ mutationFn: buildTemplate });
   const [verifyNote, setVerifyNote] = useState<string | null>(null);
   const unverified = unverifiedCount(payees);
   const [paging, setPaging] = useState({ page: 1, limit: 10 });
 
-  async function verify() {
-    setVerifying(true);
-    setVerifyNote(null);
-    try {
-      const results = await verifyPayees(payees);
+  const verifyMutation = useMutation({
+    mutationFn: () => verifyPayees(payees),
+    onMutate: () => setVerifyNote(null),
+    onSuccess: (results) => {
       onPayeesChange((previous) =>
         previous.map((p) => {
           const check = results.get(p.row);
@@ -89,15 +90,14 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
           invalid: all.filter((c) => c.status === "invalid").length,
         }),
       );
-    } catch (error) {
-      // Say why when the server did: for example "Too many requests. Please try again in 34 seconds."
+    },
+    // Say why when the server did: for example "Too many requests. Please try again in 34 seconds."
+    onError: (error) =>
       setVerifyNote(
         error instanceof ApiError && error.status === 429 ? error.message : t("bulk.verify.error"),
-      );
-    } finally {
-      setVerifying(false);
-    }
-  }
+      ),
+  });
+  const verifying = verifyMutation.isPending;
 
   function onFiles(files: EvidenceFile[]) {
     // The file was removed from the list, so the payees it brought in go with it.
@@ -145,7 +145,12 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
         title={t("bulk.section.payees")}
         description={t("bulk.section.payeesHint")}
         actions={
-          <Button variant="outline" size="sm" onClick={() => void downloadTemplate()}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={template.isPending}
+            onClick={() => template.mutate()}
+          >
             <DownloadSimple aria-hidden="true" />
             {t("bulk.template")}
           </Button>
@@ -340,7 +345,7 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
           <p className="m-0 min-w-0 text-sm text-ink">
             {t("bulk.verify.required", { count: unverified })}
           </p>
-          <Button disabled={verifying} onClick={() => void verify()}>
+          <Button disabled={verifying} onClick={() => verifyMutation.mutate()}>
             <SealCheck aria-hidden="true" />
             {verifying ? t("bulk.verify.running") : t("bulk.verify.button")}
           </Button>

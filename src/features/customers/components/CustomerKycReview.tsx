@@ -1,9 +1,8 @@
 import { FileText } from "@phosphor-icons/react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Can, useCan } from "@/features/auth";
-import { ApiError } from "@/shared/api/client";
 import { DocumentViewer, type ViewedDocument } from "./DocumentViewer";
 import { ActionDialog } from "@/shared/components/ActionDialog";
 import { AsyncBody } from "@/shared/components/AsyncBody";
@@ -17,6 +16,7 @@ import { Label } from "@/shared/components/ui/Label";
 import { Switch } from "@/shared/components/ui/Switch";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { t } from "@/shared/i18n/t";
+import { errorMessage } from "@/shared/lib/errorMessage";
 import {
   approveDocument,
   confirmRejections,
@@ -60,42 +60,30 @@ export function CustomerKycReview({ customerId }: { customerId: string }) {
   });
   const [deciding, setDeciding] = useState<{ doc: KycDocument; approve: boolean } | null>(null);
   const [notify, setNotify] = useState(true);
-  const [opening, setOpening] = useState<string>();
   const [viewing, setViewing] = useState<ViewedDocument | null>(null);
-  const [notifying, setNotifying] = useState(false);
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["customers"] });
 
-  async function open(doc: KycDocument, file: KycFile) {
-    setOpening(file.reference);
-    try {
-      const url = await getDocumentLink(customerId, doc.id, file.reference);
+  const openFile = useMutation({
+    mutationFn: ({ doc, file }: { doc: KycDocument; file: KycFile }) =>
+      getDocumentLink(customerId, doc.id, file.reference),
+    onSuccess: (url, { doc, file }) => {
       if (url)
-        setViewing({
-          title: doc.name,
-          fileName: file.fileName,
-          fileType: file.fileType,
-          url,
-        });
+        setViewing({ title: doc.name, fileName: file.fileName, fileType: file.fileType, url });
       else toast.error(t("kyc.review.noLink"));
-    } catch (caught) {
-      toast.error(caught instanceof ApiError ? caught.message : t("state.error.title"));
-    } finally {
-      setOpening(undefined);
-    }
-  }
+    },
+    onError: (caught) => toast.error(errorMessage(caught)),
+  });
+  const opening = openFile.isPending ? openFile.variables.file.reference : undefined;
 
-  async function sendNotice() {
-    setNotifying(true);
-    try {
-      await confirmRejections(customerId);
+  const notice = useMutation({
+    mutationFn: () => confirmRejections(customerId),
+    onSuccess: async () => {
       toast.success(t("kyc.review.noticeSent"));
       await refresh();
-    } catch (caught) {
-      toast.error(caught instanceof ApiError ? caught.message : t("state.error.title"));
-    } finally {
-      setNotifying(false);
-    }
-  }
+    },
+    onError: (caught) => toast.error(errorMessage(caught)),
+  });
+  const notifying = notice.isPending;
 
   return (
     <>
@@ -113,7 +101,7 @@ export function CustomerKycReview({ customerId }: { customerId: string }) {
                 variant="outline"
                 size="sm"
                 disabled={notifying}
-                onClick={() => void sendNotice()}
+                onClick={() => notice.mutate()}
               >
                 {t("kyc.review.sendNotice")}
               </Button>
@@ -210,7 +198,7 @@ export function CustomerKycReview({ customerId }: { customerId: string }) {
                             variant="ghost"
                             size="sm"
                             disabled={opening === file.reference}
-                            onClick={() => void open(doc, file)}
+                            onClick={() => openFile.mutate({ doc, file })}
                           >
                             <FileText aria-hidden="true" />
                             {file.fileName}

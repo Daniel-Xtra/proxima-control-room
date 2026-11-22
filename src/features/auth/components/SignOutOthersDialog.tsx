@@ -1,7 +1,6 @@
 import { Devices } from "@phosphor-icons/react";
-import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ApiError } from "@/shared/api/client";
 import { DateText } from "@/shared/components/DateText";
 import { Button } from "@/shared/components/ui/Button";
 import {
@@ -14,6 +13,7 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/Dialog";
 import { t } from "@/shared/i18n/t";
+import { errorMessage } from "@/shared/lib/errorMessage";
 import { revokeOtherSessions, type SessionRow } from "../api/sessionsApi";
 
 const SHOWN = 3;
@@ -31,28 +31,21 @@ export function SignOutOthersDialog({
   onDone: () => void;
 }) {
   const others = sessions.filter((row) => !row.current);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
-
-  function handleOpenChange(next: boolean) {
-    if (busy) return;
-    if (!next) setError(undefined);
-    onOpenChange(next);
-  }
-
-  async function confirm() {
-    setBusy(true);
-    setError(undefined);
-    try {
-      await revokeOtherSessions(sessions);
+  const signOut = useMutation({
+    mutationFn: () => revokeOtherSessions(sessions),
+    onSuccess: () => {
       toast.success(t("security.signedOutOthers"));
       onDone();
       onOpenChange(false);
-    } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : t("state.error.title"));
-    } finally {
-      setBusy(false);
-    }
+    },
+  });
+  const busy = signOut.isPending;
+  const error = signOut.isError ? errorMessage(signOut.error) : undefined;
+
+  function handleOpenChange(next: boolean) {
+    if (busy) return;
+    if (!next) signOut.reset();
+    onOpenChange(next);
   }
 
   return (
@@ -99,7 +92,11 @@ export function SignOutOthersDialog({
           <Button variant="outline" disabled={busy} onClick={() => handleOpenChange(false)}>
             {t("common.cancel")}
           </Button>
-          <Button variant="destructive" disabled={busy || others.length === 0} onClick={confirm}>
+          <Button
+            variant="destructive"
+            disabled={busy || others.length === 0}
+            onClick={() => signOut.mutate()}
+          >
             {busy ? t("common.working") : t("security.signOutOthers")}
           </Button>
         </DialogFooter>

@@ -1,6 +1,6 @@
+import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ApiError } from "@/shared/api/client";
 import { BrandWordmark } from "@/shared/components/BrandWordmark";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
@@ -9,6 +9,7 @@ import { PasswordInput } from "@/shared/components/ui/PasswordInput";
 import { Label } from "@/shared/components/ui/Label";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { t } from "@/shared/i18n/t";
+import { errorMessage } from "@/shared/lib/errorMessage";
 import { CopyrightFooter } from "@/shared/components/CopyrightFooter";
 import { completePasswordReset, previewPasswordReset } from "../api/authApi";
 import { AuthBackdrop } from "../components/AuthBackdrop";
@@ -30,26 +31,21 @@ export function ResetPasswordPage() {
   );
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState<string>();
-  const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
+  const reset = useMutation({
+    mutationFn: () => completePasswordReset(token, password),
+    onSuccess: () => setDone(true),
+  });
+  const pending = reset.isPending;
+  const error = reset.isError ? errorMessage(reset.error) : undefined;
 
   const problem = passwordProblem(password);
   const mismatch = confirm !== "" && confirm !== password;
   const invalid = token === "" || invitation.isError;
 
-  async function onSubmit(event: FormEvent) {
+  function onSubmit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
-    setError(undefined);
-    try {
-      await completePasswordReset(token, password);
-      setDone(true);
-    } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : t("state.error.title"));
-    } finally {
-      setPending(false);
-    }
+    reset.mutate();
   }
 
   return (
