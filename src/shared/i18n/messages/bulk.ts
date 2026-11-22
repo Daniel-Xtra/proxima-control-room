@@ -136,7 +136,10 @@ export const bulk = {
   "bulk.fund.verifyTitle": "Check the payees",
   "bulk.fund.verifyHint":
     "Look up each account with its bank before you pass the batch on. Optional, but it catches wrong accounts early.",
-  "bulk.fund.row": "Row {row}: {issues}",
+  "bulk.fund.rowLabel": "Row {row}",
+  "bulk.verify.count.verified": "{count} verified",
+  "bulk.verify.count.warning": "{count} to look at",
+  "bulk.verify.count.invalid": "{count} cannot be paid",
   "bulk.fund.submit": "Pass on for approval",
   "bulk.fund.dialog.title": "Pass batch on for approval",
   "bulk.fund.dialog.impact":

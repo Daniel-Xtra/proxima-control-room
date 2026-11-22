@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActionDialog } from "@/shared/components/ActionDialog";
 import { SectionCard } from "@/shared/components/SectionCard";
+import { StatusBadge } from "@/shared/components/StatusBadge";
 import { Button } from "@/shared/components/ui/Button";
 import { Label } from "@/shared/components/ui/Label";
 import {
@@ -94,12 +95,19 @@ export function FundingStep({
             {checking ? t("bulk.verify.running") : t("bulk.verify.button")}
           </Button>
           {checks ? (
-            <output className="text-sm text-muted-text">
-              {t("bulk.verify.done", {
-                verified: count("verified"),
-                warning: count("warning"),
-                invalid: count("invalid"),
-              })}
+            <output className="flex flex-wrap items-center gap-2">
+              <StatusBadge
+                tone="success"
+                label={t("bulk.verify.count.verified", { count: count("verified") })}
+              />
+              <StatusBadge
+                tone="warning"
+                label={t("bulk.verify.count.warning", { count: count("warning") })}
+              />
+              <StatusBadge
+                tone="danger"
+                label={t("bulk.verify.count.invalid", { count: count("invalid") })}
+              />
             </output>
           ) : null}
         </div>
@@ -109,20 +117,32 @@ export function FundingStep({
           </p>
         ) : null}
         {problems.length > 0 ? (
-          <ul className="m-0 mt-3 list-none space-y-1 p-0 text-sm">
+          <ul className="m-0 mt-4 list-none divide-y divide-border overflow-hidden rounded-md border border-border p-0">
             {problems.slice(0, SHOWN_PROBLEMS).map(([row, check]) => (
-              <li
-                key={row}
-                className={check.status === "invalid" ? "text-danger-text" : "text-warning-text"}
-              >
-                {t("bulk.fund.row", {
-                  row,
-                  issues: check.issues.map((issue) => t(`bulk.verify.issue.${issue}`)).join(", "),
-                })}
+              <li key={row} className="flex flex-wrap items-start gap-x-4 gap-y-1 px-3 py-2.5">
+                <span className="w-16 shrink-0 text-sm font-medium text-ink">
+                  {t("bulk.fund.rowLabel", { row })}
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
+                  <div className="flex flex-wrap gap-1.5">
+                    {check.issues.map((issue) => (
+                      <StatusBadge
+                        key={issue}
+                        tone={check.status === "invalid" ? "danger" : "warning"}
+                        label={t(`bulk.verify.issue.${issue}`)}
+                      />
+                    ))}
+                  </div>
+                  {check.accountName ? (
+                    <span className="text-xs text-muted-text">
+                      {t("bulk.verify.accountName", { name: check.accountName })}
+                    </span>
+                  ) : null}
+                </div>
               </li>
             ))}
             {problems.length > SHOWN_PROBLEMS ? (
-              <li className="text-muted-text">
+              <li className="bg-surface-muted px-3 py-2 text-xs text-muted-text">
                 {t("bulk.review.more", { count: problems.length - SHOWN_PROBLEMS })}
               </li>
             ) : null}
