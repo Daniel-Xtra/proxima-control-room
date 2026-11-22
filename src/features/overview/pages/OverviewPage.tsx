@@ -49,7 +49,7 @@ export function OverviewPage() {
         description={t("overview.welcome")}
         crumbs={[{ label: t("overview.crumb") }, { label: t("overview.title") }]}
         actions={
-          <div className="flex items-center gap-2 text-sm text-muted-text">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-text max-sm:w-full">
             <span>{t("overview.showing")}</span>
             <RangeFilter
               label={t("overview.range")}

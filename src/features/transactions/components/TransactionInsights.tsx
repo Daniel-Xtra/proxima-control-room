@@ -22,6 +22,7 @@ export function TransactionInsights() {
           from={days.from}
           to={days.to}
           maxSpanDays={92}
+          className="max-sm:w-full max-sm:justify-between"
           onChange={(from, to) => setDays({ from, to })}
         />
       </div>

@@ -1,4 +1,5 @@
 import { t } from "../i18n/t";
+import { cn } from "../lib/cn";
 import {
   CUSTOM_OPTION,
   customRange,
@@ -25,8 +26,13 @@ export function RangeFilter({ label, value, onChange, options, maxSpanDays }: Pr
   const days = parseCustomRange(value) ?? { from: lagosDay(-6), to: lagosDay() };
 
   return (
-    <>
-      <div className="w-44">
+    <div
+      className={cn(
+        "contents",
+        custom && "max-sm:col-span-2 max-sm:flex max-sm:w-full max-sm:flex-col max-sm:gap-3",
+      )}
+    >
+      <div className="w-44 max-sm:w-full">
         <Select
           value={custom ? CUSTOM_OPTION : value}
           onValueChange={(next) =>
@@ -51,9 +57,10 @@ export function RangeFilter({ label, value, onChange, options, maxSpanDays }: Pr
           from={days.from}
           to={days.to}
           maxSpanDays={maxSpanDays}
+          className="max-sm:w-full max-sm:justify-between"
           onChange={(from, to) => onChange(customRange(from, to))}
         />
       ) : null}
-    </>
+    </div>
   );
 }
