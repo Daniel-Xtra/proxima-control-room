@@ -42,7 +42,13 @@ export const PERMISSIONS_BY_MODULE = {
     "kyc:reject",
     "kyc:override",
   ],
-  savings: ["savings:view", "savings:liquidate"],
+  savings: [
+    "savings:view",
+    "savings:liquidate",
+    "savings:config_view",
+    "savings:config_edit",
+    "savings:config_approve",
+  ],
   bulk: [
     "bulk_transfer:view",
     "bulk_transfer:initiate",
@@ -112,6 +118,7 @@ export const CONFLICTS: { a: Permission; b: Permission; reason: MessageKey }[] =
   },
   { a: "roles:manage", b: "staff:manage", reason: "conflict.selfAssign" },
   { a: "config:edit", b: "config:approve", reason: "conflict.sameConfig" },
+  { a: "savings:config_edit", b: "savings:config_approve", reason: "conflict.sameConfig" },
 ];
 
 export function findConflicts(held: ReadonlySet<Permission>) {

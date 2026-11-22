@@ -128,6 +128,7 @@ export const common = {
   "nav.roles": "Roles",
   "nav.approvalRules": "Approval rules",
   "nav.platformConfig": "Configuration",
+  "nav.savingsSettings": "Savings settings",
   "nav.providers": "Providers",
   "nav.group.customers": "Customer operations",
   "nav.group.content": "Content",

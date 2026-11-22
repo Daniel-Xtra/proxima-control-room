@@ -124,6 +124,12 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: SlidersHorizontal,
         label: "nav.platformConfig",
       },
+      {
+        id: "savings-settings",
+        to: "/settings/savings",
+        icon: PiggyBank,
+        label: "nav.savingsSettings",
+      },
     ],
   },
 ];
