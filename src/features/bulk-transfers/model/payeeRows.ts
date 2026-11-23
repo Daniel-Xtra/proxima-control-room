@@ -1,70 +1,13 @@
-import { BANKS, MAX_PAYEE_KOBO, type PayeeDraft } from "./types";
+import { MAX_PAYEE_KOBO, type PayeeDraft } from "./types";
 
 export const PAYEE_COLUMNS = ["account_name", "account_number", "bank", "amount", "narration"];
-
-const SAMPLE_FIRST = [
-  "Ada",
-  "Tunde",
-  "Ngozi",
-  "Ibrahim",
-  "Funke",
-  "Chinedu",
-  "Zainab",
-  "Emeka",
-  "Halima",
-  "Kemi",
-];
-const SAMPLE_LAST = [
-  "Obi",
-  "Bello",
-  "Eze",
-  "Lawal",
-  "Adeyemi",
-  "Okafor",
-  "Nwosu",
-  "Balogun",
-  "Umar",
-  "Salami",
-];
-
-/** Number of sample payees in the downloadable template. */
-export const TEMPLATE_ROWS = 50;
-/** How many of them are real platform customers (internal accounts), when that many exist. */
-export const TEMPLATE_INTERNAL_ROWS = 25;
-
-/** A real platform customer, used for an internal row in the template. */
-export interface TemplatePayee {
-  name: string;
-  accountNumber: string;
-  bank: string;
-}
 
 /** Column widths for the template, in characters. */
 export const TEMPLATE_WIDTHS = [26, 16, 28, 14, 22];
 
-/**
- * The rows of the downloadable template: a header and 50 sample payees, ready to be overwritten with real ones. The first rows are
- * real platform customers (internal accounts, paid as credits inside the platform), the rest are accounts at other banks, so both
- * kinds can be tried. Pass the bank names the API knows, so every row names a bank it can match. Account numbers are text, so they
- * keep their leading zeros; amounts are numbers.
- */
-export function templateRows(
-  banks: readonly string[] = BANKS,
-  internal: readonly TemplatePayee[] = [],
-): (string | number)[][] {
-  const platform = internal.slice(0, TEMPLATE_INTERNAL_ROWS);
-  const rows = Array.from({ length: TEMPLATE_ROWS }, (_, i): (string | number)[] => {
-    const amount = Number(((i + 1) * 2_500 + (i % 4) * 150.5).toFixed(2));
-    const narration = `Sample payout ${i + 1}`;
-    const real = platform[i];
-    if (real) return [real.name, real.accountNumber, real.bank, amount, narration];
-    const n = i - platform.length;
-    const name = `${SAMPLE_FIRST[n % SAMPLE_FIRST.length]} ${SAMPLE_LAST[Math.floor(n / SAMPLE_FIRST.length) % SAMPLE_LAST.length]}`;
-    // Ten digits, always starting with 0 or 1 to look like a real NUBAN, and different on every row.
-    const account = String(1_000_000_000 + i * 7_919_003).padStart(10, "0");
-    return [name, account, banks[n % banks.length] ?? "", amount, narration];
-  });
-  return [PAYEE_COLUMNS, ...rows];
+/** The rows of the downloadable template: just the header, ready for real payees. */
+export function templateRows(): string[][] {
+  return [PAYEE_COLUMNS];
 }
 
 /** A cell as read from an Excel sheet. */

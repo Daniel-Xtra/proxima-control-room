@@ -159,17 +159,11 @@ function BatchDetail({ batch }: { batch: BulkBatch }) {
           <PayFromCard sourceId={batch.sourceAccount} debitKobo={debitKobo} />
         ) : null}
 
-        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
-          <div className="min-w-0 lg:col-span-2">
-            <BatchPayeesTable batch={batch} />
-          </div>
+        <BatchPayeesTable batch={batch} />
 
-          <div className="flex min-w-0 flex-col gap-4">
-            <SectionCard title={t("bulk.section.activity")}>
-              <Timeline entries={activity} />
-            </SectionCard>
-          </div>
-        </div>
+        <SectionCard title={t("bulk.section.activity")}>
+          <Timeline entries={activity} />
+        </SectionCard>
       </div>
 
       <ActionDialog

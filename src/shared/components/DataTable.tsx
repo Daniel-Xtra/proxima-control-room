@@ -55,13 +55,13 @@ export function DataTable<T>({
       {toolbar ? (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-soft px-4 py-2">
           <span className="text-xs text-muted-text">{t("table.showing", { from, to, total })}</span>
-          <div className="flex flex-wrap items-center gap-2 [&_button]:h-8">
+          <div className="flex flex-wrap items-center gap-2 [&_button]:h-10">
             <label className="flex items-center gap-2 text-xs text-muted-text">
               {t("table.perPage")}
               <NativeSelect
                 value={limit}
                 onChange={(event) => onLimitChange(Number(event.target.value))}
-                className="w-20 data-[size=default]:h-8"
+                className="w-20 data-[size=default]:h-10"
               >
                 {[...new Set([5, 10, 25, 50, limit])]
                   .sort((x, y) => x - y)
@@ -116,7 +116,7 @@ function NumberedFooter({
       <Button
         variant="outline"
         size="sm"
-        className="h-8"
+        className="h-10"
         disabled={page <= 1}
         onClick={() => onPageChange(page - 1)}
       >
@@ -136,7 +136,7 @@ function NumberedFooter({
                 aria-label={t("table.goTo", { page: entry })}
                 aria-current={entry === page ? "page" : undefined}
                 onClick={() => onPageChange(entry)}
-                className={`inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-sm tabular-nums hover:bg-surface-muted ${
+                className={`inline-flex size-10 cursor-pointer items-center justify-center rounded-md text-sm tabular-nums hover:bg-surface-muted ${
                   entry === page ? "bg-surface-muted font-medium text-ink" : "text-muted-text"
                 }`}
               >
@@ -152,7 +152,7 @@ function NumberedFooter({
       <Button
         variant="outline"
         size="sm"
-        className="h-8"
+        className="h-10"
         disabled={page >= pages}
         onClick={() => onPageChange(page + 1)}
       >

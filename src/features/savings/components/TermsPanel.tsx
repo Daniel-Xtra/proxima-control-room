@@ -1,3 +1,4 @@
+import { DotsThree, Plus } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActionDialog } from "@/shared/components/ActionDialog";
@@ -6,6 +7,12 @@ import { MoneyText } from "@/shared/components/MoneyText";
 import { SectionCard } from "@/shared/components/SectionCard";
 import { SimpleTable } from "@/shared/components/SimpleTable";
 import { Button } from "@/shared/components/ui/Button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/components/ui/DropdownMenu";
 import { Input } from "@/shared/components/ui/Input";
 import { Label } from "@/shared/components/ui/Label";
 import { t } from "@/shared/i18n/t";
@@ -122,7 +129,8 @@ export function TermsPanel({ terms, editable }: Props) {
       flush
       actions={
         editable ? (
-          <Button size="xs" onClick={() => open({ kind: "add" })}>
+          <Button onClick={() => open({ kind: "add" })}>
+            <Plus aria-hidden="true" />
             {t("savingsSettings.terms.add")}
           </Button>
         ) : null
@@ -174,22 +182,27 @@ export function TermsPanel({ terms, editable }: Props) {
             align: "right",
             cell: (r) =>
               editable ? (
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={() => open({ kind: "edit", term: r })}
-                  >
-                    {t("savingsSettings.edit")}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={() => open({ kind: "toggle", term: r })}
-                  >
-                    {r.active ? t("savingsSettings.switchOff") : t("savingsSettings.switchOn")}
-                  </Button>
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-lg"
+                      aria-label={t("savingsSettings.actionsFor", {
+                        name: t("savings.days", { count: r.days }),
+                      })}
+                    >
+                      <DotsThree aria-hidden="true" weight="bold" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onSelect={() => open({ kind: "edit", term: r })}>
+                      {t("savingsSettings.edit")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => open({ kind: "toggle", term: r })}>
+                      {r.active ? t("savingsSettings.switchOff") : t("savingsSettings.switchOn")}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : null,
           },
         ]}

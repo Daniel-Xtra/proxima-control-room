@@ -1,5 +1,6 @@
 import { BrandWordmark } from "@/shared/components/BrandWordmark";
 import { ArrowLeft, DeviceMobile, Key, Lock, ShieldCheck } from "@phosphor-icons/react";
+import { useMutation } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { ApiError } from "@/shared/api/client";
 import { QrCode } from "@/shared/components/QrCode";
@@ -59,7 +60,6 @@ export function LoginPage() {
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const [error, setError] = useState<string>();
   const [attemptsLeft, setAttemptsLeft] = useState<number>();
-  const [pending, setPending] = useState(false);
 
   const verificationLocked = step === "totp" && lockedUntil !== null;
   const locked = verificationLocked || step === "deviceLocked";
@@ -83,17 +83,14 @@ export function LoginPage() {
     setAttemptsLeft(caught.details.attemptsRemaining);
   }
 
-  async function run(action: () => Promise<void>) {
-    setPending(true);
-    setError(undefined);
-    try {
-      await action();
-    } catch (caught) {
-      explain(caught);
-    } finally {
-      setPending(false);
-    }
-  }
+  // Every sign-in step is one attempt: it clears the last message, and a failure is explained.
+  const attempt = useMutation({
+    mutationFn: (action: () => Promise<void>) => action(),
+    onMutate: () => setError(undefined),
+    onError: explain,
+  });
+  const pending = attempt.isPending;
+  const run = (action: () => Promise<void>) => attempt.mutate(action);
 
   /** Tokens are stored by now: load the profile and permissions, then enter the app. */
   async function finish() {
@@ -101,8 +98,8 @@ export function LoginPage() {
   }
 
   /** Runs a check that can fail on a wrong code. Enrolment returns recovery codes, shown before the app opens. */
-  async function submit(confirm: () => Promise<string[] | void>) {
-    await run(async () => {
+  function submit(confirm: () => Promise<string[] | void>) {
+    run(async () => {
       let codes: string[] | void;
       try {
         codes = await confirm();
@@ -145,8 +142,8 @@ export function LoginPage() {
     setError(undefined);
   }
 
-  async function requestEmailCode() {
-    await run(async () => {
+  function requestEmailCode() {
+    run(async () => {
       const sent = await sendEmailCode(mfaToken);
       setEmailSent({ to: sent.sentTo, resendAt: Date.now() + sent.resendInSeconds * 1000 });
     });
@@ -158,12 +155,12 @@ export function LoginPage() {
     setAttemptsLeft(undefined);
     setCode("");
     setRecoveryCode("");
-    if (next === "email" && !emailSent) void requestEmailCode();
+    if (next === "email" && !emailSent) requestEmailCode();
   }
 
   function onCredentials(event: FormEvent) {
     event.preventDefault();
-    void run(async () => {
+    run(async () => {
       const result = await login(email, password);
       if (result.kind === "session") return finish();
       setMfaToken(result.mfaToken);
@@ -195,11 +192,11 @@ export function LoginPage() {
 
   function verifyNow() {
     if (method === "recovery") {
-      void submit(() => verifyMfa(mfaToken, { recoveryCode }));
+      submit(() => verifyMfa(mfaToken, { recoveryCode }));
     } else if (method === "email") {
-      void submit(() => verifyMfa(mfaToken, { emailCode: code }));
+      submit(() => verifyMfa(mfaToken, { emailCode: code }));
     } else {
-      void submit(() => verifyMfa(mfaToken, { code }));
+      submit(() => verifyMfa(mfaToken, { code }));
     }
   }
 
@@ -366,7 +363,7 @@ export function LoginPage() {
                       label={method === "email" ? t("auth.totp.emailLabel") : undefined}
                       error={problem}
                       onComplete={(value) =>
-                        void submit(() =>
+                        submit(() =>
                           method === "email"
                             ? verifyMfa(mfaToken, { emailCode: value })
                             : verifyMfa(mfaToken, { code: value }),
@@ -445,12 +442,12 @@ export function LoginPage() {
               onChange={setCode}
               error={error}
               label={t("auth.enrol.confirm")}
-              onComplete={(value) => void submit(() => activateMfa(mfaToken, value))}
+              onComplete={(value) => submit(() => activateMfa(mfaToken, value))}
             />
             <Button
               size="lg"
               disabled={pending || code.length !== 6}
-              onClick={() => void submit(() => activateMfa(mfaToken, code))}
+              onClick={() => submit(() => activateMfa(mfaToken, code))}
             >
               {pending ? t("common.working") : t("auth.enrol.submit")}
             </Button>

@@ -1,7 +1,8 @@
 import { EnvelopeSimple, ShieldCheck } from "@phosphor-icons/react";
+import { t } from "@/shared/i18n/t";
 import { initials } from "@/shared/lib/format";
 
-/** Who is signed in: a banner, the initials tile, the name, email and roles. */
+/** Who is signed in: the initials, name and email on the left, and their access on the right. */
 export function AccountIdentityCard({
   name,
   email,
@@ -12,35 +13,38 @@ export function AccountIdentityCard({
   roles: string[];
 }) {
   return (
-    <section className="card overflow-hidden">
-      <div
-        aria-hidden="true"
-        className="h-24 bg-linear-to-br from-info-bg via-blue-tint-strong to-blue-tint"
-      />
-      <div className="px-5 pb-5">
+    <section className="card flex flex-wrap items-center gap-x-8 gap-y-5 p-6">
+      <div className="flex min-w-0 flex-1 items-center gap-4">
         <span
           aria-hidden="true"
-          className="-mt-10 flex size-20 items-center justify-center rounded-2xl bg-primary font-heading text-3xl font-semibold text-on-ink ring-4 ring-card"
+          className="flex size-16 shrink-0 items-center justify-center rounded-full bg-surface-muted font-heading text-xl font-semibold text-ink"
         >
           {initials(name)}
         </span>
-        <h2 className="m-0 mt-3 truncate font-heading text-lg font-semibold text-ink">{name}</h2>
-        <p className="m-0 mt-1 flex items-center gap-1.5 truncate text-sm text-muted-text">
-          <EnvelopeSimple aria-hidden="true" className="size-4 shrink-0" />
-          {email}
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {roles.map((role) => (
-            <span
-              key={role}
-              className="inline-flex items-center gap-1 rounded-pill border border-blue-border bg-blue-tint px-2.5 py-0.5 text-xs font-medium text-ink"
-            >
-              <ShieldCheck aria-hidden="true" className="size-3.5" />
-              {role}
-            </span>
-          ))}
+        <div className="min-w-0">
+          <h2 className="m-0 truncate font-heading text-xl font-semibold text-ink">{name}</h2>
+          <p className="m-0 mt-1 flex items-center gap-1.5 truncate text-sm text-muted-text">
+            <EnvelopeSimple aria-hidden="true" className="size-4 shrink-0" />
+            {email}
+          </p>
         </div>
       </div>
+      <dl className="m-0 flex flex-wrap gap-x-10 gap-y-3 sm:border-l sm:border-border-soft sm:pl-8">
+        <div>
+          <dt className="text-xs text-muted-text">{t("security.identity.access")}</dt>
+          <dd className="m-0 mt-1.5 flex flex-wrap gap-2">
+            {roles.map((role) => (
+              <span
+                key={role}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-ink"
+              >
+                <ShieldCheck aria-hidden="true" className="size-4 text-muted-text" />
+                {role}
+              </span>
+            ))}
+          </dd>
+        </div>
+      </dl>
     </section>
   );
 }

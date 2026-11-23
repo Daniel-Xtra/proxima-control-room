@@ -1,5 +1,5 @@
-import { Heartbeat } from "@phosphor-icons/react";
-import { useQueryClient } from "@tanstack/react-query";
+import { Heartbeat, Wrench } from "@phosphor-icons/react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useCan } from "@/features/auth";
@@ -36,15 +36,12 @@ export function BankOneRepairPage() {
   const [dryRun, setDryRun] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [single, setSingle] = useState<MissingAccount | null>(null);
-  const [checking, setChecking] = useState(false);
+  const health = useMutation({
+    mutationFn: runHealthCheck,
+    onSuccess: (result) => toast.success(t("bankone.health.ok", { ms: result.latencyMs })),
+  });
+  const checking = health.isPending;
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["bankone"] });
-
-  async function healthCheck() {
-    setChecking(true);
-    const result = await runHealthCheck();
-    setChecking(false);
-    toast.success(t("bankone.health.ok", { ms: result.latencyMs }));
-  }
 
   return (
     <>
@@ -54,7 +51,7 @@ export function BankOneRepairPage() {
         description={t("bankone.description")}
         actions={
           <>
-            <Button variant="outline" disabled={checking} onClick={() => void healthCheck()}>
+            <Button variant="outline" disabled={checking} onClick={() => health.mutate()}>
               <Heartbeat aria-hidden="true" />
               {checking ? t("common.working") : t("bankone.health.run")}
             </Button>
@@ -187,8 +184,13 @@ export function BankOneRepairPage() {
                     align: "right",
                     cell: (r) =>
                       canRepair ? (
-                        <Button variant="outline" size="xs" onClick={() => setSingle(r)}>
-                          {t("bankone.repairOne")}
+                        <Button
+                          variant="ghost"
+                          size="icon-lg"
+                          aria-label={t("bankone.repairNamed", { name: r.customerName })}
+                          onClick={() => setSingle(r)}
+                        >
+                          <Wrench aria-hidden="true" />
                         </Button>
                       ) : null,
                   },

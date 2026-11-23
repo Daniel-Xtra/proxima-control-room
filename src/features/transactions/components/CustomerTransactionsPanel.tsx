@@ -23,6 +23,9 @@ export function CustomerTransactionsPanel({ customerId }: { customerId: string }
       setFilter={(key, value) =>
         setFilters((prev) => ({ ...prev, [key]: value, ...(key === "page" ? {} : { page: "1" }) }))
       }
+      setFilters={(patch) =>
+        setFilters((prev) => ({ ...prev, ...patch, ...("page" in patch ? {} : { page: "1" }) }))
+      }
     />
   );
 }

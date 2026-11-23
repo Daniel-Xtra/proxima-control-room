@@ -168,6 +168,8 @@ export const customers = {
   "kyc.review.sendNotice": "Send rejection notice",
   "kyc.review.noticeSent": "The customer has been told about the rejected documents",
   "kyc.review.noLink": "This file could not be opened",
+  "kyc.review.view": "View",
+  "kyc.review.viewNamed": "View {name}",
   "kyc.review.openNewTab": "Open in a new tab",
   "kyc.review.history": "Review history",
   "kyc.review.historyEmpty": "No review activity yet",

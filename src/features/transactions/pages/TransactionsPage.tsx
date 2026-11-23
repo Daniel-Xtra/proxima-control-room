@@ -16,7 +16,7 @@ const DEFAULTS = {
 };
 
 export function TransactionsPage() {
-  const [filters, setFilter] = useUrlFilters(DEFAULTS);
+  const [filters, setFilter, { setFilters }] = useUrlFilters(DEFAULTS);
   return (
     <>
       <PageHeader
@@ -25,7 +25,12 @@ export function TransactionsPage() {
         crumbs={[{ label: t("nav.group.customers") }, { label: t("transactions.title") }]}
       />
       <TransactionInsights />
-      <TransactionsView filters={filters} defaults={DEFAULTS} setFilter={setFilter} />
+      <TransactionsView
+        filters={filters}
+        defaults={DEFAULTS}
+        setFilter={setFilter}
+        setFilters={setFilters}
+      />
     </>
   );
 }

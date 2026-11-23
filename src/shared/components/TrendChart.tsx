@@ -59,13 +59,16 @@ function smoothPath(points: [number, number][]): string {
 
 /** Smooth area chart with a dashed average and a tooltip that follows the pointer. */
 export function TrendChart({
-  values,
-  labels,
+  values: given,
+  labels: givenLabels,
   format,
   formatFull = format,
   averageLabel,
   summary,
 }: TrendChartProps) {
+  // A period with no figures still draws: missing values count as zero, and an empty series is a flat line.
+  const values = given.length === 0 ? [0, 0] : given;
+  const labels = given.length === 0 ? ["", ""] : givenLabels;
   const gradientId = useId();
   const box = useRef<HTMLElement>(null);
   const [width, setWidth] = useState(DEFAULT_WIDTH);
@@ -84,22 +87,27 @@ export function TrendChart({
   const dataKey = values.join(",");
   const WIDTH = width;
   const HEIGHT = width < 480 ? 220 : 280;
-  if (values.length < 2) return null;
   const max = Math.max(...values) || 1;
   const average = values.reduce((sum, v) => sum + v, 0) / values.length;
   const innerW = WIDTH - PAD.left - PAD.right;
   const innerH = HEIGHT - PAD.top - PAD.bottom;
-  const x = (i: number) => PAD.left + (i / (values.length - 1)) * innerW;
+  // One day has nowhere to run to, so it sits in the middle as a dot.
+  const single = values.length === 1;
+  const x = (i: number) =>
+    single ? PAD.left + innerW / 2 : PAD.left + (i / (values.length - 1)) * innerW;
   const y = (v: number) => PAD.top + innerH - (v / max) * innerH;
 
   const line = smoothPath(values.map((v, i) => [x(i), y(v)]));
   const area = `${line} L${x(values.length - 1)},${PAD.top + innerH} L${x(0)},${PAD.top + innerH} Z`;
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => f * max);
+  // With nothing but zeros, one tick at zero says it all.
+  const ticks = Math.max(...values) === 0 ? [0] : [0, 0.25, 0.5, 0.75, 1].map((f) => f * max);
   const labelStep = Math.ceil(labels.length / (width < 480 ? 4 : 8));
 
   function track(event: PointerEvent<SVGSVGElement>) {
     const bounds = event.currentTarget.getBoundingClientRect();
-    const at = ((event.clientX - bounds.left - PAD.left) / innerW) * (values.length - 1);
+    const at = single
+      ? 0
+      : ((event.clientX - bounds.left - PAD.left) / innerW) * (values.length - 1);
     setHover(Math.min(values.length - 1, Math.max(0, Math.round(at))));
   }
 
@@ -143,15 +151,16 @@ export function TrendChart({
             </text>
           </g>
         ))}
+        {single ? <circle cx={x(0)} cy={y(values[0]!)} r="4" fill="currentColor" /> : null}
         <path
           key={`area-${dataKey}`}
-          d={area}
+          d={single ? undefined : area}
           fill={`url(#${gradientId})`}
           className="chart-fade"
         />
         <path
           key={`line-${dataKey}`}
-          d={line}
+          d={single ? undefined : line}
           pathLength="1"
           className="chart-line"
           fill="none"

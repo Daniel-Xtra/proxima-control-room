@@ -17,7 +17,7 @@ export function SecurityRow({
     <div className="flex flex-wrap items-center gap-4 px-5 py-4">
       <span
         aria-hidden="true"
-        className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-tint text-primary"
+        className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-muted-text"
       >
         <Glyph className="size-5" />
       </span>

@@ -16,7 +16,7 @@ import { FixedDepositsTable, TargetSavingsTable } from "../components/SavingsTab
 const DEFAULTS = { q: "", status: "all" };
 
 export function SavingsPage() {
-  const [filters, setFilter] = useUrlFilters(DEFAULTS);
+  const [filters, setFilter, { resetFilters }] = useUrlFilters(DEFAULTS);
   const query = { search: filters.q, status: filters.status };
 
   return (
@@ -27,7 +27,7 @@ export function SavingsPage() {
         description={t("savings.description")}
       />
       <FilterBar
-        onClear={() => (["q", "status"] as const).forEach((key) => setFilter(key, DEFAULTS[key]))}
+        onClear={() => resetFilters(["q", "status"])}
         dirty={filters.q !== "" || filters.status !== "all"}
         search={{
           value: filters.q,

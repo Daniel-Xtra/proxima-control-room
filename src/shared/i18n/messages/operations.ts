@@ -174,6 +174,7 @@ export const operations = {
   "bankone.bulk.impact": "Creates or links BankOne accounts for every customer listed below.",
   "bankone.bulk.done": "Bulk repair finished",
   "bankone.repairOne": "Repair",
+  "bankone.repairNamed": "Repair {name}",
   "bankone.repaired": "Customer repaired",
   "bankone.missing.title": "Missing accounts",
   "bankone.missing.description": "Customers with a wallet but no BankOne account.",

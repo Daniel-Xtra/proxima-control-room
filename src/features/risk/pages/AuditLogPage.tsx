@@ -23,7 +23,7 @@ import { AuditDetailSheet } from "../components/AuditDetailSheet";
 const DEFAULTS = { q: "", status: "all", page: "1", limit: "10" };
 
 export function AuditLogPage() {
-  const [filters, setFilter] = useUrlFilters(DEFAULTS);
+  const [filters, setFilter, { resetFilters }] = useUrlFilters(DEFAULTS);
   const [selected, setSelected] = useState<AuditEntry | null>(null);
   const query = useApiQuery(
     ["risk", "audit", filters],
@@ -45,7 +45,7 @@ export function AuditLogPage() {
         crumbs={[{ label: t("nav.group.risk") }, { label: t("audit.title") }]}
       />
       <FilterBar
-        onClear={() => (["q", "status"] as const).forEach((key) => setFilter(key, DEFAULTS[key]))}
+        onClear={() => resetFilters(["q", "status"])}
         dirty={filters.q !== "" || filters.status !== "all"}
         search={{
           value: filters.q,

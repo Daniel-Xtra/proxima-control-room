@@ -1,3 +1,4 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { setAuditActor } from "@/shared/api/auditStore";
 import { onUnauthorized } from "@/shared/api/client";
@@ -7,6 +8,7 @@ import { SessionContext } from "../hooks/sessionContext";
 import type { SessionUser } from "../model/session";
 
 const STORAGE_KEY = "proxima.session";
+const PROFILE_KEY = ["session", "user"];
 
 function removeStored() {
   try {
@@ -33,6 +35,7 @@ function readStored(): SessionUser | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<SessionUser | null>(readStored);
 
   const signIn = useCallback((next: SessionUser) => {
@@ -50,33 +53,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void logout();
     setUser(null);
     removeStored();
-  }, []);
+    // The next person to sign in must not be handed this profile.
+    queryClient.removeQueries({ queryKey: PROFILE_KEY });
+  }, [queryClient]);
 
   // The API client reports a session it could not refresh: tokens are already gone, so just reset the UI.
   useEffect(() => {
     onUnauthorized(() => {
       setUser(null);
       removeStored();
+      queryClient.removeQueries({ queryKey: PROFILE_KEY });
     });
     return () => onUnauthorized(null);
-  }, []);
+  }, [queryClient]);
 
   // A reload keeps the stored profile, which can be out of date: reload roles and permissions from the API.
   const signedIn = user !== null;
-  useEffect(() => {
-    if (!signedIn) return;
-    let cancelled = false;
-    fetchSessionUser()
-      .then((fresh) => {
-        if (!cancelled) signIn(fresh);
-      })
-      .catch(() => {
-        // An expired session is handled by the API client; other failures keep the stored profile.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [signedIn, signIn]);
+  useQuery({
+    queryKey: PROFILE_KEY,
+    queryFn: async () => {
+      const fresh = await fetchSessionUser();
+      signIn(fresh);
+      return fresh;
+    },
+    enabled: signedIn,
+    // An expired session is handled by the API client; other failures keep the stored profile.
+    retry: false,
+    staleTime: Infinity,
+  });
 
   const value = useMemo(() => ({ user, signIn, signOut }), [user, signIn, signOut]);
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

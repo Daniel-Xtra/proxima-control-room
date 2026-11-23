@@ -1,4 +1,5 @@
 import { humanize } from "@/shared/lib/format";
+import { PencilSimple } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActionDialog } from "@/shared/components/ActionDialog";
@@ -158,14 +159,15 @@ export function FeesPanel({ fees, editable }: Props) {
             cell: (r) =>
               editable ? (
                 <Button
-                  variant="outline"
-                  size="xs"
+                  variant="ghost"
+                  size="icon-lg"
+                  aria-label={t("config.editNamed", { name: r.name })}
                   onClick={() => {
                     setForm(toForm(r));
                     setEditing(r);
                   }}
                 >
-                  {t("config.edit")}
+                  <PencilSimple aria-hidden="true" />
                 </Button>
               ) : null,
           },

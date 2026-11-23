@@ -26,7 +26,7 @@ const DEFAULTS = { q: "", status: "all", page: "1", limit: "10" };
 
 export function UpgradeRequestsPage() {
   const navigate = useNavigate();
-  const [filters, setFilter] = useUrlFilters(DEFAULTS);
+  const [filters, setFilter, { resetFilters }] = useUrlFilters(DEFAULTS);
   const result = useUpgradeRequests({
     search: filters.q,
     status: filters.status,
@@ -77,11 +77,7 @@ export function UpgradeRequestsPage() {
             </Select>
           </div>
           {dirty ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => (["q", "status"] as const).forEach((k) => setFilter(k, DEFAULTS[k]))}
-            >
+            <Button variant="ghost" size="sm" onClick={() => resetFilters(["q", "status"])}>
               {t("common.clearFilters")}
             </Button>
           ) : null}

@@ -1,4 +1,5 @@
 import { CheckCircle } from "@phosphor-icons/react";
+import { useMutation } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { getAuditActor } from "../api/auditStore";
@@ -80,9 +81,25 @@ export function ActionDialog({
   const [values, setValues] = useState<ActionValues>(EMPTY);
   const [typed, setTyped] = useState("");
   const [step, setStep] = useState<"details" | "totp">("details");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
   const [result, setResult] = useState<{ outcome: string; at: string; values: ActionValues }>();
+
+  // A fresh authenticator code first when one is required, then the action itself.
+  const action = useMutation({
+    mutationFn: async (submitted: ActionValues) => {
+      if (requireTotp) await stepUp(submitted.code);
+      return onConfirm(submitted);
+    },
+    onSuccess: (outcome, submitted) => {
+      toast.success(outcome);
+      setResult({ outcome, at: new Date().toISOString(), values: submitted });
+    },
+  });
+  const busy = action.isPending;
+  const error = action.isError
+    ? action.error instanceof ApiError
+      ? action.error.message
+      : t("state.error.title")
+    : undefined;
 
   const confirmWord = t("action.confirmWord");
 
@@ -90,8 +107,7 @@ export function ActionDialog({
     setValues(EMPTY);
     setTyped("");
     setStep("details");
-    setError(undefined);
-    setBusy(false);
+    action.reset();
     setResult(undefined);
   }
 
@@ -105,24 +121,9 @@ export function ActionDialog({
   const typedOk = !typedConfirmation || typed === confirmWord;
   const detailsValid = !blocked && reasonOk && typedOk;
 
-  async function submit() {
-    setBusy(true);
-    setError(undefined);
-    try {
-      if (requireTotp) await stepUp(values.code);
-      const outcome = await onConfirm(values);
-      toast.success(outcome);
-      setResult({ outcome, at: new Date().toISOString(), values });
-    } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : t("state.error.title"));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   function advance() {
     if (requireTotp && step === "details") setStep("totp");
-    else void submit();
+    else action.mutate(values);
   }
 
   const canAdvance = !busy && (step === "details" ? detailsValid : values.code.length === 6);
@@ -243,7 +244,7 @@ export function ActionDialog({
                   disabled={busy}
                   onClick={() => {
                     setStep("details");
-                    setError(undefined);
+                    action.reset();
                   }}
                 >
                   {t("common.back")}

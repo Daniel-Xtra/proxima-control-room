@@ -32,7 +32,7 @@ export function TemplatesPage() {
   const queryClient = useQueryClient();
   const can = useCan();
   const canEdit = can("content:edit");
-  const [filters, setFilter] = useUrlFilters(DEFAULTS);
+  const [filters, setFilter, { resetFilters }] = useUrlFilters(DEFAULTS);
   const result = useTemplates({ search: filters.q, channel: filters.channel });
   const [editing, setEditing] = useState<BroadcastTemplate | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -63,7 +63,7 @@ export function TemplatesPage() {
         }
       />
       <FilterBar
-        onClear={() => (["q", "channel"] as const).forEach((key) => setFilter(key, DEFAULTS[key]))}
+        onClear={() => resetFilters(["q", "channel"])}
         dirty={filters.q !== "" || filters.channel !== "all"}
         search={{
           value: filters.q,

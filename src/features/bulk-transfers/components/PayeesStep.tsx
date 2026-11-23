@@ -1,4 +1,5 @@
 import { DownloadSimple, SealCheck, Trash } from "@phosphor-icons/react";
+import { useMutation } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { FileUpload, type EvidenceFile } from "@/shared/components/FileUpload";
 import { MoneyText } from "@/shared/components/MoneyText";
@@ -9,7 +10,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/Tabs";
 import { t } from "@/shared/i18n/t";
 import { ApiError } from "@/shared/api/client";
-import { listBanks, listTemplatePayees, verifyPayees } from "../api/bulkApi";
+import { verifyPayees } from "../api/bulkApi";
 import { useBulkFee } from "../api/queries";
 import { PayeeCheckCell } from "./PayeeCheckCell";
 import { PAYEE_COLUMNS, TEMPLATE_WIDTHS, templateRows } from "../model/payeeRows";
@@ -26,33 +27,9 @@ interface Props {
 
 type Filter = "all" | "fix" | "valid";
 
-/** Bank names as the API lists them, so the sample rows are accepted when the batch is created. */
-async function templateBanks(): Promise<string[] | undefined> {
-  try {
-    const names = (await listBanks()).map((bank) => bank.name);
-    const common = names.filter((name) =>
-      /access|guaranty|first bank|united bank|zenith|wema|sterling/i.test(name),
-    );
-    const pick = (common.length >= 3 ? common : names).slice(0, 10);
-    return pick.length > 0 ? pick : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-/** The bank names and the real platform customers the template is filled with. Either is left out if it cannot be read. */
-async function templateParts() {
-  const [banks, internal] = await Promise.all([
-    templateBanks(),
-    listTemplatePayees().catch(() => []),
-  ]);
-  return [banks, internal] as const;
-}
-
-async function downloadTemplate() {
-  const url = URL.createObjectURL(
-    buildXlsx(templateRows(...(await templateParts())), TEMPLATE_WIDTHS),
-  );
+/** Saves the empty template: the column headings only. */
+function downloadTemplate() {
+  const url = URL.createObjectURL(buildXlsx(templateRows(), TEMPLATE_WIDTHS));
   const link = document.createElement("a");
   link.href = url;
   link.download = "bulk-transfer-template.xlsx";
@@ -65,39 +42,28 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
   const read = useRef(new Set<File>());
   const totals = draftTotals(payees, useBulkFee(payees).feeKobo);
-  const [verifying, setVerifying] = useState(false);
   const [verifyNote, setVerifyNote] = useState<string | null>(null);
   const unverified = unverifiedCount(payees);
   const [paging, setPaging] = useState({ page: 1, limit: 10 });
 
-  async function verify() {
-    setVerifying(true);
-    setVerifyNote(null);
-    try {
-      const results = await verifyPayees(payees);
+  const verifyMutation = useMutation({
+    mutationFn: () => verifyPayees(payees),
+    onMutate: () => setVerifyNote(null),
+    onSuccess: (results) => {
       onPayeesChange((previous) =>
         previous.map((p) => {
           const check = results.get(p.row);
           return check ? { ...p, check } : p;
         }),
       );
-      const all = [...results.values()];
-      setVerifyNote(
-        t("bulk.verify.done", {
-          verified: all.filter((c) => c.status === "verified").length,
-          warning: all.filter((c) => c.status === "warning").length,
-          invalid: all.filter((c) => c.status === "invalid").length,
-        }),
-      );
-    } catch (error) {
-      // Say why when the server did: for example "Too many requests. Please try again in 34 seconds."
+    },
+    // Say why when the server did: for example "Too many requests. Please try again in 34 seconds."
+    onError: (error) =>
       setVerifyNote(
         error instanceof ApiError && error.status === 429 ? error.message : t("bulk.verify.error"),
-      );
-    } finally {
-      setVerifying(false);
-    }
-  }
+      ),
+  });
+  const verifying = verifyMutation.isPending;
 
   function onFiles(files: EvidenceFile[]) {
     // The file was removed from the list, so the payees it brought in go with it.
@@ -145,7 +111,7 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
         title={t("bulk.section.payees")}
         description={t("bulk.section.payeesHint")}
         actions={
-          <Button variant="outline" size="sm" onClick={() => void downloadTemplate()}>
+          <Button variant="outline" size="sm" onClick={downloadTemplate}>
             <DownloadSimple aria-hidden="true" />
             {t("bulk.template")}
           </Button>
@@ -168,30 +134,32 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
           </ul>
         ) : null}
 
-        <div className="mt-4 rounded-md border border-border-soft bg-surface-muted px-3 py-3">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="mr-1 text-xs font-medium text-ink">
-              {t("bulk.format.columnsLabel")}
-            </span>
-            {PAYEE_COLUMNS.map((header) => (
-              <code
-                key={header}
-                className="rounded border border-border-soft bg-surface px-1.5 py-0.5 font-mono text-xs text-ink"
-              >
-                {header}
-                {header === "bank" ? (
-                  <span className="ml-1 font-sans text-muted-text">
-                    {t("bulk.format.optional")}
-                  </span>
-                ) : null}
-              </code>
-            ))}
+        {payees.length === 0 ? (
+          <div className="mt-4 rounded-md border border-border-soft bg-surface-muted px-3 py-3">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="mr-1 text-xs font-medium text-ink">
+                {t("bulk.format.columnsLabel")}
+              </span>
+              {PAYEE_COLUMNS.map((header) => (
+                <code
+                  key={header}
+                  className="rounded border border-border-soft bg-surface px-1.5 py-0.5 font-mono text-xs text-ink"
+                >
+                  {header}
+                  {header === "bank" ? (
+                    <span className="ml-1 font-sans text-muted-text">
+                      {t("bulk.format.optional")}
+                    </span>
+                  ) : null}
+                </code>
+              ))}
+            </div>
+            <p className="m-0 mt-2 text-xs text-muted-text">
+              {t("bulk.format.limits", { max: (MAX_PAYEE_KOBO / 100).toLocaleString("en-NG") })}{" "}
+              {t("bulk.format.bankOptional")}
+            </p>
           </div>
-          <p className="m-0 mt-2 text-xs text-muted-text">
-            {t("bulk.format.limits", { max: (MAX_PAYEE_KOBO / 100).toLocaleString("en-NG") })}{" "}
-            {t("bulk.format.bankOptional")}
-          </p>
-        </div>
+        ) : null}
       </SectionCard>
 
       <SectionCard
@@ -337,10 +305,8 @@ export function PayeesStep({ payees, onPayeesChange }: Props) {
 
       {unverified > 0 ? (
         <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3 shadow-lg">
-          <p className="m-0 min-w-0 text-sm text-ink">
-            {t("bulk.verify.required", { count: unverified })}
-          </p>
-          <Button disabled={verifying} onClick={() => void verify()}>
+          <p className="m-0 min-w-0 text-sm text-ink">{t("bulk.verify.required")}</p>
+          <Button disabled={verifying} onClick={() => verifyMutation.mutate()}>
             <SealCheck aria-hidden="true" />
             {verifying ? t("bulk.verify.running") : t("bulk.verify.button")}
           </Button>

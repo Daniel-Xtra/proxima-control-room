@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActionDialog } from "@/shared/components/ActionDialog";
 import { SectionCard } from "@/shared/components/SectionCard";
@@ -36,9 +36,10 @@ export function FundingStep({
   const sources = balances.data ?? [];
   const [picked, setPicked] = useState("");
   const [dialog, setDialog] = useState<"pass" | "reject" | null>(null);
-  const [checks, setChecks] = useState<Map<number, PayeeCheck> | null>(null);
-  const [checking, setChecking] = useState(false);
-  const [checkFailed, setCheckFailed] = useState(false);
+  const verification = useMutation({ mutationFn: () => verifyBatchAccounts(batch.id) });
+  const checks = verification.data ?? null;
+  const checking = verification.isPending;
+  const checkFailed = verification.isError;
 
   // Until one is picked, the first account is used.
   const chosen = picked || sources[0]?.id || "";
@@ -50,22 +51,10 @@ export function FundingStep({
     source.balanceKobo >= debitKobo;
   const refresh = () => queryClient.invalidateQueries({ queryKey: bulkKeys.all });
 
-  async function verify() {
-    setChecking(true);
-    setCheckFailed(false);
-    try {
-      setChecks(await verifyBatchAccounts(batch.id));
-    } catch {
-      setCheckFailed(true);
-    } finally {
-      setChecking(false);
-    }
-  }
-
   const results = checks ? [...checks.entries()] : [];
   const count = (status: PayeeCheck["status"]) =>
-    results.filter(([, check]) => check.status === status).length;
-  const problems = results.filter(([, check]) => check.status !== "verified");
+    results.filter(([, item]) => item.status === status).length;
+  const problems = results.filter(([, item]) => item.status !== "verified");
 
   return (
     <div className="flex flex-col gap-4">
@@ -91,7 +80,11 @@ export function FundingStep({
 
       <SectionCard title={t("bulk.fund.verifyTitle")} description={t("bulk.fund.verifyHint")}>
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="outline" disabled={checking || Boolean(blockedReason)} onClick={verify}>
+          <Button
+            variant="outline"
+            disabled={checking || Boolean(blockedReason)}
+            onClick={() => verification.mutate()}
+          >
             {checking ? t("bulk.verify.running") : t("bulk.verify.button")}
           </Button>
           {checks ? (
@@ -118,24 +111,24 @@ export function FundingStep({
         ) : null}
         {problems.length > 0 ? (
           <ul className="m-0 mt-4 list-none divide-y divide-border overflow-hidden rounded-md border border-border p-0">
-            {problems.slice(0, SHOWN_PROBLEMS).map(([row, check]) => (
+            {problems.slice(0, SHOWN_PROBLEMS).map(([row, item]) => (
               <li key={row} className="flex flex-wrap items-start gap-x-4 gap-y-1 px-3 py-2.5">
                 <span className="w-16 shrink-0 text-sm font-medium text-ink">
                   {t("bulk.fund.rowLabel", { row })}
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
                   <div className="flex flex-wrap gap-1.5">
-                    {check.issues.map((issue) => (
+                    {item.issues.map((issue) => (
                       <StatusBadge
                         key={issue}
-                        tone={check.status === "invalid" ? "danger" : "warning"}
+                        tone={item.status === "invalid" ? "danger" : "warning"}
                         label={t(`bulk.verify.issue.${issue}`)}
                       />
                     ))}
                   </div>
-                  {check.accountName ? (
+                  {item.accountName ? (
                     <span className="text-xs text-muted-text">
-                      {t("bulk.verify.accountName", { name: check.accountName })}
+                      {t("bulk.verify.accountName", { name: item.accountName })}
                     </span>
                   ) : null}
                 </div>

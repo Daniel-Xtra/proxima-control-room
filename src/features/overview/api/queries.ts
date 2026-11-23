@@ -20,19 +20,19 @@ export const overviewKeys = {
 export const useOverviewSummary = (range: string) =>
   useApiQuery(overviewKeys.summary(range), () => getOverviewSummary(range), {
     ...REFRESH,
-    placeholderData: (previous) => previous,
+    keepPreviousPage: true,
   });
 
 export const useOverviewTrend = (range: string, purpose?: string) =>
   useApiQuery(overviewKeys.trend(range, purpose), () => getOverviewTrend(range, purpose), {
     ...REFRESH,
-    placeholderData: (previous) => previous,
+    keepPreviousPage: true,
   });
 
 export const useOverviewStatus = (range: string) =>
   useApiQuery(overviewKeys.status(range), () => getOverviewStatus(range), {
     ...REFRESH,
-    placeholderData: (previous) => previous,
+    keepPreviousPage: true,
   });
 
 export const useOverviewSavings = () =>

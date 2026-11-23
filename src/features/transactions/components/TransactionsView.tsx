@@ -43,10 +43,12 @@ interface Props {
   /** The values "Clear filters" returns to. */
   defaults: TransactionFilterValues;
   setFilter: (key: keyof TransactionFilterValues, value: string) => void;
+  /** Changes several filters in one update. */
+  setFilters: (patch: Partial<TransactionFilterValues>) => void;
 }
 
 /** Filter bar, table and detail drawer. Filter state is owned by the caller. */
-export function TransactionsView({ customerId, filters, defaults, setFilter }: Props) {
+export function TransactionsView({ customerId, filters, defaults, setFilter, setFilters }: Props) {
   const can = useCan();
   const [selected, setSelected] = useState<Transaction | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
@@ -62,20 +64,24 @@ export function TransactionsView({ customerId, filters, defaults, setFilter }: P
     limit: Number(filters.limit),
   });
 
+  const dirty =
+    filters.q !== defaults.q ||
+    filters.range !== defaults.range ||
+    filters.status !== defaults.status ||
+    filters.purpose !== defaults.purpose;
+  const clearFilters = () =>
+    setFilters({
+      q: defaults.q,
+      range: defaults.range,
+      status: defaults.status,
+      purpose: defaults.purpose,
+    });
+
   return (
     <>
       <FilterBar
-        onClear={() =>
-          (["q", "range", "status", "purpose"] as const).forEach((key) =>
-            setFilter(key, defaults[key]),
-          )
-        }
-        dirty={
-          filters.q !== defaults.q ||
-          filters.range !== defaults.range ||
-          filters.status !== defaults.status ||
-          filters.purpose !== defaults.purpose
-        }
+        onClear={clearFilters}
+        dirty={dirty}
         search={{
           value: filters.q,
           onChange: (value) => setFilter("q", value),
@@ -122,6 +128,8 @@ export function TransactionsView({ customerId, filters, defaults, setFilter }: P
           isEmpty={(data) => data.total === 0}
           emptyTitle={t("transactions.empty.title")}
           emptyDescription={t("transactions.empty.description")}
+          filtered={dirty}
+          onClearFilters={clearFilters}
         >
           {(data) => (
             <DataTable<Transaction>
@@ -149,8 +157,7 @@ export function TransactionsView({ customerId, filters, defaults, setFilter }: P
                   : null
               }
               onSortChange={(next) => {
-                setFilter("sort", next?.key ?? "");
-                setFilter("dir", next?.dir ?? "asc");
+                setFilters({ sort: next?.key ?? "", dir: next?.dir ?? "asc" });
               }}
               columns={[
                 {

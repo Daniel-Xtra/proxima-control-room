@@ -21,16 +21,18 @@ interface FilterBarProps {
 /** A bordered panel of filters that sits above the table card. */
 export function FilterBar({ search, children, actions, onClear, dirty }: FilterBarProps) {
   return (
-    <div className="card mb-4 grid grid-cols-2 items-center gap-3 p-4 sm:flex sm:flex-wrap max-sm:[&>*]:min-w-0 max-sm:[&>*]:!w-full max-sm:[&>*]:!max-w-none [&_button[role=combobox]]:h-12">
+    <div className="card mb-4 grid grid-cols-2 items-center gap-3 p-4 sm:flex sm:flex-wrap max-sm:[&>*]:min-w-0 max-sm:[&>*]:!w-full max-sm:[&>*]:!max-w-none [&_button[role=combobox]]:h-12 [&_select]:h-12 [&_input:not([type=checkbox]):not([type=radio])]:h-12 [&_button[data-slot=button]]:h-12">
       {search ? <DebouncedSearch {...search} /> : null}
       {children}
       {onClear ? (
-        <Button variant="ghost" size="sm" disabled={!dirty} onClick={onClear}>
+        <Button variant="ghost" className="h-12" disabled={!dirty} onClick={onClear}>
           {t("common.clearFilters")}
         </Button>
       ) : null}
       {actions ? (
-        <div className="flex items-center gap-2 max-sm:col-span-2 sm:ml-auto">{actions}</div>
+        <div className="flex items-center gap-2 max-sm:col-span-2 sm:ml-auto [&>button]:h-12">
+          {actions}
+        </div>
       ) : null}
     </div>
   );
@@ -44,13 +46,25 @@ function DebouncedSearch({
 }: NonNullable<FilterBarProps["search"]>) {
   const [draft, setDraft] = useState(value);
   const timer = useRef<number>(undefined);
+  const sent = useRef(value);
 
   // Debounce at 300 ms: the URL only changes once typing pauses.
   function handleChange(next: string) {
     setDraft(next);
     window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => onChange(next), 300);
+    timer.current = window.setTimeout(() => {
+      sent.current = next;
+      onChange(next);
+    }, 300);
   }
+
+  // A change that did not come from typing here, such as "Clear filters" or going back, replaces the text.
+  useEffect(() => {
+    if (value === sent.current) return;
+    sent.current = value;
+    window.clearTimeout(timer.current);
+    setDraft(value);
+  }, [value]);
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 

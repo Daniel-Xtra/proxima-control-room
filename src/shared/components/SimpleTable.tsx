@@ -71,6 +71,20 @@ export function SimpleTable<T>({
     return [...rows].sort((a, b) => factor * compareValues(value(a), value(b)));
   }, [columns, controlled, localSort, rows]);
 
+  // Row ids can repeat (a fee row shares its transaction's reference). React needs each key once, or it keeps the
+  // wrong rows on screen when the list changes, so a repeated id gets a number.
+  const rowKeys = useMemo(() => {
+    const seen = new Map<string, number>();
+    return new Map(
+      ordered.map((row) => {
+        const id = getRowId(row);
+        const count = seen.get(id) ?? 0;
+        seen.set(id, count + 1);
+        return [row, count === 0 ? id : `${id}~${count}`] as const;
+      }),
+    );
+  }, [ordered, getRowId]);
+
   function toggle(col: Column<T>) {
     const next = nextSort(active, sortId(col));
     if (controlled) onSortChange(next);
@@ -86,7 +100,7 @@ export function SimpleTable<T>({
   const cards = (
     <ul aria-label={caption} className="m-0 list-none divide-y divide-border-soft p-0 lg:hidden">
       {ordered.map((row) => (
-        <li key={getRowId(row)} className="flex flex-col gap-2 px-4 py-3">
+        <li key={rowKeys.get(row)} className="flex flex-col gap-2 px-4 py-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 break-words font-medium text-ink">{lead?.cell(row)}</div>
             {onRowOpen ? (
@@ -194,7 +208,7 @@ export function SimpleTable<T>({
         <TableBody>
           {ordered.map((row) => (
             <TableRow
-              key={getRowId(row)}
+              key={rowKeys.get(row)}
               className={cn(
                 "border-b border-border-soft last:border-b-0",
                 onRowOpen && "cursor-pointer",
