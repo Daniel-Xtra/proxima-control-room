@@ -5,7 +5,7 @@ export const customers = {
   "customers.all": "All customers",
   "customers.nav.requests": "Account upgrade requests",
   "customers.upgrade.description":
-    "Customers who have uploaded their documents and are waiting for a higher tier.",
+    "Retail customers who have uploaded all required documents: an ID and a utility bill.",
   "customers.upgrade.searchLabel": "Search upgrade requests",
   "customers.upgrade.status.pending": "Pending",
   "customers.upgrade.status.resubmitted": "Resubmitted",
@@ -16,7 +16,7 @@ export const customers = {
   "customers.upgrade.documents": "{count} documents",
   "customers.upgrade.empty.title": "No upgrade requests",
   "customers.upgrade.empty.description":
-    "Customers appear here once they finish uploading documents.",
+    "Retail customers appear here once they upload both an ID and a utility bill.",
   "customers.stats.showing": "Showing:",
   "customers.stats.value": "Total transaction value",
   "customers.stats.volume": "Volume",
