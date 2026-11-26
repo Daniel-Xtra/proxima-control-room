@@ -37,6 +37,7 @@ const TONE: Record<string, StatusTone> = {
   approved: "success",
   rejected: "danger",
   pending_review: "warning",
+  resubmitted: "warning",
 };
 
 const statusLabel = (status: string) =>
@@ -44,7 +45,12 @@ const statusLabel = (status: string) =>
     ? t("kyc.status.approved")
     : status === "rejected"
       ? t("kyc.status.rejected")
-      : t("kyc.review.pending");
+      : status === "resubmitted"
+        ? t("kyc.status.resubmitted")
+        : t("kyc.review.pending");
+
+/** A first upload and a replacement for a rejected one both wait for a decision. */
+const awaitsDecision = (status: string) => status === "pending_review" || status === "resubmitted";
 
 const kb = (bytes: number | null) => (bytes ? `${Math.max(1, Math.round(bytes / 1024))} KB` : "");
 
@@ -149,7 +155,7 @@ export function CustomerKycReview({ customerId }: { customerId: string }) {
                         label={statusLabel(doc.status)}
                       />
                     </p>
-                    {doc.status === "pending_review" ? (
+                    {awaitsDecision(doc.status) ? (
                       <Can permission="kyc:review">
                         <span className="inline-flex gap-2">
                           <Button

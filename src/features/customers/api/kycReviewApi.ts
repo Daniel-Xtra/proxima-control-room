@@ -1,6 +1,6 @@
 import { request } from "@/shared/api/client";
 
-export type ReviewStatus = "pending_review" | "approved" | "rejected" | string;
+export type ReviewStatus = "pending_review" | "resubmitted" | "approved" | "rejected" | string;
 export type SlotStatus = "approved" | "pending_review" | "rejected" | "missing";
 
 export interface KycFile {
