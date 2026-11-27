@@ -61,6 +61,14 @@ export async function listDeliveries(filters: DeliveryFilters) {
   return { rows, total: result.total, counts: result.counts };
 }
 
+/** What was queued for one delivery, already masked by the server. Viewing it is recorded in the audit log. */
+export async function getDeliveryPayload(id: string) {
+  const data = await request<{ payload: unknown }>(
+    `/admin/system/outbound-events/${encodeURIComponent(id)}/payload`,
+  );
+  return data.payload;
+}
+
 /** Queues a failed or stuck delivery to be sent again. Needs a fresh authenticator code first. */
 export async function resendDelivery(id: string, reason: string) {
   await request<unknown>(`/admin/system/outbound-events/${encodeURIComponent(id)}/resend`, {

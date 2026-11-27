@@ -23,12 +23,12 @@ import {
   type DeliveryChannel,
   type DeliveryStatus,
 } from "../api/systemApi";
+import { DeliveryPayload } from "./DeliveryPayload";
 import { DeliveryStatusBadge } from "./DeliveryStatusBadge";
 
 // Only these can be sent again; the others are delivered or still being worked on.
 const RESENDABLE: DeliveryStatus[] = ["dead", "stuck"];
-// Failed deliveries are what an admin comes here for, so the list opens on them.
-const DEFAULTS = { status: "dead", channel: "all", search: "", page: "1", limit: "10" };
+const DEFAULTS = { status: "all", channel: "all", search: "", page: "1", limit: "10" };
 const STATUSES: DeliveryStatus[] = [
   "dead",
   "stuck",
@@ -236,6 +236,8 @@ export function WebhookDeliveries() {
                 },
               ]}
             />
+            {/* Keyed, so one delivery's payload is never shown under another. */}
+            <DeliveryPayload key={selected.id} deliveryId={selected.id} />
           </div>
         ) : null}
       </DetailsSheet>

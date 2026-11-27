@@ -194,11 +194,18 @@ export const operations = {
   "jobs.delivery.deliveredAt": "Delivered at",
   "jobs.delivery.details": "Delivery details",
   "jobs.delivery.empty": "No deliveries here",
-  "jobs.delivery.empty.description": "Nothing has this status.",
+  "jobs.delivery.empty.description": "There are no deliveries to show yet.",
   "jobs.delivery.resend": "Resend",
   "jobs.delivery.resend.impact":
     "This queues the webhook to be sent again, with no second approval. Check first that the receiver has not already acted on this event.",
   "jobs.delivery.resend.done": "Webhook queued to send again.",
+  "jobs.delivery.payload": "Payload",
+  "jobs.delivery.payload.show": "Show payload",
+  "jobs.delivery.payload.copy": "Copy",
+  "jobs.delivery.payload.copied": "Payload copied",
+  "jobs.delivery.payload.copyFailed": "Could not copy the payload",
+  "jobs.delivery.payload.note":
+    "This is what was queued. Personal details are masked and secrets are hidden. Each view is recorded in the audit log.",
   "jobs.queue.description":
     "A failed-message queue only fills if the message broker is set up to send failures to it.",
   "jobs.queue.unavailable": "Queue information is not available",
