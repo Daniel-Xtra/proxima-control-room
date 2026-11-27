@@ -1,4 +1,4 @@
-export type FixedDepositStatus = "active" | "matured" | "liquidated" | "paid";
+export type FixedDepositStatus = "active" | "cancelled" | "matured" | "paid";
 export type TargetSavingStatus = "active" | "cancelled" | "matured" | "paid";
 export type Frequency = "daily" | "weekly" | "monthly";
 

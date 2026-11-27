@@ -22,7 +22,7 @@ import { PlanActivitySheet } from "./PlanActivitySheet";
 const FixedBadge = defineStatusBadge<FixedDepositStatus>({
   active: { tone: "info", label: t("savings.status.active") },
   matured: { tone: "warning", label: t("savings.status.matured") },
-  liquidated: { tone: "neutral", label: t("savings.status.liquidated") },
+  cancelled: { tone: "neutral", label: t("savings.status.cancelled") },
   paid: { tone: "success", label: t("savings.status.paid") },
 });
 

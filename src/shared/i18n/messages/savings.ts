@@ -110,7 +110,6 @@ export const savings = {
   "savings.frequency.monthly": "Monthly",
   "savings.status.active": "Active",
   "savings.status.matured": "Matured",
-  "savings.status.liquidated": "Liquidated",
   "savings.status.paid": "Paid",
   "savings.status.cancelled": "Cancelled",
   "savings.liquidate.action": "Liquidate",

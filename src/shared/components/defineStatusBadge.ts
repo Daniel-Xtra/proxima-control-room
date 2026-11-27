@@ -7,7 +7,11 @@ export function defineStatusBadge<S extends string>(
   map: Record<S, { tone: StatusTone; label: string }>,
 ) {
   return function DefinedStatusBadge({ status, className }: { status: S; className?: string }) {
-    const entry = map[status];
+    // Statuses come from the server. One we do not know is shown as it arrived, not left to crash the page.
+    const entry = map[status] ?? {
+      tone: "neutral" as const,
+      label: String(status ?? "—").replaceAll("_", " "),
+    };
     return createElement(StatusBadge, { tone: entry.tone, label: entry.label, className });
   };
 }
