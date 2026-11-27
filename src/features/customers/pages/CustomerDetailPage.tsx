@@ -1,5 +1,5 @@
 import { CaretDown } from "@phosphor-icons/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useCan } from "@/features/auth";
 import {
@@ -22,11 +22,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/Tabs";
 import { t } from "@/shared/i18n/t";
 import { useCustomer } from "../api/queries";
-import {
-  RepairBankOneDialog,
-  ResetPasswordDialog,
-  UnlockLoginDialog,
-} from "../components/CustomerActionDialogs";
+import { ResetPasswordDialog, UnlockLoginDialog } from "../components/CustomerActionDialogs";
 import { CustomerActivity } from "../components/CustomerActivity";
 import { CustomerHeader } from "../components/CustomerHeader";
 import { CustomerKycTab } from "../components/CustomerKycTab";
@@ -43,7 +39,7 @@ const TABS = [
   "requests",
   "activity",
 ] as const;
-type DialogId = "freeze" | "limit" | "reset" | "unlock" | "repair" | "statement" | null;
+type DialogId = "freeze" | "limit" | "reset" | "unlock" | "statement" | null;
 
 export function CustomerDetailPage() {
   const { id = "" } = useParams();
@@ -62,6 +58,25 @@ function CustomerDetail({ customer }: { customer: Customer }) {
   const tab = TABS.find((candidate) => candidate === requested) ?? "summary";
   const frozen = customer.status === "frozen";
   const close = (open: boolean) => !open && setDialog(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
+
+  // A count, so that asking again while already on the tab scrolls again.
+  const [infoRequests, setInfoRequests] = useState(0);
+  const scrollPending = useRef(false);
+
+  const showMoreInfo = () => {
+    scrollPending.current = true;
+    setInfoRequests((count) => count + 1);
+    setParams({ tab: "summary" }, { replace: true });
+  };
+
+  // Runs once the tab is on screen: scrolling sooner measures the page at the previous tab's height.
+  useEffect(() => {
+    if (!scrollPending.current || tab !== "summary") return;
+    scrollPending.current = false;
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    tabsRef.current?.scrollIntoView({ behavior: still ? "auto" : "smooth", block: "start" });
+  }, [infoRequests, tab]);
 
   const actions: { id: Exclude<DialogId, null>; label: string; allowed: boolean }[] = [
     {
@@ -80,11 +95,6 @@ function CustomerDetail({ customer }: { customer: Customer }) {
       allowed: can("customer:reset_password"),
     },
     { id: "unlock", label: t("customers.action.unlock"), allowed: can("customer:unlock") },
-    {
-      id: "repair",
-      label: t("customers.action.repairBankOne"),
-      allowed: can("customer:repair_bankone"),
-    },
     { id: "statement", label: t("customers.action.statement"), allowed: can("customer:export") },
   ];
   const available = actions.filter((action) => action.allowed);
@@ -103,7 +113,7 @@ function CustomerDetail({ customer }: { customer: Customer }) {
 
       <CustomerHeader
         customer={customer}
-        onMoreInfo={() => setParams({ tab: "summary" }, { replace: true })}
+        onMoreInfo={showMoreInfo}
         actions={
           available.length > 0 ? (
             <DropdownMenu>
@@ -127,8 +137,11 @@ function CustomerDetail({ customer }: { customer: Customer }) {
 
       <CustomerActivity customer={customer} />
 
+      {/* The top margin keeps the tab names clear of the fixed header when scrolled to. */}
+      <div ref={tabsRef} className="scroll-mt-20" />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
-        <TabsList>
+        {/* On a phone the names wrap onto a second line, so none is hidden off the side of the screen. */}
+        <TabsList className="flex-wrap gap-y-3 sm:flex-nowrap">
           {TABS.map((id) => (
             <TabsTrigger key={id} value={id}>
               {t(`customers.tab.${id}`)}
@@ -175,7 +188,6 @@ function CustomerDetail({ customer }: { customer: Customer }) {
       />
       <ResetPasswordDialog open={dialog === "reset"} onOpenChange={close} customer={customer} />
       <UnlockLoginDialog open={dialog === "unlock"} onOpenChange={close} customer={customer} />
-      <RepairBankOneDialog open={dialog === "repair"} onOpenChange={close} customer={customer} />
       <StatementDialog
         open={dialog === "statement"}
         onOpenChange={close}

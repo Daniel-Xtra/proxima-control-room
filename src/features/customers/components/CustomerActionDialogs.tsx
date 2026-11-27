@@ -2,7 +2,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActionDialog } from "@/shared/components/ActionDialog";
 import { t } from "@/shared/i18n/t";
-import { repairBankOneCustomer } from "../api/customersApi";
 import type { Customer } from "../model/types";
 import { FileUpload, type EvidenceFile } from "@/shared/components/FileUpload";
 import { unavailable } from "@/shared/api/unavailable";
@@ -48,25 +47,6 @@ export function UnlockLoginDialog({ open, onOpenChange, customer }: DialogProps)
         await createRequest({ kind: "unlock", customerId: customer.id, reason });
         await queryClient.invalidateQueries({ queryKey: requestKeys.all });
         return t("customers.unlock.done");
-      }}
-    />
-  );
-}
-
-export function RepairBankOneDialog({ open, onOpenChange, customer }: DialogProps) {
-  return (
-    <ActionDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title={t("customers.action.repairBankOne")}
-      description={customer.name}
-      impact={t("customers.repair.impact")}
-      confirmLabel={t("customers.action.repairBankOne")}
-      onConfirm={async ({ reason }) => {
-        const result = await repairBankOneCustomer(customer.id, reason);
-        return result.customerCreated
-          ? t("customers.repair.createdAndFound")
-          : t("customers.repair.foundOnly");
       }}
     />
   );

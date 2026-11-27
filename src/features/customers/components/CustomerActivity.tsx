@@ -89,45 +89,47 @@ export function CustomerActivity({ customer }: { customer: Customer }) {
         ]}
       />
 
-      <div className="grid items-start gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <TrendCard customerId={customer.id} range={range} />
+      <div className="@container">
+        <div className="grid items-start gap-4 @min-[880px]:grid-cols-3">
+          <div className="min-w-0 @min-[880px]:col-span-2">
+            <TrendCard customerId={customer.id} range={range} />
+          </div>
+          <SectionCard title={t("customers.stats.status")}>
+            <AsyncBody query={summary} skeletonRows={4}>
+              {(data) => (
+                <StatusBreakdown
+                  stacked
+                  caption={t("customers.stats.status")}
+                  totalKobo={
+                    data.statuses.success.valueKobo +
+                    data.statuses.failed.valueKobo +
+                    data.statuses.pending.valueKobo
+                  }
+                  slices={[
+                    {
+                      label: t("overview.transfers.successful"),
+                      tone: "success",
+                      count: data.statuses.success.count,
+                      amountKobo: data.statuses.success.valueKobo,
+                    },
+                    {
+                      label: t("overview.transfers.failed"),
+                      tone: "danger",
+                      count: data.statuses.failed.count,
+                      amountKobo: data.statuses.failed.valueKobo,
+                    },
+                    {
+                      label: t("overview.transfers.pending"),
+                      tone: "warning",
+                      count: data.statuses.pending.count,
+                      amountKobo: data.statuses.pending.valueKobo,
+                    },
+                  ]}
+                />
+              )}
+            </AsyncBody>
+          </SectionCard>
         </div>
-        <SectionCard title={t("customers.stats.status")}>
-          <AsyncBody query={summary} skeletonRows={4}>
-            {(data) => (
-              <StatusBreakdown
-                stacked
-                caption={t("customers.stats.status")}
-                totalKobo={
-                  data.statuses.success.valueKobo +
-                  data.statuses.failed.valueKobo +
-                  data.statuses.pending.valueKobo
-                }
-                slices={[
-                  {
-                    label: t("overview.transfers.successful"),
-                    tone: "success",
-                    count: data.statuses.success.count,
-                    amountKobo: data.statuses.success.valueKobo,
-                  },
-                  {
-                    label: t("overview.transfers.failed"),
-                    tone: "danger",
-                    count: data.statuses.failed.count,
-                    amountKobo: data.statuses.failed.valueKobo,
-                  },
-                  {
-                    label: t("overview.transfers.pending"),
-                    tone: "warning",
-                    count: data.statuses.pending.count,
-                    amountKobo: data.statuses.pending.valueKobo,
-                  },
-                ]}
-              />
-            )}
-          </AsyncBody>
-        </SectionCard>
       </div>
     </div>
   );

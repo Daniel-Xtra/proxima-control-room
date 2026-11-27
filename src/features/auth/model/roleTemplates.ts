@@ -72,7 +72,7 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
       ...VIEW,
       "transaction:requery",
       "transaction:retry",
-      "customer:repair_bankone",
+      "customer:request_account_number",
       "queues:manage",
       "integrations:view",
       "config:view",

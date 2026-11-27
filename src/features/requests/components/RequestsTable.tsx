@@ -1,8 +1,6 @@
-import { ArrowRight } from "@phosphor-icons/react";
 import { useState } from "react";
 import { AsyncBody } from "@/shared/components/AsyncBody";
 import { DateText } from "@/shared/components/DateText";
-import { MoneyText } from "@/shared/components/MoneyText";
 import { DataTable } from "@/shared/components/DataTable";
 import { t } from "@/shared/i18n/t";
 import { useRequests } from "../api/queries";
@@ -75,24 +73,7 @@ export function RequestsTable({
                   ]
                 : []),
               { key: "by", header: t("requests.col.requestedBy"), cell: (r) => r.requestedBy },
-              {
-                key: "reason",
-                header: t("requests.col.reason"),
-                cell: (r) =>
-                  r.limits ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      {r.limits.currentDailyKobo === null ? null : (
-                        <>
-                          <MoneyText kobo={r.limits.currentDailyKobo} />
-                          <ArrowRight aria-hidden="true" className="size-3 text-muted-text" />
-                        </>
-                      )}
-                      <MoneyText kobo={r.limits.requestedDailyKobo} className="font-semibold" />
-                    </span>
-                  ) : (
-                    r.reason
-                  ),
-              },
+              { key: "reason", header: t("requests.col.reason"), cell: (r) => r.reason },
               {
                 key: "status",
                 header: t("requests.col.status"),

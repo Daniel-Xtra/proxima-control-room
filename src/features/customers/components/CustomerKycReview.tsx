@@ -4,6 +4,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Can, useCan } from "@/features/auth";
 import { DocumentViewer, type ViewedDocument } from "./DocumentViewer";
+import { LevelUpgradeCard } from "./LevelUpgradeCard";
+import { HistoryDetail } from "./HistoryDetail";
 import { ActionDialog } from "@/shared/components/ActionDialog";
 import { AsyncBody } from "@/shared/components/AsyncBody";
 import { DateText } from "@/shared/components/DateText";
@@ -70,11 +72,10 @@ export function CustomerKycReview({ customerId }: { customerId: string }) {
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["customers"] });
 
   const openFile = useMutation({
-    mutationFn: ({ doc, file }: { doc: KycDocument; file: KycFile }) =>
-      getDocumentLink(customerId, doc.id, file.reference),
-    onSuccess: (url, { doc, file }) => {
-      if (url)
-        setViewing({ title: doc.name, fileName: file.fileName, fileType: file.fileType, url });
+    mutationFn: ({ documentId, file }: { documentId: string; title: string; file: KycFile }) =>
+      getDocumentLink(customerId, documentId, file.reference),
+    onSuccess: (url, { title, file }) => {
+      if (url) setViewing({ title, fileName: file.fileName, fileType: file.fileType, url });
       else toast.error(t("kyc.review.noLink"));
     },
     onError: (caught) => toast.error(errorMessage(caught)),
@@ -93,6 +94,8 @@ export function CustomerKycReview({ customerId }: { customerId: string }) {
 
   return (
     <>
+      <LevelUpgradeCard customerId={customerId} />
+
       <SectionCard
         title={t("kyc.review.title")}
         description={
@@ -208,7 +211,9 @@ export function CustomerKycReview({ customerId }: { customerId: string }) {
                               size="sm"
                               disabled={opening === file.reference}
                               aria-label={t("kyc.review.viewNamed", { name: file.fileName })}
-                              onClick={() => openFile.mutate({ doc, file })}
+                              onClick={() =>
+                                openFile.mutate({ documentId: doc.id, title: doc.name, file })
+                              }
                             >
                               <Eye aria-hidden="true" />
                               {t("kyc.review.view")}
@@ -239,7 +244,21 @@ export function CustomerKycReview({ customerId }: { customerId: string }) {
               entries={rows.map((row) => ({
                 id: row.id,
                 title: `${row.description} · ${row.documentName}`,
-                detail: row.reason ?? undefined,
+                detail:
+                  row.reason || row.isUpload ? (
+                    <HistoryDetail
+                      entry={row}
+                      canView={can("kyc:view_documents")}
+                      opening={opening}
+                      onView={(documentId, file) =>
+                        openFile.mutate({
+                          documentId,
+                          title: `${row.name} · ${t("kyc.review.version", { version: row.version })}`,
+                          file,
+                        })
+                      }
+                    />
+                  ) : undefined,
                 at: row.at,
                 actor: row.actor,
               }))}

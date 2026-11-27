@@ -27,7 +27,8 @@ export function CustomerHeader({
 
   return (
     <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-      <div className="flex min-w-0 items-start gap-4">
+      {/* Takes the spare width and wraps its own details, which keeps the actions beside it when there is room. */}
+      <div className="flex min-w-0 flex-1 basis-80 items-start gap-4">
         <span
           aria-hidden="true"
           className="flex size-14 shrink-0 items-center justify-center rounded-full bg-info-bg font-heading text-lg font-semibold text-info-text"

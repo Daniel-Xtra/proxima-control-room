@@ -4,6 +4,7 @@ export type RequestKind =
   | "freeze"
   | "unfreeze"
   | "limit"
+  | "upgrade"
   | "unlock"
   | "password_reset"
   | "reversal"
@@ -68,6 +69,7 @@ export const APPROVE_PERMISSION: Record<RequestKind, Permission> = {
   freeze: "freeze_request:approve",
   unfreeze: "unfreeze_request:approve",
   limit: "limit_request:approve",
+  upgrade: "limit_request:approve",
   unlock: "unlock_request:approve",
   password_reset: "password_reset_request:approve",
   reversal: "reversal_request:approve",
@@ -80,6 +82,7 @@ export const INITIATE_PERMISSION: Record<RequestKind, Permission> = {
   freeze: "freeze_request:initiate",
   unfreeze: "unfreeze_request:initiate",
   limit: "limit_request:initiate",
+  upgrade: "limit_request:initiate",
   unlock: "customer:unlock",
   password_reset: "customer:reset_password",
   reversal: "transaction:reverse",

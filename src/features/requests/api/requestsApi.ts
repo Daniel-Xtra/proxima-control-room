@@ -55,6 +55,7 @@ const KIND_TO_TYPE = {
   freeze: "CUSTOMER_FREEZE",
   unfreeze: "CUSTOMER_UNFREEZE",
   limit: "CUSTOMER_LIMIT_CHANGE",
+  upgrade: "CUSTOMER_TIER_UPGRADE",
   unlock: "CUSTOMER_UNLOCK_LOGIN",
   password_reset: "CUSTOMER_PASSWORD_RESET",
   reversal: "TXN_REVERSAL",
@@ -65,6 +66,7 @@ const TYPE_TO_KIND: Record<string, RequestKind> = {
   CUSTOMER_FREEZE: "freeze",
   CUSTOMER_UNFREEZE: "unfreeze",
   CUSTOMER_LIMIT_CHANGE: "limit",
+  CUSTOMER_TIER_UPGRADE: "upgrade",
   CUSTOMER_UNLOCK_LOGIN: "unlock",
   CUSTOMER_PASSWORD_RESET: "password_reset",
   TXN_REVERSAL: "reversal",
@@ -201,6 +203,7 @@ const CREATE_PATH: Record<
   freeze: "freeze-requests",
   unfreeze: "unfreeze-requests",
   limit: "limit-requests",
+  upgrade: "tier-upgrade-requests",
   unlock: "unlock-requests",
   password_reset: "password-reset-requests",
 };

@@ -28,7 +28,7 @@ import { OverviewPage } from "@/features/overview";
 import { RequestsPage } from "@/features/requests";
 import { AuditLogPage, LockPolicyPage, WebhookWhitelistPage } from "@/features/risk";
 import { SavingsPage, SavingsSettingsPage } from "@/features/savings";
-import { BankOneRepairPage } from "@/features/system-health";
+import { JobsQueuesPage, MissingAccountNumbersPage } from "@/features/system-health";
 import { TransactionsPage } from "@/features/transactions";
 import { Toaster } from "@/shared/components/ui/Sonner";
 import { AppShell } from "./layouts/AppShell";
@@ -193,10 +193,20 @@ export function App() {
                 }
               />
               <Route
-                path="system/bankone"
+                path="system/jobs"
                 element={
-                  <RequirePermission permission="customer:repair_bankone">
-                    <BankOneRepairPage />
+                  <RequirePermission
+                    permission={["webhook_delivery:view", "queues:view", "jobs:view"]}
+                  >
+                    <JobsQueuesPage />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="system/missing-account-numbers"
+                element={
+                  <RequirePermission permission="customer:view">
+                    <MissingAccountNumbersPage />
                   </RequirePermission>
                 }
               />

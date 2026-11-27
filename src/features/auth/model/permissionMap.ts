@@ -16,7 +16,8 @@ export const PERMISSION_SOURCES: Record<Permission, readonly string[]> = {
   "customer:unlock": ["customer.unlock_login.request"],
   "customer:restrict": ["customer.restrict.request"],
   "customer:deactivate": [],
-  "customer:repair_bankone": ["customer.bankone_repair.execute"],
+  // The backend code predates this action: it was granted for the BankOne repair it replaced.
+  "customer:request_account_number": ["customer.bankone_repair.execute"],
 
   "freeze_request:initiate": ["customer.freeze.request"],
   "freeze_request:approve": ["customer.freeze.approve"],
@@ -99,6 +100,9 @@ export const PERMISSION_SOURCES: Record<Permission, readonly string[]> = {
   "audit_log:view": ["audit.view"],
   "integrations:view": ["webhook_ip.manage"],
   "integrations:manage": ["webhook_ip.manage"],
+  "webhook_delivery:view": ["ops.dlq.inspect"],
+  "queues:view": ["ops.queue.view"],
+  "jobs:view": ["ops.cron.view"],
   "queues:manage": ["ops.dlq.replay.request"],
   "security_policy:edit": ["settings.account_lock.manage"],
 

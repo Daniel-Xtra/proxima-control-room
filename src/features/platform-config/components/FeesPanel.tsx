@@ -1,5 +1,5 @@
 import { humanize } from "@/shared/lib/format";
-import { PencilSimple } from "@phosphor-icons/react";
+import { PencilSimple, Power } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActionDialog } from "@/shared/components/ActionDialog";
@@ -21,6 +21,7 @@ import { requestFeeChanges, type FeeChange } from "../api/configApi";
 import { configKeys } from "../api/queries";
 import { isMoney, koboToNaira, nairaToKobo } from "../model/money";
 import type { FeeMode, FeeRule } from "../model/types";
+import { TurnOffFeeDialog } from "./TurnOffFeeDialog";
 
 interface Form {
   name: string;
@@ -77,6 +78,7 @@ export function FeesPanel({ fees, editable }: Props) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<FeeRule | null>(null);
   const [form, setForm] = useState<Form | null>(null);
+  const [turningOff, setTurningOff] = useState<FeeRule | null>(null);
 
   const changes = editing && form ? diff(editing, form) : {};
   const moneyOk =
@@ -158,21 +160,36 @@ export function FeesPanel({ fees, editable }: Props) {
             align: "right",
             cell: (r) =>
               editable ? (
-                <Button
-                  variant="ghost"
-                  size="icon-lg"
-                  aria-label={t("config.editNamed", { name: r.name })}
-                  onClick={() => {
-                    setForm(toForm(r));
-                    setEditing(r);
-                  }}
-                >
-                  <PencilSimple aria-hidden="true" />
-                </Button>
+                <div className="flex justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon-lg"
+                    aria-label={t("config.editNamed", { name: r.name })}
+                    onClick={() => {
+                      setForm(toForm(r));
+                      setEditing(r);
+                    }}
+                  >
+                    <PencilSimple aria-hidden="true" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-lg"
+                    aria-label={t("config.fees.off.named", { name: r.name })}
+                    title={t("config.fees.off.named", { name: r.name })}
+                    onClick={() => setTurningOff(r)}
+                  >
+                    <Power aria-hidden="true" />
+                  </Button>
+                </div>
               ) : null,
           },
         ]}
       />
+
+      {turningOff ? (
+        <TurnOffFeeDialog fee={turningOff} onClose={() => setTurningOff(null)} />
+      ) : null}
 
       <ActionDialog
         open={editing !== null}

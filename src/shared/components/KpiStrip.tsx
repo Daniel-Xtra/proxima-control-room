@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 import { t } from "../i18n/t";
 import { cn } from "../lib/cn";
+import { FitText } from "./FitText";
 
 export interface KpiCell {
   label: string;
@@ -10,15 +11,17 @@ export interface KpiCell {
   sub?: ReactNode;
 }
 
+// By the strip's own width, not the screen's: with the sidebar open, a wide screen can still leave a narrow strip,
+// and a long amount does not wrap.
 const COLUMNS = {
-  3: "sm:grid-cols-3",
-  4: "grid-cols-2 lg:grid-cols-4",
+  3: "@min-[660px]:grid-cols-3",
+  4: "@min-[480px]:grid-cols-2 @min-[960px]:grid-cols-4",
 } as const;
 
 /** Headline figures in one card, split by thin dividers. */
 export function KpiStrip({ cells, columns }: { cells: KpiCell[]; columns: keyof typeof COLUMNS }) {
   return (
-    <section className="card overflow-hidden">
+    <section className="card @container overflow-hidden">
       {/* The 1px gaps over a border-coloured background draw the dividers between the cells. */}
       <dl className={cn("m-0 grid gap-px bg-border-soft", COLUMNS[columns])}>
         {cells.map((cell) => (
@@ -30,7 +33,7 @@ export function KpiStrip({ cells, columns }: { cells: KpiCell[]; columns: keyof 
                 cell.sub && "border-b border-border-soft pb-3",
               )}
             >
-              {cell.value}
+              <FitText>{cell.value}</FitText>
             </dd>
             {cell.sub ? <div className="mt-3">{cell.sub}</div> : null}
           </div>

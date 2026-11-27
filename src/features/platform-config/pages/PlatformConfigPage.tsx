@@ -5,10 +5,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui
 import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
 import { usePlatformConfig } from "../api/queries";
+import { BillServicesPanel } from "../components/BillServicesPanel";
 import { FeesPanel } from "../components/FeesPanel";
 import { KillSwitchesPanel } from "../components/KillSwitchesPanel";
 import { LimitsPanel } from "../components/LimitsPanel";
 import { PendingChangeNotice } from "../components/PendingChangeNotice";
+import { TurnedOffFees } from "../components/TurnedOffFees";
 import type { PendingChange, PlatformConfig } from "../model/types";
 
 const DEFAULTS = { tab: "fees" };
@@ -16,7 +18,8 @@ const DEFAULTS = { tab: "fees" };
 /** What a waiting change is about: the fee rule's name, or the tier. */
 function subjectOf(change: PendingChange, config: PlatformConfig) {
   if (change.kind === "fee") {
-    return config.fees.find((fee) => String(fee.id) === change.targetId)?.name ?? change.targetId;
+    const live = config.fees.find((fee) => String(fee.id) === change.targetId);
+    return live?.name ?? change.name ?? change.targetId;
   }
   const tier = config.limits.find((limit) => limit.id === change.targetId);
   return tier?.kycLevel ? t("config.tier.level", { level: tier.kycLevel }) : change.targetId;
@@ -53,10 +56,12 @@ export function PlatformConfigPage() {
                 <TabsTrigger value="fees">{t("config.section.fees")}</TabsTrigger>
                 <TabsTrigger value="limits">{t("config.section.limits")}</TabsTrigger>
                 <TabsTrigger value="switches">{t("config.section.switches")}</TabsTrigger>
+                <TabsTrigger value="bills">{t("config.section.bills")}</TabsTrigger>
               </TabsList>
               <TabsContent value="fees" className="flex flex-col gap-4">
                 {pending("fee")}
                 <FeesPanel fees={config.fees} editable={can("config:edit")} />
+                <TurnedOffFees editable={can("config:edit")} />
               </TabsContent>
               <TabsContent value="limits" className="flex flex-col gap-4">
                 {pending("limit")}
@@ -71,6 +76,9 @@ export function PlatformConfigPage() {
                   switches={config.switches}
                   editable={can("config:kill_switch")}
                 />
+              </TabsContent>
+              <TabsContent value="bills">
+                <BillServicesPanel editable={can("config:kill_switch")} />
               </TabsContent>
             </Tabs>
           );
