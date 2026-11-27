@@ -1,6 +1,6 @@
 import { UploadSimple } from "@phosphor-icons/react";
 import { useState } from "react";
-import { Can } from "@/features/auth";
+import { Can, useCan } from "@/features/auth";
 import { DateText } from "@/shared/components/DateText";
 import { SectionCard } from "@/shared/components/SectionCard";
 import { SimpleTable } from "@/shared/components/SimpleTable";
@@ -10,9 +10,11 @@ import type { Customer } from "../model/types";
 import { UploadDocumentDialog } from "./CustomerActionDialogs";
 import { CustomerKycReview } from "./CustomerKycReview";
 import { ComplianceStatusBadge, KycLevelBadge } from "./CustomerStatusBadges";
+import { LivenessPhotoButton } from "./LivenessPhotoButton";
 
 export function CustomerKycTab({ customer }: { customer: Customer }) {
   const [uploadOpen, setUploadOpen] = useState(false);
+  const can = useCan();
 
   return (
     <>
@@ -58,7 +60,12 @@ export function CustomerKycTab({ customer }: { customer: Customer }) {
             {
               key: "docs",
               header: t("kyc.col.documents"),
-              cell: (r) => (r.documents.length ? r.documents.join(", ") : t("common.notAvailable")),
+              cell: (r) => {
+                if (r.type === "LIVELINESS" && can("kyc:view_documents")) {
+                  return <LivenessPhotoButton customerId={customer.id} />;
+                }
+                return r.documents.length ? r.documents.join(", ") : t("common.notAvailable");
+              },
             },
           ]}
         />

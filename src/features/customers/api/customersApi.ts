@@ -144,6 +144,8 @@ interface Overview {
 }
 
 const COMPLIANCE_TYPES: ComplianceType[] = ["NIN", "BVN", "LIVELINESS"];
+/** The API calls the liveness record by what it stores. */
+const COMPLIANCE_ALIASES: Record<string, ComplianceType> = { LIVELINESS_IMAGE: "LIVELINESS" };
 const COMPLIANCE_STATUSES: ComplianceStatus[] = [
   "draft",
   "pending",
@@ -157,7 +159,8 @@ function toCustomer(o: Overview): Customer {
   const unit = o.profile.amount_unit;
   const [firstName = "", ...rest] = o.profile.name.split(" ");
   const compliances = o.onboarding.verifications.flatMap((v, index) => {
-    const type = v.type.toUpperCase() as ComplianceType;
+    const name = v.type.toUpperCase();
+    const type = COMPLIANCE_ALIASES[name] ?? (name as ComplianceType);
     if (!COMPLIANCE_TYPES.includes(type)) return [];
     const status = v.status.toLowerCase() as ComplianceStatus;
     return [

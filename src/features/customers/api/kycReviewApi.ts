@@ -165,6 +165,14 @@ export async function getDocumentLink(userId: string, documentId: string, refere
   );
 }
 
+/** The selfie from the liveness check. Opening it is recorded in the audit log. */
+export async function getLivenessPhoto(userId: string) {
+  const data = await request<{ view_url: string; mime_type: string }>(
+    `${base(userId)}/liveness/view-url`,
+  );
+  return { url: data.view_url, mimeType: data.mime_type };
+}
+
 export async function approveDocument(userId: string, documentId: string, notes: string) {
   await request(`${base(userId)}/documents/${encodeURIComponent(documentId)}/approve`, {
     method: "POST",

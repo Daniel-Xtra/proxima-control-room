@@ -132,6 +132,8 @@ export const customers = {
   "kyc.type.NIN": "NIN",
   "kyc.type.BVN": "BVN",
   "kyc.type.LIVELINESS": "Liveliness image",
+  "kyc.liveness.view": "View photo",
+  "kyc.liveness.fileName": "Photo from the liveness check",
   "kyc.status.draft": "Draft",
   "kyc.status.pending": "Pending",
   "kyc.status.approved": "Approved",
