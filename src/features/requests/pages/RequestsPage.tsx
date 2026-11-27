@@ -19,6 +19,7 @@ const KIND_TABS: RequestKind[] = [
   "freeze",
   "unfreeze",
   "limit",
+  "upgrade",
   "unlock",
   "password_reset",
   "reversal",

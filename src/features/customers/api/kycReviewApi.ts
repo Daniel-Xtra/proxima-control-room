@@ -37,18 +37,27 @@ export interface KycReview {
   documents: KycDocument[];
 }
 
+interface FileRow {
+  reference: string;
+  file_name: string;
+  file_type: string | null;
+  file_size: number | null;
+}
+
+const toFile = (file: FileRow): KycFile => ({
+  reference: file.reference,
+  fileName: file.file_name,
+  fileType: file.file_type,
+  fileSize: file.file_size,
+});
+
 interface DocumentRow {
   document_id: string;
   name: string;
   category: string;
   status: ReviewStatus;
   version: number;
-  files: {
-    reference: string;
-    file_name: string;
-    file_type: string | null;
-    file_size: number | null;
-  }[];
+  files: FileRow[];
   rejection_reason: string | null;
   reviewer_notes: string | null;
   submitted_at: string;
@@ -87,12 +96,7 @@ export async function getKycReview(userId: string): Promise<KycReview> {
       category: row.category,
       status: row.status,
       version: row.version,
-      files: row.files.map((file) => ({
-        reference: file.reference,
-        fileName: file.file_name,
-        fileType: file.file_type,
-        fileSize: file.file_size,
-      })),
+      files: row.files.map(toFile),
       rejectionReason: row.rejection_reason,
       reviewerNotes: row.reviewer_notes,
       submittedAt: row.submitted_at,
@@ -109,13 +113,24 @@ export interface KycActivity {
   documentName: string;
   actor: string;
   reason: string | null;
+  /** Missing until the server is updated, and then the row's files cannot be opened. */
+  documentId: string | null;
+  /** The document's name without the version, for the file window's title. */
+  name: string;
+  version: number;
+  /** True for the customer's own uploads, which are the rows that show a file. */
+  isUpload: boolean;
+  /** Empty once the version is too old for its file to still be stored. */
+  files: KycFile[];
 }
 
 interface ActivityRow {
   activity_reference: string;
+  document_id?: string;
+  activity_type: string;
   timestamp: string;
   activity_description: string;
-  document: { name: string; version: number };
+  document: { name: string; version: number; files?: FileRow[] };
   initiated_by: { name: string | null; role: string | null };
   rejection_reason: string | null;
 }
@@ -131,6 +146,11 @@ export async function getKycActivity(userId: string): Promise<KycActivity[]> {
     documentName: `${log.document.name} (v${log.document.version})`,
     actor: log.initiated_by.name ?? "",
     reason: log.rejection_reason,
+    documentId: log.document_id ?? null,
+    name: log.document.name,
+    version: log.document.version,
+    isUpload: log.activity_type === "submitted" || log.activity_type === "resubmitted",
+    files: (log.document.files ?? []).map(toFile),
   }));
 }
 

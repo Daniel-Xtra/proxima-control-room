@@ -251,14 +251,6 @@ export async function getCustomer(id: string): Promise<Customer> {
   return toCustomer(await request<Overview>(`/admin/customers/${encodeURIComponent(id)}/overview`));
 }
 
-export async function repairBankOneCustomer(id: string, _reason: string) {
-  const result = await request<{ success: boolean; customer_created: boolean }>(
-    "/admin/bankone-repair/repair/single",
-    { method: "POST", body: { user_unique_identifier: id } },
-  );
-  return { customerCreated: result.customer_created };
-}
-
 export type UnmaskField = "email" | "phone_number" | "date_of_birth";
 
 /** Reveals chosen fields. The API needs a fresh MFA step-up and a written reason, and audits the access. */

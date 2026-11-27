@@ -4,6 +4,7 @@ export const requests = {
   "requests.tab.freeze": "Freeze",
   "requests.tab.unfreeze": "Unfreeze",
   "requests.tab.limit": "Limit changes",
+  "requests.tab.upgrade": "Level upgrades",
   "requests.tab.staff": "Staff changes",
   "requests.tab.other": "Other approvals",
   "requests.tab.unlock": "Unlock",
@@ -14,6 +15,7 @@ export const requests = {
   "requests.kind.freeze": "Freeze account",
   "requests.kind.unfreeze": "Unfreeze account",
   "requests.kind.limit": "Limit change",
+  "requests.kind.upgrade": "Level upgrade",
   "requests.kind.staff": "Staff change",
   "requests.kind.other": "Other approval",
   "requests.kind.unlock": "Unlock customer login",
@@ -85,6 +87,7 @@ export const requests = {
   "requests.approve.impact.staff":
     "The change is applied to this staff member ({name}) straight away.",
   "requests.approve.impact.limit": "{name}'s limits change to the requested values straight away.",
+  "requests.approve.impact.upgrade": "{name} moves to level 2 and their limits rise straight away.",
   "requests.reject.impact": "The request closes. The person who raised it is told why.",
 
   "requests.customer.title": "Requests for this customer",
