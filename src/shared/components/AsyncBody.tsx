@@ -8,8 +8,8 @@ import { EmptyState } from "./EmptyState";
 import { Button } from "./ui/Button";
 import { Skeleton } from "./ui/Skeleton";
 
-/** URL settings that are not filters: paging, order and the open tab. */
-const NOT_FILTERS = new Set(["page", "limit", "sort", "dir", "tab", "id"]);
+/** URL settings that are not list filters: paging, order, the open tab, and the period of a page's summary figures. */
+const NOT_FILTERS = new Set(["page", "limit", "sort", "dir", "tab", "id", "period"]);
 
 type QueryLike<T> = Pick<
   UseQueryResult<T, ApiError>,

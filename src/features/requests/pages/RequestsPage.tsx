@@ -1,5 +1,6 @@
 import { useCan } from "@/features/auth";
 import { PageHeader } from "@/shared/components/PageHeader";
+import { RangeFilter } from "@/shared/components/RangeFilter";
 import { SectionCard } from "@/shared/components/SectionCard";
 import {
   Select,
@@ -11,10 +12,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/Tabs";
 import { useUrlFilters } from "@/shared/hooks/useUrlFilters";
 import { t } from "@/shared/i18n/t";
+import { RequestAnalytics } from "../components/RequestAnalytics";
 import { RequestsTable } from "../components/RequestsTable";
 import type { RequestKind } from "../model/types";
 
-const DEFAULTS = { tab: "freeze", status: "all" };
+const DEFAULTS = { tab: "freeze", status: "all", period: "30d" };
 const KIND_TABS: RequestKind[] = [
   "freeze",
   "unfreeze",
@@ -44,7 +46,22 @@ export function RequestsPage() {
         title={t("requests.title")}
         crumbs={[{ label: t("nav.group.customers") }, { label: t("requests.title") }]}
         description={t("requests.description")}
+        actions={
+          viewAll ? (
+            <RangeFilter
+              label={t("requests.analytics.period")}
+              value={filters.period}
+              onChange={(v) => setFilter("period", v)}
+              options={[
+                ["7d", t("range.7d")],
+                ["30d", t("range.30d")],
+                ["90d", t("range.90d")],
+              ]}
+            />
+          ) : undefined
+        }
       />
+      {viewAll ? <RequestAnalytics period={filters.period} scope={decidedScope} /> : null}
       <Tabs value={tab} onValueChange={(value) => setFilter("tab", value)}>
         <TabsList>
           {viewAll
