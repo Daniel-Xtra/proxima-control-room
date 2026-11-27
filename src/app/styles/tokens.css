@@ -18,6 +18,8 @@
   --surface-muted: #f7fafc;
   --surface-subtle: #fafafa;
   --on-ink: #ffffff;
+  /* The white of the flag beside phone numbers. The same in both themes. */
+  --flag-white: #ffffff;
 
   /* Brand: one saturated blue for primary actions and links */
   --blue: #0066ff;

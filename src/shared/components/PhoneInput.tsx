@@ -2,15 +2,15 @@ import type * as React from "react";
 import { nigerianDigits, NG_DIAL_CODE } from "@/shared/lib/phone";
 import { cn } from "@/shared/lib/cn";
 
-/** A round Nigerian flag: green, white, green. */
+/** A round Nigerian flag: green, white, green. The white stays white in dark mode. */
 function NigerianFlag() {
   return (
     <span
       aria-hidden="true"
-      className="grid size-5 shrink-0 grid-cols-3 overflow-hidden rounded-full border border-border"
+      className="grid size-5 shrink-0 grid-cols-3 overflow-hidden rounded-full ring-1 ring-border"
     >
       <span className="bg-success-solid" />
-      <span className="bg-card" />
+      <span className="bg-flag-white" />
       <span className="bg-success-solid" />
     </span>
   );

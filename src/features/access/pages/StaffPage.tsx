@@ -421,13 +421,13 @@ export function StaffPage() {
             id="invite-phone"
             value={invite.phone}
             onValueChange={(phone) => setField({ phone })}
-            placeholder="8025030357"
+            placeholder="8012345678"
           />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="invite-role">{t("staff.col.roles")}</Label>
           <Select value={invite.roleCode} onValueChange={(v) => setField({ roleCode: v })}>
-            <SelectTrigger id="invite-role">
+            <SelectTrigger id="invite-role" className="data-[size=default]:h-12">
               <SelectValue placeholder={t("staff.invite.pickRole")} />
             </SelectTrigger>
             <SelectContent>
