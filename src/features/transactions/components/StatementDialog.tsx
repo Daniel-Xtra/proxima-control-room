@@ -77,7 +77,7 @@ export function StatementDialog({ open, onOpenChange, customerId, customerName }
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="statement-format">{t("statement.format")}</Label>
           <Select value={format} onValueChange={(value) => setFormat(value as "pdf" | "csv")}>
-            <SelectTrigger id="statement-format" className="h-11">
+            <SelectTrigger id="statement-format" className="data-[size=default]:h-12">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -89,7 +89,7 @@ export function StatementDialog({ open, onOpenChange, customerId, customerName }
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="statement-recipient">{t("statement.recipient")}</Label>
           <Select value={recipient} onValueChange={setRecipient}>
-            <SelectTrigger id="statement-recipient" className="h-11">
+            <SelectTrigger id="statement-recipient" className="data-[size=default]:h-12">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

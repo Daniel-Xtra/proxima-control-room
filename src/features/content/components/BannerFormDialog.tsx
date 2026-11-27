@@ -75,7 +75,7 @@ export function BannerFormDialog({ open, onOpenChange, banner }: Props) {
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="banner-type">{t("banners.field.type")}</Label>
           <Select value={draft.type} onValueChange={(v) => set("type", v as BannerType)}>
-            <SelectTrigger id="banner-type" className="h-11">
+            <SelectTrigger id="banner-type" className="data-[size=default]:h-12">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -93,7 +93,7 @@ export function BannerFormDialog({ open, onOpenChange, banner }: Props) {
             value={draft.displayType}
             onValueChange={(v) => set("displayType", v as DisplayType)}
           >
-            <SelectTrigger id="banner-display" className="h-11">
+            <SelectTrigger id="banner-display" className="data-[size=default]:h-12">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

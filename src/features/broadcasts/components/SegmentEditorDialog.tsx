@@ -64,7 +64,7 @@ export function SegmentEditorDialog({ open, onOpenChange, segment }: Props) {
     <div>
       <Label htmlFor={id}>{t(labelKey)}</Label>
       <Select value={draft.rules[key]} onValueChange={(v) => rule({ [key]: v as FlagRule })}>
-        <SelectTrigger id={id} className="mt-1 h-[52px]">
+        <SelectTrigger id={id} className="mt-1 data-[size=default]:h-12">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -118,7 +118,7 @@ export function SegmentEditorDialog({ open, onOpenChange, segment }: Props) {
         <div>
           <Label htmlFor="seg-kyc">{t("segments.field.kyc")}</Label>
           <Select value={draft.rules.kyc} onValueChange={(v) => rule({ kyc: v as KycRule })}>
-            <SelectTrigger id="seg-kyc" className="mt-1 h-[52px]">
+            <SelectTrigger id="seg-kyc" className="mt-1 data-[size=default]:h-12">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -137,7 +137,7 @@ export function SegmentEditorDialog({ open, onOpenChange, segment }: Props) {
             value={draft.rules.gender}
             onValueChange={(v) => rule({ gender: v as GenderRule })}
           >
-            <SelectTrigger id="seg-gender" className="mt-1 h-[52px]">
+            <SelectTrigger id="seg-gender" className="mt-1 data-[size=default]:h-12">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

@@ -301,7 +301,7 @@ export function StaffPage() {
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="staff-role">{t("staff.col.roles")}</Label>
           <Select value={roleId} onValueChange={setRoleId}>
-            <SelectTrigger id="staff-role">
+            <SelectTrigger id="staff-role" className="data-[size=default]:h-12">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

@@ -85,7 +85,7 @@ export function TemplateEditorDialog({ open, onOpenChange, template }: Props) {
             })
           }
         >
-          <SelectTrigger id="tpl-channel" className="mt-1 h-[52px]">
+          <SelectTrigger id="tpl-channel" className="mt-1 data-[size=default]:h-12">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

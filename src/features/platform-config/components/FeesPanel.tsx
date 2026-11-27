@@ -222,7 +222,7 @@ export function FeesPanel({ fees, editable }: Props) {
             <div className="flex flex-col gap-1.5 sm:col-span-2">
               <Label htmlFor="fee-mode">{t("config.field.mode")}</Label>
               <Select value={form.mode} onValueChange={(value) => set({ mode: value as FeeMode })}>
-                <SelectTrigger id="fee-mode">
+                <SelectTrigger id="fee-mode" className="data-[size=default]:h-12">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

@@ -215,7 +215,7 @@ export function ProvidersPage() {
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="provider-name">{t("providers.col.name")}</Label>
           <Select value={name} onValueChange={setName}>
-            <SelectTrigger id="provider-name">
+            <SelectTrigger id="provider-name" className="data-[size=default]:h-12">
               <SelectValue placeholder={t("providers.pick")} />
             </SelectTrigger>
             <SelectContent>
