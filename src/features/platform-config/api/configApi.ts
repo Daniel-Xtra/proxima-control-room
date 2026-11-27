@@ -2,6 +2,7 @@ import { request } from "@/shared/api/client";
 import { fromApiAmount, toApiAmount } from "@/shared/api/money";
 import { formatKobo } from "@/shared/lib/format";
 import { t, type MessageKey } from "@/shared/i18n/t";
+import type { BillServices } from "../model/billServices";
 import { turnedOff } from "../model/turnedOffFees";
 import type {
   FeeMode,
@@ -292,6 +293,24 @@ export async function decideChange(id: string, approve: boolean, reason: string)
   await request(`/admin/approvals/${encodeURIComponent(id)}/${approve ? "approve" : "reject"}`, {
     method: "POST",
     body: approve ? { comment: reason } : { reason },
+  });
+}
+
+export const listBillServices = () => request<BillServices>("/admin/platform-config/bill-services");
+
+/** Switches a whole bill type on or off. */
+export async function setBillType(id: number, enabled: boolean, reason: string) {
+  await request(`/admin/platform-config/bill-services/groups/${id}`, {
+    method: "POST",
+    body: { enabled, reason },
+  });
+}
+
+/** Switches several billers at once, under one reason. */
+export async function setBillers(enable: number[], disable: number[], reason: string) {
+  await request("/admin/platform-config/bill-services/billers", {
+    method: "POST",
+    body: { enable, disable, reason },
   });
 }
 
