@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Select as SelectPrimitive } from "radix-ui";
 import { cn } from "@/shared/lib/cn";
-import { CaretDownIcon, CheckIcon, CaretUpIcon } from "@phosphor-icons/react";
+import { CaretDownIcon, CheckIcon } from "@phosphor-icons/react";
 function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
   return <SelectPrimitive.Root data-slot="select" {...props} />;
 }
@@ -64,17 +64,15 @@ function SelectContent({
         align={align}
         {...props}
       >
-        <SelectScrollUpButton />
         <SelectPrimitive.Viewport
           data-position={position}
           className={cn(
-            "p-1",
+            "dropdown-scroll p-1",
             position === "popper" && "w-full min-w-[var(--radix-select-trigger-width)]",
           )}
         >
           {children}
         </SelectPrimitive.Viewport>
-        <SelectScrollDownButton />
       </SelectPrimitive.Content>
     </SelectPrimitive.Portal>
   );
@@ -123,48 +121,12 @@ function SelectSeparator({
     />
   );
 }
-function SelectScrollUpButton({
-  className,
-  ...props
-}: React.ComponentProps<typeof SelectPrimitive.ScrollUpButton>) {
-  return (
-    <SelectPrimitive.ScrollUpButton
-      data-slot="select-scroll-up-button"
-      className={cn(
-        "flex cursor-pointer items-center justify-center bg-popover py-1 [&_svg:not([class*='size-'])]:size-4",
-        className,
-      )}
-      {...props}
-    >
-      <CaretUpIcon />
-    </SelectPrimitive.ScrollUpButton>
-  );
-}
-function SelectScrollDownButton({
-  className,
-  ...props
-}: React.ComponentProps<typeof SelectPrimitive.ScrollDownButton>) {
-  return (
-    <SelectPrimitive.ScrollDownButton
-      data-slot="select-scroll-down-button"
-      className={cn(
-        "flex cursor-pointer items-center justify-center bg-popover py-1 [&_svg:not([class*='size-'])]:size-4",
-        className,
-      )}
-      {...props}
-    >
-      <CaretDownIcon />
-    </SelectPrimitive.ScrollDownButton>
-  );
-}
 export {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
   SelectLabel,
-  SelectScrollDownButton,
-  SelectScrollUpButton,
   SelectSeparator,
   SelectTrigger,
   SelectValue,

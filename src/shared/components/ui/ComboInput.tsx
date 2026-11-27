@@ -82,7 +82,7 @@ function ComboInput({
       </PopoverPrimitive.Anchor>
       <PopoverContent
         id={listId}
-        className="max-h-60 w-[var(--radix-popper-anchor-width)] overflow-y-auto rounded-lg p-1"
+        className="dropdown-scroll max-h-60 w-[var(--radix-popper-anchor-width)] overflow-y-auto rounded-lg p-1"
         sideOffset={4}
         onOpenAutoFocus={(event) => event.preventDefault()}
         onCloseAutoFocus={(event) => event.preventDefault()}

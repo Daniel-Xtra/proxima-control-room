@@ -96,7 +96,7 @@ export function DateRangePicker({ from, to, onChange, max, maxSpanDays, classNam
           <CalendarBlankIcon aria-hidden="true" className="ml-1 size-4 text-muted-text" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="flex max-h-[calc(100vh-6rem)] flex-col overflow-auto p-0 sm:flex-row">
+      <PopoverContent className="dropdown-scroll flex max-h-[calc(100vh-6rem)] flex-col overflow-auto p-0 sm:flex-row">
         <ul className="m-0 flex list-none gap-1 overflow-x-auto border-b border-border p-2 sm:flex-col sm:gap-0.5 sm:overflow-visible sm:border-r sm:border-b-0">
           {presets.map((p) => (
             <li key={p.id}>
