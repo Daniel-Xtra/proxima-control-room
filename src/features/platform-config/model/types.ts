@@ -17,6 +17,12 @@ export interface FeeRule {
   effectiveFrom: string;
 }
 
+/** A fee that no longer applies, with what is needed to ask for it again. */
+export interface TurnedOffFee extends FeeRule {
+  /** The rule's settings in the API's names and units. */
+  rule: Record<string, unknown>;
+}
+
 /** The most a customer on a tier can move. */
 export interface TierLimit {
   /** Identifies the tier in change requests, for example "user:tierOneIndividualUser". */
@@ -54,6 +60,8 @@ export interface PendingChange {
   reason: string;
   /** What would change, already worded for display. */
   summary: string[];
+  /** The fee name the change carries, when it has one. A new rule has no row to look it up from. */
+  name?: string;
 }
 
 export interface PlatformConfig {

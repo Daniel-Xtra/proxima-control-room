@@ -2,6 +2,7 @@ import { request } from "@/shared/api/client";
 import { fromApiAmount, toApiAmount } from "@/shared/api/money";
 import { formatKobo } from "@/shared/lib/format";
 import { t, type MessageKey } from "@/shared/i18n/t";
+import { turnedOff } from "../model/turnedOffFees";
 import type {
   FeeMode,
   FeeRule,
@@ -9,6 +10,7 @@ import type {
   PendingChange,
   PlatformConfig,
   TierLimit,
+  TurnedOffFee,
 } from "../model/types";
 
 interface FeeRow {
@@ -92,13 +94,19 @@ function describePending(
   feeUnit: string | undefined,
   tierUnit: string | undefined,
 ) {
+  if (row.type === "FEE_RULE_DEACTIVATE") return [t("config.fees.off.pending")];
   const entries = Object.entries(row.payload);
   if (row.type.startsWith("FEE_RULE")) {
-    return entries.map(([key, value]) =>
-      MONEY_FIELDS.has(key) && typeof value === "number"
-        ? `${label(key)}: ${formatKobo(fromApiAmount(value, feeUnit))}`
-        : `${label(key)}: ${String(value)}`,
-    );
+    const creating = row.type === "FEE_RULE_CREATE";
+    const lines = entries
+      .filter(([key, value]) => key in FEE_FIELDS && value !== null)
+      .filter(([key]) => !(creating && key === "effective_from"))
+      .map(([key, value]) =>
+        MONEY_FIELDS.has(key) && typeof value === "number"
+          ? `${label(key)}: ${formatKobo(fromApiAmount(value, feeUnit))}`
+          : `${label(key)}: ${String(value)}`,
+      );
+    return creating ? [t("config.fees.on.pending"), ...lines] : lines;
   }
   return entries.map(([key, value]) =>
     typeof value === "number"
@@ -107,31 +115,30 @@ function describePending(
   );
 }
 
-export async function getConfig(): Promise<PlatformConfig> {
-  const data = await request<ConfigResponse>("/admin/platform-config");
-  const feeUnit = data.fees.amount_unit;
-  const tierUnit = data.limits.amount_unit;
-
-  const fees: FeeRule[] = data.fees.rules.map((row) => ({
+function toFee(row: FeeRow, unit: string | undefined): FeeRule {
+  const money = (value: number | null) => (value === null ? null : fromApiAmount(value, unit));
+  return {
     id: row.id,
     code: row.code,
     name: row.name,
     scope: [row.transaction_type, row.channel].filter(Boolean).join(" · "),
     mode: row.calculation_type,
-    flatKobo: row.flat_amount === null ? null : fromApiAmount(row.flat_amount, feeUnit),
+    flatKobo: money(row.flat_amount),
     percent: row.percentage,
-    minFeeKobo: row.min_fee_amount === null ? null : fromApiAmount(row.min_fee_amount, feeUnit),
-    maxFeeKobo: row.max_fee_amount === null ? null : fromApiAmount(row.max_fee_amount, feeUnit),
-    minTransactionKobo:
-      row.min_transaction_amount === null
-        ? null
-        : fromApiAmount(row.min_transaction_amount, feeUnit),
-    maxTransactionKobo:
-      row.max_transaction_amount === null
-        ? null
-        : fromApiAmount(row.max_transaction_amount, feeUnit),
+    minFeeKobo: money(row.min_fee_amount),
+    maxFeeKobo: money(row.max_fee_amount),
+    minTransactionKobo: money(row.min_transaction_amount),
+    maxTransactionKobo: money(row.max_transaction_amount),
     effectiveFrom: row.effective_from,
-  }));
+  };
+}
+
+export async function getConfig(): Promise<PlatformConfig> {
+  const data = await request<ConfigResponse>("/admin/platform-config");
+  const feeUnit = data.fees.amount_unit;
+  const tierUnit = data.limits.amount_unit;
+
+  const fees = data.fees.rules.map((row) => toFee(row, feeUnit));
 
   const limits: TierLimit[] = data.limits.tiers.map((row) => ({
     id: row.id,
@@ -162,6 +169,7 @@ export async function getConfig(): Promise<PlatformConfig> {
     createdAt: row.created_at,
     reason: row.reason,
     summary: describePending(row, feeUnit, tierUnit),
+    ...(typeof row.payload.name === "string" ? { name: row.payload.name } : {}),
   }));
 
   return { fees, limits, limitUnit: tierUnit, switches, pending };
@@ -178,6 +186,74 @@ export async function requestFeeChanges(fees: FeeChange[], reason: string) {
     "/admin/platform-config/fees/change-requests",
     { method: "POST", headers: { "Idempotency-Key": crypto.randomUUID() }, body: { fees, reason } },
   );
+}
+
+/**
+ * Asks for a fee rule to be turned off. The acknowledgement tells the API the admin accepts that the fee becomes
+ * zero when no other active rule covers the same charge.
+ */
+export async function requestFeeTurnOff(id: number, reason: string) {
+  await request(`/admin/fee-rules/${id}/deactivate`, {
+    method: "POST",
+    headers: { "Idempotency-Key": crypto.randomUUID() },
+    body: { reason, acknowledge_zero_fee: true },
+  });
+}
+
+/** What the fee endpoints return for a rule, beyond what the table shows. */
+interface FeeRuleRow extends FeeRow {
+  customer_segment: string | null;
+  biller_code: string | null;
+  business_id: string | null;
+  product_code: string | null;
+  currency: string;
+}
+
+async function listFeeRules(active: boolean): Promise<FeeRuleRow[]> {
+  const rows: FeeRuleRow[] = [];
+  for (let page = 1; page <= 10; page++) {
+    const data = await request<{ data: FeeRuleRow[]; totalPages: number }>("/admin/fee-rules", {
+      query: { is_active: active, page, limit: 100 },
+    });
+    rows.push(...data.data);
+    if (page >= data.totalPages) break;
+  }
+  return rows;
+}
+
+export async function listTurnedOffFees(): Promise<TurnedOffFee[]> {
+  const [inactive, active] = await Promise.all([listFeeRules(false), listFeeRules(true)]);
+  return turnedOff(inactive, active).map((row) => ({
+    ...toFee(row, "kobo"),
+    // The API has no "turn on", so the same settings are sent as a new rule, effective once approved.
+    rule: {
+      code: row.code,
+      name: row.name,
+      transaction_type: row.transaction_type,
+      channel: row.channel,
+      customer_segment: row.customer_segment,
+      biller_code: row.biller_code,
+      business_id: row.business_id,
+      product_code: row.product_code,
+      currency: row.currency,
+      calculation_type: row.calculation_type,
+      flat_amount: row.flat_amount,
+      percentage: row.percentage,
+      min_fee_amount: row.min_fee_amount,
+      max_fee_amount: row.max_fee_amount,
+      min_transaction_amount: row.min_transaction_amount,
+      max_transaction_amount: row.max_transaction_amount,
+    },
+  }));
+}
+
+/** Asks for a turned-off fee to apply again. */
+export async function requestFeeTurnOn(rule: TurnedOffFee["rule"], reason: string) {
+  await request("/admin/fee-rules", {
+    method: "POST",
+    headers: { "Idempotency-Key": crypto.randomUUID() },
+    body: { rule, reason },
+  });
 }
 
 export interface LimitChange {

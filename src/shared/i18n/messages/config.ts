@@ -34,6 +34,24 @@ export const config = {
   "config.field.perTransaction": "Per transaction",
   "config.field.other": "Setting",
   "config.fees.submit.title": "Submit fee changes",
+  "config.fees.offList.title": "Turned-off fees",
+  "config.fees.offList.description": "These fee rules do not apply at the moment.",
+  "config.fees.offList.empty": "No turned-off fees",
+  "config.fees.offList.emptyDescription": "A fee you turn off appears here once it is approved.",
+  "config.fees.on.button": "Turn on",
+  "config.fees.on.named": "Turn on {name}",
+  "config.fees.on.title": "Turn on fee",
+  "config.fees.on.impact":
+    "A second person with approval rights has to approve this. Once approved, customers are charged this fee again with the same settings.",
+  "config.fees.on.pending": "Add this fee rule",
+  "config.fees.off.named": "Turn off {name}",
+  "config.fees.off.title": "Turn off fee",
+  "config.fees.off.impact":
+    "A second person with approval rights has to approve this. Once approved, this rule stops applying. If no other active rule covers the same charge, customers pay no fee. You can ask to turn it back on from the turned-off list.",
+  "config.fees.off.acknowledge": "I understand this fee may become zero.",
+  "config.fees.off.pending": "Turn off this fee rule",
+  "config.fees.off.approveImpact":
+    "This rule stops applying straight away. If no other active rule covers the same charge, customers pay no fee.",
 
   "config.tier.level": "KYC level {level}",
   "config.limit.value": "{single} per transaction, {daily} per day",

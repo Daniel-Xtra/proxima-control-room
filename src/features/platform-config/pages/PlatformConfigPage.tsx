@@ -9,6 +9,7 @@ import { FeesPanel } from "../components/FeesPanel";
 import { KillSwitchesPanel } from "../components/KillSwitchesPanel";
 import { LimitsPanel } from "../components/LimitsPanel";
 import { PendingChangeNotice } from "../components/PendingChangeNotice";
+import { TurnedOffFees } from "../components/TurnedOffFees";
 import type { PendingChange, PlatformConfig } from "../model/types";
 
 const DEFAULTS = { tab: "fees" };
@@ -16,7 +17,8 @@ const DEFAULTS = { tab: "fees" };
 /** What a waiting change is about: the fee rule's name, or the tier. */
 function subjectOf(change: PendingChange, config: PlatformConfig) {
   if (change.kind === "fee") {
-    return config.fees.find((fee) => String(fee.id) === change.targetId)?.name ?? change.targetId;
+    const live = config.fees.find((fee) => String(fee.id) === change.targetId);
+    return live?.name ?? change.name ?? change.targetId;
   }
   const tier = config.limits.find((limit) => limit.id === change.targetId);
   return tier?.kycLevel ? t("config.tier.level", { level: tier.kycLevel }) : change.targetId;
@@ -57,6 +59,7 @@ export function PlatformConfigPage() {
               <TabsContent value="fees" className="flex flex-col gap-4">
                 {pending("fee")}
                 <FeesPanel fees={config.fees} editable={can("config:edit")} />
+                <TurnedOffFees editable={can("config:edit")} />
               </TabsContent>
               <TabsContent value="limits" className="flex flex-col gap-4">
                 {pending("limit")}

@@ -65,7 +65,11 @@ export function PendingChangeNotice({ change, subject, canDecide }: Props) {
         }
         impact={
           deciding === "approve"
-            ? t("config.pending.approve.impact")
+            ? t(
+                change.type === "FEE_RULE_DEACTIVATE"
+                  ? "config.fees.off.approveImpact"
+                  : "config.pending.approve.impact",
+              )
             : t("config.pending.reject.impact")
         }
         confirmLabel={
