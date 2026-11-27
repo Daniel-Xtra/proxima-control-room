@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useCan } from "@/features/auth";
 import { ActionDialog } from "@/shared/components/ActionDialog";
 import { AsyncBody } from "@/shared/components/AsyncBody";
+import { DataTable } from "@/shared/components/DataTable";
 import { PageHeader } from "@/shared/components/PageHeader";
 import { SectionCard } from "@/shared/components/SectionCard";
 import { SimpleTable } from "@/shared/components/SimpleTable";
@@ -31,7 +32,10 @@ export function BankOneRepairPage() {
   const can = useCan();
   const canRepair = can("customer:repair_bankone");
   const overview = useApiQuery(KEYS.overview, getBankOneOverview);
-  const missing = useApiQuery(KEYS.missing, listMissingAccounts);
+  const [paging, setPaging] = useState({ page: 1, limit: 10 });
+  const missing = useApiQuery([...KEYS.missing, paging], () => listMissingAccounts(paging), {
+    keepPreviousPage: true,
+  });
   const [results, setResults] = useState<RepairResult[]>();
   const [dryRun, setDryRun] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -41,7 +45,11 @@ export function BankOneRepairPage() {
     onSuccess: (result) => toast.success(t("bankone.health.ok", { ms: result.latencyMs })),
   });
   const checking = health.isPending;
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ["bankone"] });
+  // A repair removes accounts from the list, so go back to the first page rather than risk an empty one.
+  const refresh = () => {
+    setPaging((current) => ({ ...current, page: 1 }));
+    return queryClient.invalidateQueries({ queryKey: ["bankone"] });
+  };
 
   return (
     <>
@@ -146,14 +154,19 @@ export function BankOneRepairPage() {
         >
           <AsyncBody
             query={missing}
-            isEmpty={(rows) => rows.length === 0}
+            isEmpty={(data) => data.total === 0}
             emptyTitle={t("bankone.missing.empty")}
           >
-            {(rows) => (
-              <SimpleTable<MissingAccount>
+            {(data) => (
+              <DataTable<MissingAccount>
                 storageKey="bankone-missing"
                 caption={t("bankone.missing.title")}
-                rows={rows}
+                rows={data.rows}
+                page={paging.page}
+                limit={paging.limit}
+                total={data.total}
+                onPageChange={(next) => setPaging((current) => ({ ...current, page: next }))}
+                onLimitChange={(limit) => setPaging({ page: 1, limit })}
                 getRowId={(r) => r.customerId}
                 columns={[
                   { key: "name", header: t("bankone.col.customer"), cell: (r) => r.customerName },

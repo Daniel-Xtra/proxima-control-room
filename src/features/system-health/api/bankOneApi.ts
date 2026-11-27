@@ -41,14 +41,23 @@ export async function getBankOneOverview() {
   };
 }
 
-export async function listMissingAccounts(): Promise<MissingAccount[]> {
-  const result = await request<MissingList>(`${BASE}/missing-accounts`, { query: { limit: 100 } });
-  return result.accounts.map((account) => ({
+export async function listMissingAccounts({ page, limit }: { page: number; limit: number }) {
+  const offset = (page - 1) * limit;
+  const result = await request<MissingList>(`${BASE}/missing-accounts`, {
+    query: { limit, offset },
+  });
+  // Older servers ignore the limit and send every account, so the page is cut here when that happens.
+  const accounts =
+    result.accounts.length > limit
+      ? result.accounts.slice(offset, offset + limit)
+      : result.accounts;
+  const rows: MissingAccount[] = accounts.map((account) => ({
     customerId: account.user_id,
     customerName: account.user_name.replace(/undefined/g, "").trim() || "–",
     phone: account.phone_number ?? "",
     queued: account.already_queued ?? null,
   }));
+  return { rows, total: result.total };
 }
 
 export async function runHealthCheck() {
