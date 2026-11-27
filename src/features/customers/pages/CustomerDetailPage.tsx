@@ -59,6 +59,17 @@ function CustomerDetail({ customer }: { customer: Customer }) {
   const frozen = customer.status === "frozen";
   const close = (open: boolean) => !open && setDialog(null);
   const tabsRef = useRef<HTMLDivElement>(null);
+  const tabListRef = useRef<HTMLDivElement>(null);
+
+  // Keeps the open tab in the middle of the row, so it is never off the side of a narrow screen. Only the row moves.
+  useEffect(() => {
+    const list = tabListRef.current;
+    const active = list?.querySelector('[data-state="active"]');
+    if (!list || !active) return;
+    const row = list.getBoundingClientRect();
+    const item = active.getBoundingClientRect();
+    list.scrollLeft += item.left - row.left - (row.width - item.width) / 2;
+  }, [tab]);
 
   // A count, so that asking again while already on the tab scrolls again.
   const [infoRequests, setInfoRequests] = useState(0);
@@ -118,14 +129,23 @@ function CustomerDetail({ customer }: { customer: Customer }) {
           available.length > 0 ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button>
+                <Button className="max-sm:w-full">
                   {t("customers.actions")}
                   <CaretDown aria-hidden="true" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              {/* On a phone the button spans the screen, so the menu matches it and its rows are tall enough to tap. */}
+              <DropdownMenuContent
+                align="end"
+                collisionPadding={16}
+                className="max-sm:w-(--radix-dropdown-menu-trigger-width)"
+              >
                 {available.map((action) => (
-                  <DropdownMenuItem key={action.id} onSelect={() => setDialog(action.id)}>
+                  <DropdownMenuItem
+                    key={action.id}
+                    className="max-sm:py-3"
+                    onSelect={() => setDialog(action.id)}
+                  >
                     {action.label}
                   </DropdownMenuItem>
                 ))}
@@ -140,8 +160,8 @@ function CustomerDetail({ customer }: { customer: Customer }) {
       {/* The top margin keeps the tab names clear of the fixed header when scrolled to. */}
       <div ref={tabsRef} className="scroll-mt-20" />
       <Tabs value={tab} onValueChange={(value) => setParams({ tab: value }, { replace: true })}>
-        {/* On a phone the names wrap onto a second line, so none is hidden off the side of the screen. */}
-        <TabsList className="flex-wrap gap-y-3 sm:flex-nowrap">
+        {/* One row that scrolls sideways when the screen is too narrow for every name. */}
+        <TabsList ref={tabListRef} className="max-sm:[scrollbar-width:none]!">
           {TABS.map((id) => (
             <TabsTrigger key={id} value={id}>
               {t(`customers.tab.${id}`)}
