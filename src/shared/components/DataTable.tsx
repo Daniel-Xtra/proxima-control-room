@@ -20,6 +20,7 @@ interface DataTableProps<T> {
   /** Rows per page chosen in the footer. Changing it returns to page 1. */
   onLimitChange: (limit: number) => void;
   onRowOpen?: (row: T) => void;
+  hideOpenButton?: boolean;
   /** Extra buttons in the toolbar, beside the column picker (for example Export). */
   toolbarExtra?: ReactNode;
   /** Where the hidden-column choice is remembered. */

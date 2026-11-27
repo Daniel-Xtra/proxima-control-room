@@ -11,7 +11,7 @@ export const PERMISSIONS_BY_MODULE = {
     "customer:unlock",
     "customer:restrict",
     "customer:deactivate",
-    "customer:repair_bankone",
+    "customer:request_account_number",
   ],
   requests: [
     "freeze_request:initiate",
@@ -75,6 +75,9 @@ export const PERMISSIONS_BY_MODULE = {
     "integrations:manage",
     "provider:view",
     "provider:manage",
+    "webhook_delivery:view",
+    "queues:view",
+    "jobs:view",
     "queues:manage",
     "security_policy:edit",
   ],

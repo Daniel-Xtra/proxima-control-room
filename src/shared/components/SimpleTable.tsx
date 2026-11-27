@@ -29,6 +29,8 @@ interface SimpleTableProps<T> {
   rows: T[];
   getRowId: (row: T) => string;
   onRowOpen?: (row: T) => void;
+  /** For rows whose own menu opens them. Double-clicking still opens the row. */
+  hideOpenButton?: boolean;
   caption: string;
   /** Controlled sort, for server-side sorting. Omit to sort rows in the browser. */
   sort?: SortState | null;
@@ -45,6 +47,7 @@ export function SimpleTable<T>({
   rows,
   getRowId,
   onRowOpen,
+  hideOpenButton = false,
   caption,
   sort,
   onSortChange,
@@ -91,6 +94,8 @@ export function SimpleTable<T>({
     else setLocalSort(next);
   }
 
+  const openButton = onRowOpen && !hideOpenButton;
+
   // On a phone a row becomes a card: the first column leads, the rest are label and value pairs, and columns with no header
   // (row actions) sit at the bottom. This keeps every value readable without scrolling sideways.
   const labelled = visible.filter((col) => col.header !== "");
@@ -103,13 +108,13 @@ export function SimpleTable<T>({
         <li key={rowKeys.get(row)} className="flex flex-col gap-2 px-4 py-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 break-words font-medium text-ink">{lead?.cell(row)}</div>
-            {onRowOpen ? (
+            {openButton ? (
               <Button
                 variant="ghost"
                 size="icon"
                 aria-label={`${t("table.open")}: ${getRowId(row)}`}
                 title={t("table.open")}
-                onClick={() => onRowOpen(row)}
+                onClick={() => onRowOpen?.(row)}
               >
                 <ArrowSquareOut size={16} aria-hidden="true" />
               </Button>
@@ -198,7 +203,7 @@ export function SimpleTable<T>({
                 </TableHead>
               );
             })}
-            {onRowOpen ? (
+            {openButton ? (
               <TableHead scope="col" className="w-12">
                 <span className="sr-only">{t("table.rowActions")}</span>
               </TableHead>
@@ -227,7 +232,7 @@ export function SimpleTable<T>({
                   {col.cell(row)}
                 </TableCell>
               ))}
-              {onRowOpen ? (
+              {openButton ? (
                 <TableCell className="w-12 text-right">
                   {/* The same "open" icon button the reference uses to reach a record's detail. */}
                   <Button
@@ -236,7 +241,7 @@ export function SimpleTable<T>({
                     className="size-8"
                     aria-label={`${t("table.open")}: ${getRowId(row)}`}
                     title={t("table.open")}
-                    onClick={() => onRowOpen(row)}
+                    onClick={() => onRowOpen?.(row)}
                   >
                     <ArrowSquareOut size={16} aria-hidden="true" />
                   </Button>

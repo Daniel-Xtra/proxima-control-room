@@ -29,17 +29,20 @@ export function ColumnPicker<T>({ columns, hidden, onToggle, onReset }: ColumnPi
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        {columns.map((col, index) => (
-          <DropdownMenuCheckboxItem
-            key={col.key}
-            checked={!hidden.has(col.key)}
-            disabled={index === 0 || col.alwaysVisible}
-            onSelect={(event) => event.preventDefault()}
-            onCheckedChange={() => onToggle(col.key)}
-          >
-            {col.header}
-          </DropdownMenuCheckboxItem>
-        ))}
+        {/* A column with no header holds row actions, so there is nothing to name in this menu. */}
+        {columns
+          .filter((col) => col.header !== "")
+          .map((col, index) => (
+            <DropdownMenuCheckboxItem
+              key={col.key}
+              checked={!hidden.has(col.key)}
+              disabled={index === 0 || col.alwaysVisible}
+              onSelect={(event) => event.preventDefault()}
+              onCheckedChange={() => onToggle(col.key)}
+            >
+              {col.header}
+            </DropdownMenuCheckboxItem>
+          ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled={hidden.size === 0} onSelect={onReset}>
           {t("table.columns.reset")}

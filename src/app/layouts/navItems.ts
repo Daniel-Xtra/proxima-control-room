@@ -1,8 +1,8 @@
 import {
-  Bank,
   ChartBar,
   ClipboardText,
   Gauge,
+  Hash,
   Image,
   IdentificationBadge,
   ListChecks,
@@ -11,6 +11,7 @@ import {
   Megaphone,
   Notepad,
   Plugs,
+  Queue,
   UsersThree,
   PiggyBank,
   ShieldCheck,
@@ -103,7 +104,15 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: "system",
     label: "nav.group.system",
-    items: [{ id: "bankone", to: "/system/bankone", icon: Bank, label: "nav.bankone" }],
+    items: [
+      { id: "jobs", to: "/system/jobs", icon: Queue, label: "nav.jobs" },
+      {
+        id: "wallet-numbers",
+        to: "/system/missing-account-numbers",
+        icon: Hash,
+        label: "nav.walletNumbers",
+      },
+    ],
   },
   {
     id: "settings",

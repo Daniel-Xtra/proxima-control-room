@@ -9,14 +9,14 @@ export function Can({ permission, children }: { permission: Permission; children
   return can(permission) ? <>{children}</> : null;
 }
 
-/** Route guard: shows the permission-denied state instead of the page. */
+/** Route guard: shows the permission-denied state instead of the page. A list means any one of them is enough. */
 export function RequirePermission({
   permission,
   children,
 }: {
-  permission: Permission;
+  permission: Permission | readonly Permission[];
   children: ReactNode;
 }) {
   const can = useCan();
-  return can(permission) ? <>{children}</> : <PermissionDenied />;
+  return [permission].flat().some(can) ? <>{children}</> : <PermissionDenied />;
 }

@@ -115,10 +115,6 @@ export const customers = {
   "customers.resetPassword.done": "Password reset sent for approval",
   "customers.unlock.impact": "Once a second admin approves, {name} can try to sign in again.",
   "customers.unlock.done": "Unlock sent for approval",
-  "customers.repair.impact":
-    "Creates the customer on BankOne if missing and links the existing account if found.",
-  "customers.repair.createdAndFound": "Customer created on BankOne and account found",
-  "customers.repair.foundOnly": "Customer already existed. Account found",
 
   "gender.male": "Male",
   "gender.female": "Female",
