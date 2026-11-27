@@ -32,6 +32,7 @@ import { JobsQueuesPage, MissingAccountNumbersPage } from "@/features/system-hea
 import { TransactionsPage } from "@/features/transactions";
 import { Toaster } from "@/shared/components/ui/Sonner";
 import { AppShell } from "./layouts/AppShell";
+import { ScrollToTop } from "./ScrollToTop";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false } },
@@ -42,6 +43,7 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
+          <ScrollToTop />
           <Routes>
             <Route path="/accept-invite" element={<AcceptInvitationPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
